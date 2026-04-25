@@ -29,7 +29,7 @@ args_cli, hydra_args = parser.parse_known_args()
 # pass remaining args to Hydra
 sys.argv = [sys.argv[0]] + hydra_args
 
-import external_project.tasks  # noqa: F401
+import environments.tasks  # noqa: F401
 
 MAX_STEPS = 100
 

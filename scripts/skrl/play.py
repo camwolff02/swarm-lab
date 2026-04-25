@@ -17,7 +17,7 @@ import random
 import sys
 import time
 
-import external_project.tasks  # noqa: F401
+import environments.tasks  # noqa: F401
 import gymnasium as gym
 import skrl
 import torch

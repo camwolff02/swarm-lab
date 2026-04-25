@@ -17,7 +17,7 @@ import random
 import sys
 import time
 
-import external_project.tasks  # noqa: F401
+import environments.tasks  # noqa: F401
 import gymnasium as gym
 import skrl
 import torch
@@ -194,7 +194,7 @@ def main():
             and args_cli.task.startswith("Isaac-Attention-Swarm-")
         )
         if use_attention_swarm_custom_runner:
-            from external_project.tasks.direct.attention_swarm.agents import AttentionSwarmSkrlRunner
+            from environments.tasks.direct.attention_swarm.agents import AttentionSwarmSkrlRunner
 
             print("[INFO] Using custom attention-swarm IPPO runner with paper-style attention encoder.")
             runner = AttentionSwarmSkrlRunner(env, experiment_cfg)

@@ -39,7 +39,7 @@ from isaaclab_tasks.utils import add_launcher_args, launch_simulation, resolve_t
 
 logger = logging.getLogger(__name__)
 
-import external_project.tasks  # noqa: F401
+import environments.tasks  # noqa: F401
 
 with contextlib.suppress(ImportError):
     import isaaclab_tasks_experimental  # noqa: F401

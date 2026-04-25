@@ -1,0 +1,84 @@
+seed: 42
+
+models:
+  factory: quad_swarm_paper_attention
+  share_parameters: true
+  hidden_size: 256
+  attention_heads: 4
+  self_obs_dim: 19
+  neighbor_obs_dim: 12
+  obstacle_obs_dim: 9
+
+memory:
+  class: RandomMemory
+  memory_size: -1
+
+agent:
+  class: IPPO
+  rollouts: 128
+  learning_epochs: 8
+  mini_batches: 8
+  discount_factor: 0.99
+  gae_lambda: 0.95
+  learning_rate: 1.0e-4
+  learning_rate_scheduler_kwargs:
+    drone_0: {}
+    drone_1: {}
+    drone_2: {}
+    drone_3: {}
+    drone_4: {}
+    drone_5: {}
+    drone_6: {}
+    drone_7: {}
+  observation_preprocessor_kwargs:
+    drone_0: {}
+    drone_1: {}
+    drone_2: {}
+    drone_3: {}
+    drone_4: {}
+    drone_5: {}
+    drone_6: {}
+    drone_7: {}
+  state_preprocessor_kwargs:
+    drone_0: {}
+    drone_1: {}
+    drone_2: {}
+    drone_3: {}
+    drone_4: {}
+    drone_5: {}
+    drone_6: {}
+    drone_7: {}
+  value_preprocessor_kwargs:
+    drone_0: {}
+    drone_1: {}
+    drone_2: {}
+    drone_3: {}
+    drone_4: {}
+    drone_5: {}
+    drone_6: {}
+    drone_7: {}
+  random_timesteps: 0
+  learning_starts: 0
+  grad_norm_clip: 1.0
+  ratio_clip: 0.2
+  value_clip: 0.2
+  entropy_loss_scale: 0.0
+  value_loss_scale: 1.0
+  kl_threshold: 0.0
+  rewards_shaper_scale: 1.0
+  time_limit_bootstrap: false
+  mixed_precision: false
+  experiment:
+    directory: quad_swarm_paper
+    experiment_name: ""
+    write_interval: auto
+    checkpoint_interval: auto
+    store_separately: false
+    wandb: false
+
+trainer:
+  class: SequentialTrainer
+  timesteps: 100000
+  headless: true
+  environment_info: episode
+  close_environment_at_exit: true
