@@ -1,4 +1,12 @@
-"""Paper attention wrapper built on PyTorch scaled-dot-product attention."""
+"""Paper attention wrapper built on PyTorch scaled-dot-product attention.
+
+This module intentionally does not use ``torch.nn.MultiheadAttention`` because
+the released quad-swarm model uses ``n_head=4`` with ``d_k=d_v=d_model``. PyTorch's
+module instead splits ``embed_dim`` across heads, which would change the
+projection shapes and behavior. The custom wrapper preserves the paper/release
+shape contract, residual, and layer normalization while delegating the actual
+attention kernel to ``torch.nn.functional.scaled_dot_product_attention``.
+"""
 
 from __future__ import annotations
 

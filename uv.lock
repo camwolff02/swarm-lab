@@ -510,7 +510,7 @@ wheels = [
 [[package]]
 name = "cpsquare-lab"
 version = "0.1.0"
-source = { directory = "../cpsquare-lab" }
+source = { editable = "../cpsquare-lab" }
 dependencies = [
     { name = "pyyaml" },
     { name = "torch" },
@@ -2114,7 +2114,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cpsquare-lab", directory = "../cpsquare-lab" },
+    { name = "cpsquare-lab", editable = "../cpsquare-lab" },
     { name = "eclipse-zenoh", marker = "extra == 'detatched'", specifier = ">=1.9.0" },
     { name = "environments", editable = "environments" },
     { name = "isaacsim", extras = ["all", "extscache"], specifier = "==6.0.0", index = "https://pypi.nvidia.com/" },

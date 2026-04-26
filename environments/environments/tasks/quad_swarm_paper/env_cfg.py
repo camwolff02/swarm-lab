@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import gymnasium as gym
 import numpy as np
-from isaaclab_physx.physics import PhysxCfg
+from cpsquare_lab.embodiments.multirotor.cf2x.sim.robot import CRAZYFLIE_CFG
+from cpsquare_lab.tasks.common.physics import physx_swarm_cfg
 
 import isaaclab.sim as sim_utils
 from isaaclab.envs import DirectMARLEnvCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sim import SimulationCfg
 from isaaclab.utils import configclass
-
-from cpsquare_lab.embodiments.multirotor.cf2x.sim.robot import CRAZYFLIE_CFG
 
 from . import paper_spec as spec
 
@@ -37,7 +36,7 @@ class QuadSwarmPaperEnvCfg(DirectMARLEnvCfg):
     sim: SimulationCfg = SimulationCfg(
         dt=spec.SIM_DT,
         render_interval=decimation,
-        physics=PhysxCfg(enable_external_forces_every_iteration=True),
+        physics=physx_swarm_cfg(),
         physics_material=sim_utils.RigidBodyMaterialCfg(
             static_friction=1.0,
             dynamic_friction=1.0,
@@ -54,7 +53,8 @@ class QuadSwarmPaperEnvCfg(DirectMARLEnvCfg):
     obstacle_radius: float = spec.OBSTACLE_RADIUS
     local_sdf_resolution: float = spec.LOCAL_SDF_RESOLUTION
     enable_obstacles: bool = True
-    spawn_obstacle_actors: bool = False
+    # spawn_obstacle_actors: bool = False
+    spawn_obstacle_actors: bool = True
     enable_replay: bool = True
     replay_probability: float = spec.REPLAY_PROBABILITY
     replay_lag_s: float = spec.REPLAY_LAG_S

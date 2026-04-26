@@ -179,7 +179,7 @@ jinja2 = { index = "pypi" }
 torch = { index = "pytorch-cu128" }
 torchvision = { index = "pytorch-cu128" }
 # cpsquare-lab = { git = "git+ssh://git@github.com/camwolff02/cpsquare-lab", lfs = true }
-cpsquare-lab = { path = "../cpsquare-lab" }
+cpsquare-lab = { path = "../cpsquare-lab", editable = true }
 environments = { workspace = true }
 
 [dependency-groups]
