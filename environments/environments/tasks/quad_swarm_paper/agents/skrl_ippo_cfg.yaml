@@ -2,7 +2,7 @@ seed: 42
 
 models:
   factory: quad_swarm_paper_attention
-  share_parameters: true
+  share_parameters: false
   hidden_size: 256
   attention_heads: 4
   self_obs_dim: 19

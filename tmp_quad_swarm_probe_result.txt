@@ -1,0 +1,21 @@
+viewer.cam_prim_path=/World/QuadSwarmCamera
+camera.valid=True type=Camera
+drone_0.valid=True type=Xform meshes=10
+drone_1.valid=True type=Xform meshes=10
+drone_2.valid=True type=Xform meshes=10
+drone_3.valid=True type=Xform meshes=10
+drone_4.valid=True type=Xform meshes=10
+drone_5.valid=True type=Xform meshes=10
+drone_6.valid=True type=Xform meshes=10
+drone_7.valid=True type=Xform meshes=10
+reset.agents=['drone_0', 'drone_1', 'drone_2', 'drone_3', 'drone_4', 'drone_5', 'drone_6', 'drone_7']
+positions.env0=[[2.619999885559082, 2.321000099182129, 1.0], [0.210999995470047, 3.49399995803833, 1.0], [-2.321000099182129, 2.619999885559082, 1.0], [-3.49399995803833, 0.210999995470047, 1.0], [-2.619999885559082, -2.321000099182129, 1.0], [-0.210999995470047, -3.49399995803833, 1.0], [2.321000099182129, -2.619999885559082, 1.0], [3.49399995803833, -0.210999995470047, 1.0]]
+obstacles.active.env0=12
+frame 0: shape=(720, 1280, 3) min=0 max=0 mean=0.000 nonzero=0
+frame 1: shape=(720, 1280, 3) min=0 max=0 mean=0.000 nonzero=0
+frame 2: shape=(720, 1280, 3) min=0 max=0 mean=0.000 nonzero=0
+frame 3: shape=(720, 1280, 3) min=0 max=0 mean=0.000 nonzero=0
+frame 4: shape=(720, 1280, 3) min=0 max=0 mean=0.000 nonzero=0
+frame 5: shape=(720, 1280, 3) min=0 max=0 mean=0.000 nonzero=0
+frame 6: shape=(720, 1280, 3) min=0 max=0 mean=0.000 nonzero=0
+frame 7: shape=(720, 1280, 3) min=0 max=0 mean=0.000 nonzero=0

@@ -116,10 +116,14 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
 
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.85, 0.85, 0.85))
         light_cfg.func("/World/Light", light_cfg)
+        self._spawn_view_camera()
+        self._spawn_obstacle_visuals()
 
     def _pre_physics_step(self, actions: dict[str, torch.Tensor]) -> None:
         for drone_index, agent in enumerate(self._agent_ids):
-            action = actions[agent].to(self.device).clamp(-1.0, 1.0)
+            action = torch.nan_to_num(actions[agent].to(self.device), nan=0.0, posinf=1.0, neginf=-1.0).clamp(
+                -1.0, 1.0
+            )
             self._last_actions[:, drone_index] = action
             self._thrust_targets[agent] = normalized_rotor_actions_to_thrust(action, self._max_thrusts)
 
@@ -267,6 +271,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         self._replay.reset_history(env_ids_tensor)
         reset_episode_metrics(self, env_ids_tensor)
         self._last_state = None
+        self._sync_obstacle_visuals(env_ids_tensor)
 
     def _reset_fresh(self, env_ids: torch.Tensor) -> None:
         positions, goals, orientations = sample_start_goal_pairs(
@@ -368,3 +373,69 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             obstacle_mask=self._obstacle_mask,
             episode_lengths=self.episode_length_buf,
         )
+
+    def _spawn_view_camera(self) -> None:
+        camera_path = self.cfg.viewer.cam_prim_path
+        if not camera_path or camera_path == "/OmniverseKit_Persp":
+            return
+        if self.sim.stage.GetPrimAtPath(camera_path).IsValid():
+            return
+
+        eye = torch.tensor([self.cfg.viewer.eye], dtype=torch.float32)
+        target = torch.tensor([self.cfg.viewer.lookat], dtype=torch.float32)
+        orientation = math_utils.quat_from_matrix(
+            math_utils.create_rotation_matrix_from_view(eye, target, up_axis="Z")
+        )[0]
+        camera_cfg = sim_utils.PinholeCameraCfg(
+            focal_length=18.0,
+            focus_distance=20.0,
+            horizontal_aperture=20.955,
+            clipping_range=(0.05, 100.0),
+        )
+        camera_cfg.func(
+            camera_path,
+            camera_cfg,
+            translation=tuple(float(value) for value in eye[0]),
+            orientation=tuple(float(value) for value in orientation),
+        )
+
+    def _spawn_obstacle_visuals(self) -> None:
+        self._obstacle_visual_prims = []
+        if not self.cfg.spawn_obstacle_actors:
+            return
+
+        env_index = min(max(int(self.cfg.viewer.env_index), 0), int(self.cfg.scene.num_envs) - 1)
+        self._obstacle_visual_env_index = env_index
+        obstacle_cfg = sim_utils.CylinderCfg(
+            radius=self.cfg.obstacle_radius,
+            height=spec.ROOM_HEIGHT,
+            axis="Z",
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.05, 0.55, 0.18), roughness=0.8),
+        )
+        num_slots = spec.OBSTACLE_GRID_SHAPE[0] * spec.OBSTACLE_GRID_SHAPE[1]
+        for obstacle_index in range(num_slots):
+            prim_path = f"/World/envs/env_{env_index}/obstacles/obstacle_{obstacle_index:02d}"
+            prim = obstacle_cfg.func(prim_path, obstacle_cfg, translation=(0.0, 0.0, -spec.ROOM_HEIGHT))
+            sim_utils.set_prim_visibility(prim, False)
+            self._obstacle_visual_prims.append(prim)
+
+    def _sync_obstacle_visuals(self, env_ids: torch.Tensor) -> None:
+        if not getattr(self, "_obstacle_visual_prims", None):
+            return
+
+        env_index = getattr(self, "_obstacle_visual_env_index", 0)
+        if not (env_ids == env_index).any():
+            return
+
+        origin = self.scene.env_origins[env_index].detach().cpu()
+        positions = self._obstacle_positions[env_index].detach().cpu()
+        mask = self._obstacle_mask[env_index].detach().cpu()
+        for obstacle_index, prim in enumerate(self._obstacle_visual_prims):
+            visible = bool(mask[obstacle_index])
+            sim_utils.set_prim_visibility(prim, visible)
+            if visible:
+                position = positions[obstacle_index] + origin
+                sim_utils.standardize_xform_ops(
+                    prim,
+                    translation=tuple(float(value) for value in position),
+                )

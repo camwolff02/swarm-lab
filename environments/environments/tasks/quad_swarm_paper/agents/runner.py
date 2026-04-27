@@ -1,7 +1,17 @@
-"""skrl Runner integration for the quad swarm paper model factory."""
+"""skrl Runner integration for the quad swarm paper model factory.
+
+The paper uses a homogeneous decentralized policy, but stock skrl IPPO builds
+one optimizer per named agent. Reusing the exact same module instances across
+agents therefore means multiple Adam optimizers mutate the same parameters with
+separate optimizer state. The default factory path intentionally builds one
+policy/value pair per drone for stable stock-runner training. Explicit
+``share_parameters=True`` is still available for evaluation experiments, but it
+is not the safe default training path.
+"""
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 from skrl.models.torch import Model
@@ -18,7 +28,7 @@ _ORIGINAL_GENERATE_MODELS = None
 
 
 def _generate_quad_swarm_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model]]:
-    """Build shared paper policy/value modules for skrl's stock Runner."""
+    """Build paper policy/value modules for skrl's stock Runner."""
 
     device = env.device
     possible_agents = env.possible_agents
@@ -30,7 +40,15 @@ def _generate_quad_swarm_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict
         hidden_size=int(model_cfg.get("hidden_size", 256)),
         attention_heads=int(model_cfg.get("attention_heads", 4)),
     )
-    share_parameters = bool(model_cfg.get("share_parameters", True))
+    share_parameters = bool(model_cfg.get("share_parameters", False))
+    if share_parameters:
+        warnings.warn(
+            "share_parameters=True reuses module instances across skrl IPPO agents. "
+            "Stock skrl IPPO creates one optimizer per agent, so this is unsafe for training "
+            "unless a custom shared-optimizer update path is used.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     def make_pair(agent_id: str) -> dict[str, Model]:
         return {

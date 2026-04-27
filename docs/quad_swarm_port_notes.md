@@ -83,9 +83,9 @@ The default scripts import `environments.tasks`, which registers this task.
 | Attention implementation | Uses PyTorch SDPA while preserving released projection, residual, and LayerNorm structure. |
 | Reward coefficients | Centralized in `paper_spec.py`; first-pass values need a source-level coefficient parity pass before score claims. |
 | Replay | Lagged collision replay manager implemented as reusable cpsquare-lab utility and wired into reset path. |
-| Shared policy | Stock skrl `Runner` uses the task-installed model factory hook to reuse the same policy and value module instances across all drone IDs. |
+| Shared policy | Current stock-skrl path uses independent per-drone policy/value modules. Reusing the same module instances with stock skrl IPPO creates multiple optimizers over the same parameters and has produced non-finite checkpoints. |
 | Downwash | Not implemented in this first workable pass. |
-| Obstacle actors | Logical obstacle field is implemented; visual/physical obstacle actor spawning is not yet implemented. |
+| Obstacle actors | Logical obstacle field is implemented for every environment; env-0 visual cylinder obstacles are spawned for Kit/video inspection. |
 
 ## Validation Status
 

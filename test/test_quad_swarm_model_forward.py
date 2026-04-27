@@ -41,7 +41,7 @@ def test_quad_swarm_skrl_models_forward_shapes() -> None:
     assert value_outputs == {}
 
 
-def test_stock_skrl_runner_hook_reuses_shared_module_instances() -> None:
+def test_stock_skrl_runner_hook_builds_independent_modules_for_ippo_by_default() -> None:
     install_quad_swarm_runner_patch()
     env = SimpleNamespace(
         device="cpu",
@@ -58,7 +58,6 @@ def test_stock_skrl_runner_hook_reuses_shared_module_instances() -> None:
     cfg = {
         "models": {
             "factory": "quad_swarm_paper_attention",
-            "share_parameters": True,
             "hidden_size": 32,
             "attention_heads": 4,
             "self_obs_dim": 19,
@@ -71,5 +70,5 @@ def test_stock_skrl_runner_hook_reuses_shared_module_instances() -> None:
     models = runner._generate_models(env, cfg)
 
     assert models["drone_0"] is not models["drone_1"]
-    assert models["drone_0"]["policy"] is models["drone_1"]["policy"]
-    assert models["drone_0"]["value"] is models["drone_1"]["value"]
+    assert models["drone_0"]["policy"] is not models["drone_1"]["policy"]
+    assert models["drone_0"]["value"] is not models["drone_1"]["value"]

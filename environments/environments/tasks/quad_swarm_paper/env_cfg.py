@@ -53,7 +53,6 @@ class QuadSwarmPaperEnvCfg(DirectMARLEnvCfg):
     obstacle_radius: float = spec.OBSTACLE_RADIUS
     local_sdf_resolution: float = spec.LOCAL_SDF_RESOLUTION
     enable_obstacles: bool = True
-    # spawn_obstacle_actors: bool = False
     spawn_obstacle_actors: bool = True
     enable_replay: bool = True
     replay_probability: float = spec.REPLAY_PROBABILITY
@@ -89,3 +88,4 @@ class QuadSwarmPaperEnvCfg(DirectMARLEnvCfg):
         self.sim.render_interval = self.decimation
         self.viewer.eye = (8.0, 8.0, 6.0)
         self.viewer.lookat = (0.0, 0.0, 1.0)
+        self.viewer.cam_prim_path = "/World/QuadSwarmCamera"
