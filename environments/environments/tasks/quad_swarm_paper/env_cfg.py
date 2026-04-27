@@ -37,6 +37,14 @@ class QuadSwarmPaperEnvCfg(DirectMARLEnvCfg):
         dt=spec.SIM_DT,
         render_interval=decimation,
         physics=physx_swarm_cfg(),
+        render=sim_utils.RenderCfg(
+            carb_settings={
+                # Isaac Lab's rendering experience enables this alongside the Fabric scene delegate.
+                # RTX warns that this conflicts with geometry streaming and can prevent dynamic objects
+                # from streaming correctly, which is especially visible for moving drones.
+                "/rtx/hydra/readTransformsFromFabricInRenderDelegate": False,
+            },
+        ),
         physics_material=sim_utils.RigidBodyMaterialCfg(
             static_friction=1.0,
             dynamic_friction=1.0,

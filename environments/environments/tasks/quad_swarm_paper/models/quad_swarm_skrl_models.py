@@ -10,6 +10,14 @@ from torch import nn
 from .quad_swarm_encoder import QuadSwarmEncoder, QuadSwarmEncoderCfg
 
 
+def _observations_from_inputs(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
+    """Return skrl observations from runtime or model-initialization inputs."""
+
+    if "observations" in inputs:
+        return inputs["observations"]
+    return inputs["states"]
+
+
 def _space_size(space: gym.Space) -> int:
     if not hasattr(space, "shape") or space.shape is None:
         raise ValueError(f"Expected a Box-like space with a shape, got {space}.")
@@ -37,11 +45,13 @@ class QuadSwarmGaussianPolicy(GaussianMixin, Model):
         self.mean_head = nn.Linear(encoder_cfg.output_dim, _space_size(action_space))
         self.log_std_parameter = nn.Parameter(torch.zeros(_space_size(action_space)))
 
-    def compute(self, inputs: dict[str, torch.Tensor], role: str = "") -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    def compute(
+        self, inputs: dict[str, torch.Tensor], role: str = ""
+    ) -> tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
         del role
-        latent = self.encoder(inputs["observations"])
+        latent = self.encoder(_observations_from_inputs(inputs))
         mean = self.mean_head(latent)
-        return mean, {"log_std": self.log_std_parameter.expand_as(mean)}
+        return mean, self.log_std_parameter.expand_as(mean), {}
 
 
 class QuadSwarmDeterministicValue(DeterministicMixin, Model):
@@ -62,4 +72,4 @@ class QuadSwarmDeterministicValue(DeterministicMixin, Model):
 
     def compute(self, inputs: dict[str, torch.Tensor], role: str = "") -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         del role
-        return self.value_head(self.encoder(inputs["observations"])), {}
+        return self.value_head(self.encoder(_observations_from_inputs(inputs))), {}

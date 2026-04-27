@@ -32,13 +32,19 @@ def test_quad_swarm_skrl_models_forward_shapes() -> None:
     policy = QuadSwarmGaussianPolicy(observation_space, action_space, "cpu", encoder_cfg=encoder_cfg)
     value = QuadSwarmDeterministicValue(observation_space, action_space, "cpu", encoder_cfg=encoder_cfg)
 
-    means, policy_outputs = policy.compute({"observations": observations})
+    means, log_std, policy_outputs = policy.compute({"observations": observations})
     values, value_outputs = value.compute({"observations": observations})
+    init_means, init_log_std, _ = policy.compute({"states": observations})
+    init_values, _ = value.compute({"states": observations})
 
     assert means.shape == (7, 4)
-    assert policy_outputs["log_std"].shape == (7, 4)
+    assert log_std.shape == (7, 4)
+    assert policy_outputs == {}
     assert values.shape == (7, 1)
     assert value_outputs == {}
+    assert init_means.shape == (7, 4)
+    assert init_log_std.shape == (7, 4)
+    assert init_values.shape == (7, 1)
 
 
 def test_stock_skrl_runner_hook_builds_independent_modules_for_ippo_by_default() -> None:

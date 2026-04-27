@@ -17,6 +17,7 @@ import random
 import sys
 import time
 
+import environments.tasks  # noqa: F401
 import gymnasium as gym
 import skrl
 import torch
@@ -30,11 +31,8 @@ from isaaclab_rl.utils.pretrained_checkpoint import get_published_pretrained_che
 import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils import add_launcher_args, get_checkpoint_path, launch_simulation, resolve_task_config
 
-import environments
-
 # PLACEHOLDER: Extension template (do not remove this comment)
 with contextlib.suppress(ImportError):
-    import environments.tasks  # noqa: F401
     import isaaclab_tasks_experimental  # noqa: F401
 
 SKRL_VERSION = "1.4.3"
@@ -104,9 +102,38 @@ else:
     algorithm = agent_cfg_entry_point.split("_cfg")[0].split("skrl_")[-1].lower()
 
 
+def _append_render_carb_settings_to_kit_args(env_cfg, launcher_args) -> None:
+    """Apply render carb settings before Kit starts.
+
+    SimulationCfg render settings are normally applied after SimulationApp is
+    running. Some RTX settings, such as Fabric render-delegate options, must be
+    present at Kit startup to avoid renderer warnings and stale dynamic geometry.
+    """
+
+    settings = getattr(getattr(getattr(env_cfg, "sim", None), "render", None), "carb_settings", None)
+    if not settings:
+        return
+
+    kit_args = getattr(launcher_args, "kit_args", "") or ""
+    existing = set(kit_args.split())
+    additions = []
+    for key, value in settings.items():
+        setting_path = key if str(key).startswith("/") else f"/{str(key).replace('.', '/')}"
+        if isinstance(value, bool):
+            setting_value = str(value).lower()
+        else:
+            setting_value = str(value)
+        arg = f"--{setting_path}={setting_value}"
+        if arg not in existing:
+            additions.append(arg)
+    if additions:
+        launcher_args.kit_args = " ".join([kit_args, *additions]).strip()
+
+
 def main():
     """Play with skrl agent."""
     env_cfg, experiment_cfg = resolve_task_config(args_cli.task, agent_cfg_entry_point)
+    _append_render_carb_settings_to_kit_args(env_cfg, args_cli)
     with launch_simulation(env_cfg, args_cli):
         if args_cli.ml_framework.startswith("torch"):
             from skrl.utils.runner.torch import Runner
@@ -194,14 +221,10 @@ def main():
 
         print(f"[INFO] Loading model checkpoint from: {resume_path}")
         runner.agent.load(resume_path)
-        if hasattr(runner.agent, "set_running_mode"):
-            runner.agent.set_running_mode("eval")
-        else:
-            runner.agent.enable_training_mode(False, apply_to_models=True)
+        runner.agent.set_running_mode("eval")
 
         # reset environment
         obs, _ = env.reset()
-        states = env.state()
         timestep = 0
         # simulate environment
         try:
@@ -209,13 +232,12 @@ def main():
                 start_time = time.time()
 
                 with torch.inference_mode():
-                    outputs = runner.agent.act(obs, states, timestep=0, timesteps=0)
+                    outputs = runner.agent.act(obs, timestep=0, timesteps=0)
                     if hasattr(env, "possible_agents"):
                         actions = {a: outputs[-1][a].get("mean_actions", outputs[0][a]) for a in env.possible_agents}
                     else:
                         actions = outputs[-1].get("mean_actions", outputs[0])
                     obs, _, _, _, _ = env.step(actions)
-                    states = env.state()
                 if args_cli.video:
                     timestep += 1
                     if timestep == args_cli.video_length:
