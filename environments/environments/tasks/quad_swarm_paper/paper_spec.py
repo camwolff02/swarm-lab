@@ -34,18 +34,22 @@ REPLAY_LAG_S = 1.5
 
 GOAL_REACHED_RADIUS = 0.35
 FLOOR_CRASH_HEIGHT = 0.08
-ROBOT_COLLISION_RADIUS = 0.18
-ROBOT_PROXIMITY_RADIUS = 0.75
+# The release computes robot-robot collision and proximity radii as multiples
+# of the quad arm length: hitbox=2*arm and falloff=4*arm, with arm ~= 0.05m.
+ROBOT_COLLISION_RADIUS = 0.10
+ROBOT_PROXIMITY_RADIUS = 0.20
+OBSTACLE_COLLISION_ROBOT_RADIUS = 0.05
+COLLISION_GRACE_PERIOD_S = 1.5
+REPLAY_ACTIVATION_EPISODES = 10
 
 # These coefficients are centralized here so paper-vs-release drift is visible.
-# They are conservative first-pass values; exact release coefficients still need a
-# source-level parity pass before score comparisons are meaningful.
+# These match the released obstacle baseline unless noted otherwise.
 GOAL_REWARD_SCALE = 1.0
 GOAL_REWARD_DISTANCE_SCALE = 1.0
 ROBOT_COLLISION_PENALTY = 5.0
 OBSTACLE_COLLISION_PENALTY = 5.0
-PROXIMITY_PENALTY = 0.5
-FLOOR_CRASH_PENALTY = 5.0
-ANGULAR_VELOCITY_PENALTY_SCALE = 0.01
-CONTROL_EFFORT_PENALTY_SCALE = 0.001
-TILT_PENALTY_SCALE = 0.05
+PROXIMITY_PENALTY = 4.0
+FLOOR_CRASH_PENALTY = 1.0
+ANGULAR_VELOCITY_PENALTY_SCALE = 0.1
+CONTROL_EFFORT_PENALTY_SCALE = 0.05
+TILT_PENALTY_SCALE = 1.0

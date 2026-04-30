@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Sequence
 
 import torch
@@ -20,15 +21,9 @@ from cpsquare_lab.tasks.swarm.events import (
     robot_obstacle_collision_events,
     robot_robot_collision_events,
 )
-from cpsquare_lab.tasks.swarm.observations import paper_swarm_observation
-from cpsquare_lab.tasks.swarm.rewards import (
-    angular_velocity_penalty,
-    binary_event_penalty,
-    close_proximity_penalty,
-    control_effort_penalty,
-    inverse_squared_goal_reward,
-    tilt_penalty,
-)
+from cpsquare_lab.tasks.swarm.grid_sdf import local_obstacle_sdf
+from cpsquare_lab.tasks.swarm.observations import multirotor_self_observation
+from cpsquare_lab.tasks.swarm.rewards import binary_event_penalty
 
 import isaaclab.sim as sim_utils
 import isaaclab.utils.math as math_utils
@@ -37,7 +32,7 @@ from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 
 from . import paper_spec as spec
 from .env_cfg import QuadSwarmPaperEnvCfg
-from .obstacle_room import sample_obstacle_field, sample_start_goal_pairs
+from .obstacle_room import sample_obstacle_aware_start_goal_pairs, sample_obstacle_field, sample_start_goal_pairs
 
 METRIC_NAMES = (
     "success",
@@ -46,9 +41,68 @@ METRIC_NAMES = (
     "robot_robot_collisions",
     "robot_obstacle_collisions",
     "replay_reset",
+    "replay_active",
     "timeout",
     "crash",
 )
+
+
+def _paper_neighbor_features(
+    positions: torch.Tensor,
+    linear_velocities: torch.Tensor,
+    *,
+    k: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return neighbor features selected by the release's closing-distance heuristic."""
+
+    num_envs, num_agents, _ = positions.shape
+    if k <= 0:
+        empty = torch.empty((num_envs, num_agents, 0), device=positions.device, dtype=positions.dtype)
+        indices = torch.empty((num_envs, num_agents, 0), device=positions.device, dtype=torch.long)
+        return empty, indices
+
+    rel_positions = positions.unsqueeze(1) - positions.unsqueeze(2)
+    rel_velocities = linear_velocities.unsqueeze(1) - linear_velocities.unsqueeze(2)
+    distances = torch.linalg.norm(rel_positions, dim=-1)
+    unit_rel_positions = rel_positions / distances.clamp_min(1.0e-6).unsqueeze(-1)
+    closing_metric = distances + (unit_rel_positions * rel_velocities).sum(dim=-1)
+
+    eye = torch.eye(num_agents, device=positions.device, dtype=torch.bool).unsqueeze(0)
+    closing_metric = closing_metric.masked_fill(eye, torch.inf)
+    neighbor_count = min(k, max(num_agents - 1, 0))
+    neighbor_indices = torch.topk(closing_metric, k=neighbor_count, largest=False, dim=-1).indices
+
+    gather_index = neighbor_indices.unsqueeze(-1).expand(-1, -1, -1, 3)
+    selected_positions = rel_positions.gather(2, gather_index)
+    selected_velocities = rel_velocities.gather(2, gather_index)
+    features = torch.cat((selected_positions, selected_velocities), dim=-1)
+
+    if neighbor_count < k:
+        pad = torch.zeros((num_envs, num_agents, k - neighbor_count, 6), device=positions.device, dtype=positions.dtype)
+        features = torch.cat((features, pad), dim=2)
+        index_pad = torch.full((num_envs, num_agents, k - neighbor_count), -1, device=positions.device, dtype=torch.long)
+        neighbor_indices = torch.cat((neighbor_indices, index_pad), dim=2)
+
+    return features.reshape(num_envs, num_agents, k * 6), neighbor_indices
+
+
+def _paper_proximity_penalty(
+    positions: torch.Tensor,
+    *,
+    falloff_radius: float,
+    max_penalty: float,
+    dt: float,
+) -> torch.Tensor:
+    """Return the release's smooth robot-robot falloff penalty."""
+
+    num_agents = positions.shape[1]
+    rel_positions = positions.unsqueeze(1) - positions.unsqueeze(2)
+    distances = torch.linalg.norm(rel_positions, dim=-1)
+    eye = torch.eye(num_agents, device=positions.device, dtype=torch.bool).unsqueeze(0)
+    active = (distances <= float(falloff_radius)).masked_fill(eye, False)
+    penalties = (float(max_penalty) - float(max_penalty) / float(falloff_radius) * distances).clamp_min(0.0)
+    penalties = penalties.masked_fill(~active, 0.0)
+    return -float(dt) * penalties.sum(dim=-1)
 
 
 class QuadSwarmPaperEnv(DirectMARLEnv):
@@ -92,6 +146,11 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         self._last_obstacle_collision_events = torch.zeros_like(self._last_robot_collision_events)
         self._last_floor_events = torch.zeros_like(self._last_robot_collision_events)
         self._last_success = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self._episode_floor_crash_counts = torch.zeros(self.num_envs, device=self.device, dtype=torch.float32)
+        self._replay_activation_history: deque[float] = deque(
+            maxlen=max(int(self.cfg.replay_activation_episodes), 1)
+        )
+        self._replay_active = int(self.cfg.replay_activation_episodes) <= 0
         replay_steps = max(1, int(round(float(self.cfg.replay_lag_s) / self.step_dt)))
         self._replay = CollisionReplayManager(
             num_envs=self.num_envs,
@@ -135,18 +194,26 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         state = self._collect_swarm_state()
         obstacle_positions = self._obstacle_positions
         obstacle_mask = self._obstacle_mask if self.cfg.enable_obstacles else torch.zeros_like(self._obstacle_mask)
-        observations, self._last_neighbor_indices = paper_swarm_observation(
+        self_obs = multirotor_self_observation(
             positions=state["positions"],
             goals=self._goals,
             linear_velocities=state["linear_velocities"],
             rotation_matrices=state["rotation_matrices"],
             angular_velocities=state["angular_velocities"],
+        )
+        neighbor_obs, self._last_neighbor_indices = _paper_neighbor_features(
+            state["positions"],
+            state["linear_velocities"],
+            k=self.cfg.visible_neighbors,
+        )
+        obstacle_obs = local_obstacle_sdf(
+            state["positions"],
             obstacle_positions=obstacle_positions,
             obstacle_mask=obstacle_mask,
-            k_neighbors=self.cfg.visible_neighbors,
             obstacle_radius=self.cfg.obstacle_radius,
-            sdf_resolution=self.cfg.local_sdf_resolution,
+            resolution=self.cfg.local_sdf_resolution,
         )
+        observations = torch.cat((self_obs, neighbor_obs, obstacle_obs), dim=-1)
         return {agent: observations[:, index] for index, agent in enumerate(self._agent_ids)}
 
     def _get_states(self) -> torch.Tensor | None:
@@ -157,17 +224,26 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         if state is None:
             state = self._collect_swarm_state()
 
-        goal_reward = self.cfg.goal_reward_scale * inverse_squared_goal_reward(
-            state["positions"],
-            self._goals,
-            distance_scale=self.cfg.goal_reward_distance_scale,
+        dt = float(self.cfg.sim.dt)
+        distance = torch.linalg.norm(self._goals - state["positions"], dim=-1)
+        effort = torch.linalg.norm(self._last_actions, dim=-1)
+        spin = torch.linalg.norm(state["angular_velocities"], dim=-1)
+        up_z = state["rotation_matrices"][..., 2, 2]
+        floor_active = state["positions"][..., 2] <= float(self.cfg.floor_crash_height)
+        orientation_cost = torch.where(floor_active, torch.ones_like(up_z), -up_z)
+
+        reward = -dt * (
+            float(self.cfg.goal_reward_scale) * distance
+            + float(self.cfg.control_effort_penalty_scale) * effort
+            + float(self.cfg.floor_crash_penalty) * floor_active.to(dtype=torch.float32)
+            + float(self.cfg.tilt_penalty_scale) * orientation_cost
+            + float(self.cfg.angular_velocity_penalty_scale) * spin
         )
-        reward = goal_reward
-        reward = reward + close_proximity_penalty(
+        reward = reward + _paper_proximity_penalty(
             state["positions"],
-            safety_radius=self.cfg.robot_proximity_radius,
-            collision_radius=self.cfg.robot_collision_radius,
-            penalty=self.cfg.proximity_penalty,
+            falloff_radius=self.cfg.robot_proximity_radius,
+            max_penalty=self.cfg.proximity_penalty,
+            dt=dt,
         )
         reward = reward + binary_event_penalty(
             self._last_robot_collision_events,
@@ -177,13 +253,6 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             self._last_obstacle_collision_events,
             penalty=self.cfg.obstacle_collision_penalty,
         )
-        reward = reward + binary_event_penalty(self._last_floor_events, penalty=self.cfg.floor_crash_penalty)
-        reward = reward + angular_velocity_penalty(
-            state["angular_velocities"],
-            scale=self.cfg.angular_velocity_penalty_scale,
-        )
-        reward = reward + control_effort_penalty(self._last_actions, scale=self.cfg.control_effort_penalty_scale)
-        reward = reward + tilt_penalty(state["rotation_matrices"], scale=self.cfg.tilt_penalty_scale)
 
         record_metric(self, "success", self._last_success.float())
         collision = self._last_robot_collision_events.any(dim=1) | self._last_obstacle_collision_events.any(dim=1)
@@ -208,6 +277,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             self._obstacle_positions,
             self._obstacle_mask if self.cfg.enable_obstacles else torch.zeros_like(self._obstacle_mask),
             obstacle_radius=self.cfg.obstacle_radius,
+            robot_radius=self.cfg.obstacle_collision_robot_radius,
             previous_collision_matrix=self._previous_obstacle_collisions,
         )
         floor_events = floor_crash_events(state["positions"], minimum_height=self.cfg.floor_crash_height)
@@ -222,18 +292,36 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         self._previous_obstacle_collisions = active_obstacle_collisions
 
         collision_envs = robot_events.any(dim=1) | obstacle_events.any(dim=1)
-        if self.cfg.enable_replay and collision_envs.any():
-            self._replay.record_collisions(collision_envs.nonzero(as_tuple=False).squeeze(-1))
-        if self.cfg.enable_replay:
+        grace_steps = max(0, int(round(float(self.cfg.collision_grace_period_s) / self.step_dt)))
+        replay_collision_envs = (
+            collision_envs & self._replay_active & (self.episode_length_buf >= grace_steps)
+            if self.cfg.enable_replay
+            else torch.zeros_like(collision_envs)
+        )
+        if replay_collision_envs.any():
+            self._replay.record_collisions(replay_collision_envs.nonzero(as_tuple=False).squeeze(-1))
+        if self.cfg.enable_replay and self._replay_active:
             self._replay.push_state(self._make_snapshot(state))
 
         record_metric(self, "robot_robot_collisions", robot_pair_counts)
         record_metric(self, "robot_obstacle_collisions", obstacle_counts)
 
         crashed = floor_events.any(dim=1)
-        terminated_env = collision_envs | crashed | success
+        self._episode_floor_crash_counts += floor_events.to(dtype=torch.float32).sum(dim=1)
+        terminated_env = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        if self.cfg.terminate_on_collision:
+            terminated_env = terminated_env | collision_envs
+        if self.cfg.terminate_on_crash:
+            terminated_env = terminated_env | crashed
+        if self.cfg.terminate_on_success:
+            terminated_env = terminated_env | success
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         record_metric(self, "timeout", time_out.float())
+        record_metric(
+            self,
+            "replay_active",
+            torch.full((self.num_envs,), float(self._replay_active), device=self.device),
+        )
 
         terminated = {agent: terminated_env for agent in self._agent_ids}
         time_outs = {agent: time_out for agent in self._agent_ids}
@@ -247,10 +335,11 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         else:
             env_ids_tensor = torch.tensor(list(env_ids), device=self.device, dtype=torch.long)
 
+        self._update_replay_activation(env_ids_tensor)
         flush_episode_metrics(self, env_ids_tensor)
         super()._reset_idx(env_ids_tensor)
 
-        replay_samples = self._replay.sample(env_ids_tensor) if self.cfg.enable_replay else {}
+        replay_samples = self._replay.sample(env_ids_tensor) if self.cfg.enable_replay and self._replay_active else {}
         fresh_env_ids = [
             env_id for env_id in env_ids_tensor.detach().cpu().tolist() if int(env_id) not in replay_samples
         ]
@@ -268,23 +357,47 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         self._previous_robot_collisions[env_ids_tensor] = False
         self._previous_obstacle_collisions[env_ids_tensor] = False
         self._last_actions[env_ids_tensor] = 0.0
+        self._episode_floor_crash_counts[env_ids_tensor] = 0.0
         self._replay.reset_history(env_ids_tensor)
         reset_episode_metrics(self, env_ids_tensor)
         self._last_state = None
         self._sync_obstacle_visuals(env_ids_tensor)
 
+    def _update_replay_activation(self, env_ids: torch.Tensor) -> None:
+        if not self.cfg.enable_replay or self._replay_active:
+            return
+
+        completed = self.episode_length_buf[env_ids] > 0
+        if not completed.any():
+            return
+
+        crash_counts = self._episode_floor_crash_counts[env_ids][completed].detach().cpu().tolist()
+        self._replay_activation_history.extend(float(count) for count in crash_counts)
+        required = int(self.cfg.replay_activation_episodes)
+        if len(self._replay_activation_history) >= required:
+            average_crashes = sum(self._replay_activation_history) / len(self._replay_activation_history)
+            self._replay_active = average_crashes < 1.0
+
     def _reset_fresh(self, env_ids: torch.Tensor) -> None:
-        positions, goals, orientations = sample_start_goal_pairs(
-            len(env_ids),
-            self.cfg.num_drones,
-            room_size=self.cfg.room_size,
-            device=self.device,
-        )
         obstacle_positions, obstacle_mask = sample_obstacle_field(
             len(env_ids),
             density=self.cfg.obstacle_density if self.cfg.enable_obstacles else 0.0,
             device=self.device,
         )
+        if self.cfg.enable_obstacles:
+            positions, goals, orientations = sample_obstacle_aware_start_goal_pairs(
+                obstacle_mask,
+                obstacle_positions,
+                self.cfg.num_drones,
+                device=self.device,
+            )
+        else:
+            positions, goals, orientations = sample_start_goal_pairs(
+                len(env_ids),
+                self.cfg.num_drones,
+                room_size=self.cfg.room_size,
+                device=self.device,
+            )
         self._goals[env_ids] = goals
         self._obstacle_positions[env_ids] = obstacle_positions
         self._obstacle_mask[env_ids] = obstacle_mask

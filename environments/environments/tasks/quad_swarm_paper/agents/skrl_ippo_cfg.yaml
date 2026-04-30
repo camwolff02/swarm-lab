@@ -19,7 +19,7 @@ agent:
   learning_epochs: 8
   mini_batches: 8
   discount_factor: 0.99
-  gae_lambda: 0.95
+  lambda: 1.0
   learning_rate: 1.0e-4
   learning_rate_scheduler_kwargs:
     drone_0: {}
@@ -59,9 +59,10 @@ agent:
     drone_7: {}
   random_timesteps: 0
   learning_starts: 0
-  grad_norm_clip: 1.0
+  grad_norm_clip: 5.0
   ratio_clip: 0.2
-  value_clip: 0.2
+  value_clip: 5.0
+  clip_predicted_values: true
   entropy_loss_scale: 0.0
   value_loss_scale: 1.0
   kl_threshold: 0.0

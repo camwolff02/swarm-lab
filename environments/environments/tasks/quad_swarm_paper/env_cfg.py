@@ -65,11 +65,17 @@ class QuadSwarmPaperEnvCfg(DirectMARLEnvCfg):
     enable_replay: bool = True
     replay_probability: float = spec.REPLAY_PROBABILITY
     replay_lag_s: float = spec.REPLAY_LAG_S
+    collision_grace_period_s: float = spec.COLLISION_GRACE_PERIOD_S
+    replay_activation_episodes: int = spec.REPLAY_ACTIVATION_EPISODES
 
     goal_reached_radius: float = spec.GOAL_REACHED_RADIUS
     floor_crash_height: float = spec.FLOOR_CRASH_HEIGHT
     robot_collision_radius: float = spec.ROBOT_COLLISION_RADIUS
     robot_proximity_radius: float = spec.ROBOT_PROXIMITY_RADIUS
+    obstacle_collision_robot_radius: float = spec.OBSTACLE_COLLISION_ROBOT_RADIUS
+    terminate_on_collision: bool = False
+    terminate_on_crash: bool = False
+    terminate_on_success: bool = False
 
     goal_reward_scale: float = spec.GOAL_REWARD_SCALE
     goal_reward_distance_scale: float = spec.GOAL_REWARD_DISTANCE_SCALE

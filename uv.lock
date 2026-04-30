@@ -533,6 +533,7 @@ name = "cpsquare-lab"
 version = "0.1.0"
 source = { editable = "../cpsquare-lab" }
 dependencies = [
+    { name = "jsonschema" },
     { name = "pyyaml" },
     { name = "torch" },
     { name = "torchvision" },
@@ -544,6 +545,7 @@ requires-dist = [
     { name = "cflib", marker = "extra == 'cf2x'" },
     { name = "isaacsim", extras = ["all", "extscache"], marker = "extra == 'sim'", specifier = "==6.0.0", index = "https://pypi.nvidia.com/" },
     { name = "jinja2", marker = "extra == 'sim'", specifier = "==3.1.5", index = "https://pypi.org/simple" },
+    { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "onnxruntime-gpu", marker = "extra == 'cf2x'" },
     { name = "pip", marker = "extra == 'cf2x'" },
     { name = "pyyaml", specifier = ">=6" },
@@ -553,8 +555,9 @@ requires-dist = [
     { name = "torch", marker = "extra == 'cf2x'", index = "https://download.pytorch.org/whl/cu128" },
     { name = "torchvision", specifier = "==0.25.0", index = "https://download.pytorch.org/whl/cu128" },
     { name = "torchvision", marker = "extra == 'cf2x'", index = "https://download.pytorch.org/whl/cu128" },
+    { name = "zenoh-ros2-sdk", marker = "extra == 'ros2'" },
 ]
-provides-extras = ["sim", "cf2x"]
+provides-extras = ["sim", "cf2x", "ros2"]
 
 [package.metadata.requires-dev]
 dev = [

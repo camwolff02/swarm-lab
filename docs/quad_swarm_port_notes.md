@@ -81,11 +81,15 @@ The default scripts import `environments.tasks`, which registers this task.
 | Simulation backend | Isaac Lab 3.0/skrl instead of Omnidrones/Sample Factory. |
 | Action convention | Uses `[-1, 1]^4` at the policy boundary, mapped to `[0, 1]` thrust ratios in cpsquare-lab. |
 | Attention implementation | Uses PyTorch SDPA while preserving released projection, residual, and LayerNorm structure. |
-| Reward coefficients | Centralized in `paper_spec.py`; first-pass values need a source-level coefficient parity pass before score claims. |
-| Replay | Lagged collision replay manager implemented as reusable cpsquare-lab utility and wired into reset path. |
+| Episode reset semantics | Matches the release default: collisions, floor contact, and success are metrics/reward events; time limit resets the environment. |
+| Reward coefficients | Centralized in `paper_spec.py` and aligned to the released obstacle baseline coefficients. Collision event penalties are not dt-scaled; base cost and proximity falloff are dt-scaled. |
+| Neighbor selection | Uses the release's closing-distance heuristic rather than plain nearest-neighbor distance. |
+| Obstacles and starts | Samples the 8x8 obstacle map first, then places starts/goals only in free grid cells. |
+| Replay | Lagged collision replay manager is wired into reset path, with release-style 1.5s grace and activation after low-crash episodes. |
 | Shared policy | Current stock-skrl path uses independent per-drone policy/value modules. Reusing the same module instances with stock skrl IPPO creates multiple optimizers over the same parameters and has produced non-finite checkpoints. |
 | Downwash | Not implemented in this first workable pass. |
 | Obstacle actors | Logical obstacle field is implemented for every environment; env-0 visual cylinder obstacles are spawned for Kit/video inspection. |
+| Training algorithm | Uses stock skrl IPPO per project constraint. The release trains APPO in Sample Factory, so optimizer/learner behavior is not exact paper parity. |
 
 ## Validation Status
 

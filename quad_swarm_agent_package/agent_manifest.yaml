@@ -1,0 +1,101 @@
+version: 1
+name: quad_swarm_isaaclab_convergence_handoff
+repo_split:
+  swarm_rl: environment, task config, model wrappers, runner hook, skrl config
+  cpsquare_lab: robot parameters, action mapping, controllers, swarm helper functions
+
+principles:
+  - Preserve the current direct-rotor action mapping unless a separate controller path is intentionally introduced.
+  - Keep share_parameters false for stock skrl IPPO training.
+  - Prioritize fixes that change rollout data quality before changing large algorithmic pieces.
+
+tasks:
+  - id: T01_hover_bias_and_exploration
+    priority: P0
+    repo: swarm-rl
+    goal: Start the policy close to hover instead of below hover.
+    files:
+      - environments/tasks/quad_swarm_paper/models/quad_swarm_skrl_models.py
+      - environments/tasks/quad_swarm_paper/agents/skrl_ippo_cfg.yaml
+    changes:
+      - Import Crazyflie params from cpsquare-lab and compute per-rotor hover action using 2 * hover_ratio - 1.
+      - Initialize the policy mean head bias to that hover action vector.
+      - Zero-initialize or very-small-initialize the policy mean head weights so the initial policy stays near the hover bias.
+      - Set a smaller initial log_std, such as -1.0 to -1.5, so early exploration does not overwhelm the hover bias.
+      - Expose the chosen initial log_std and hover-bias toggle as explicit constants or config knobs.
+    acceptance:
+      - A static check can print hover_ratio and hover_action from cf2x.yaml and the model bias matches them.
+      - A freshly initialized policy evaluated deterministically does not command a net below-hover thrust profile.
+      - In a short inference rollout, drones no longer all drop immediately without trying to fly.
+
+  - id: T02_replay_activation_fix
+    priority: P0
+    repo: swarm-rl
+    goal: Make replay reachable again by matching the original gating semantics more closely.
+    files:
+      - environments/tasks/quad_swarm_paper/env.py
+      - environments/tasks/quad_swarm_paper/env_cfg.py
+      - environments/tasks/quad_swarm_paper/paper_spec.py
+    changes:
+      - Replace raw _episode_floor_crash_counts with a dt-scaled per-env crash signal.
+      - Recommended signal: step_dt * mean(floor_events across drones), accumulated over the episode.
+      - Gate replay activation on the recent average crash signal, not raw summed crash-contact steps.
+      - Add an explicit replay_activation_crash_signal_threshold config field; default 1.0 preserves the existing intent while fixing the units mismatch.
+    acceptance:
+      - A synthetic episode with one crashed drone for 100 steps at dt 0.01 and 8 drones produces crash_signal 0.125, not 100.
+      - Replay active flips on in early smoke training when crash signal improves.
+      - Replay buffer starts contributing reset states in logs.
+
+  - id: T03_reward_and_observation_stabilizers
+    priority: P1
+    repo: swarm-rl
+    goal: Restore low-risk stabilization missing from the current port.
+    files:
+      - environments/tasks/quad_swarm_paper/env.py
+      - environments/tasks/quad_swarm_paper/env_cfg.py
+      - environments/tasks/quad_swarm_paper/paper_spec.py
+    changes:
+      - Add observation clipping, e.g. clamp concatenated observations to +/- 10.
+      - Add reward clipping, e.g. clamp final per-agent reward to +/- 10.
+      - Add optional linear annealing for collision penalties from 0 to target values over a configurable step budget.
+      - Keep defaults explicit in paper_spec.py so drift is visible.
+    acceptance:
+      - Observation tensors are finite and bounded.
+      - Reward tensors are finite and bounded.
+      - Early-training value loss and KL spikes are reduced versus the old failing run.
+
+  - id: T04_diagnostics_and_validation_hooks
+    priority: P1
+    repo: swarm-rl
+    goal: Add the smallest possible set of metrics that prove whether the fixes worked.
+    files:
+      - environments/tasks/quad_swarm_paper/env.py
+      - environments/tasks/quad_swarm_paper/paper_spec.py
+    changes:
+      - Record avg_altitude, floor_fraction, thrust_ratio_mean, action_mean, crash_signal, replay_active, and replay_reset.
+      - Emit one startup log line with thrust_to_weight, hover_ratio, hover_action, and initial_log_std.
+      - Add a short deterministic rollout dump for the first 2 to 3 seconds after reset when a debug flag is enabled.
+    acceptance:
+      - TensorBoard or episode info exposes the added metrics.
+      - The rollout dump is sufficient to confirm that applied thrust stays near hover immediately after reset.
+
+  - id: T05_shared_policy_path_optional
+    priority: P2
+    repo: swarm-rl
+    goal: Recover paper fidelity only after the current stock skrl path is stable.
+    files:
+      - environments/tasks/quad_swarm_paper/agents/runner.py
+      - any custom skrl agent/optimizer integration files
+    changes:
+      - Implement one shared policy/value and one optimizer, or flatten all agents into one PPO update path.
+      - Do not rely on stock skrl IPPO's per-agent optimizer logic with shared module instances.
+    acceptance:
+      - Parameter sharing is real, optimizer state is shared, and no parameter receives conflicting optimizer updates.
+      - Training remains numerically stable.
+    status: optional_after_P0_and_P1
+
+validation_sequence:
+  - Run static hover-action check.
+  - Run deterministic or near-deterministic no-training rollout smoke test.
+  - Run 100k-step smoke training and inspect replay/altitude metrics.
+  - Run longer training only after the smoke tests pass.
