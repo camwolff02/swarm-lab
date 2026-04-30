@@ -41,6 +41,12 @@ ROBOT_PROXIMITY_RADIUS = 0.20
 OBSTACLE_COLLISION_ROBOT_RADIUS = 0.05
 COLLISION_GRACE_PERIOD_S = 1.5
 REPLAY_ACTIVATION_EPISODES = 10
+REPLAY_ACTIVATION_CRASH_SIGNAL_THRESHOLD = 1.0
+
+OBSERVATION_CLIP = 10.0
+REWARD_CLIP = 10.0
+COLLISION_PENALTY_ANNEAL_STEPS = 0
+DEBUG_ROLLOUT_DUMP = False
 
 # These coefficients are centralized here so paper-vs-release drift is visible.
 # These match the released obstacle baseline unless noted otherwise.

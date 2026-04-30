@@ -8,6 +8,8 @@ models:
   self_obs_dim: 19
   neighbor_obs_dim: 12
   obstacle_obs_dim: 9
+  initial_log_std: -1.0
+  init_policy_to_hover: true
 
 memory:
   class: RandomMemory
@@ -79,7 +81,7 @@ agent:
 
 trainer:
   class: SequentialTrainer
-  timesteps: 100000
+  timesteps: 1000000
   headless: true
   environment_info: episode
   close_environment_at_exit: true

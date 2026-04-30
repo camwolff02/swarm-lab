@@ -7,6 +7,8 @@ import torch
 from skrl.models.torch import DeterministicMixin, GaussianMixin, Model
 from torch import nn
 
+from cpsquare_lab.embodiments.multirotor.cf2x.sim.robot import CRAZYFLIE_PARAMS
+
 from .quad_swarm_encoder import QuadSwarmEncoder, QuadSwarmEncoderCfg
 
 
@@ -27,6 +29,12 @@ def _space_size(space: gym.Space) -> int:
     return size
 
 
+def _compute_hover_action() -> torch.Tensor:
+    max_thrusts = torch.tensor(CRAZYFLIE_PARAMS.max_thrusts, dtype=torch.float32)
+    hover_ratio = float(CRAZYFLIE_PARAMS.hover_thrust) / max_thrusts
+    return hover_ratio * 2.0 - 1.0
+
+
 class QuadSwarmGaussianPolicy(GaussianMixin, Model):
     """Gaussian policy with a paper-style attention encoder."""
 
@@ -43,7 +51,13 @@ class QuadSwarmGaussianPolicy(GaussianMixin, Model):
         GaussianMixin.__init__(self, clip_actions=clip_actions)
         self.encoder = QuadSwarmEncoder(encoder_cfg)
         self.mean_head = nn.Linear(encoder_cfg.output_dim, _space_size(action_space))
-        self.log_std_parameter = nn.Parameter(torch.zeros(_space_size(action_space)))
+        self.log_std_parameter = nn.Parameter(torch.full((_space_size(action_space),), float(encoder_cfg.initial_log_std)))
+
+        if encoder_cfg.init_policy_to_hover:
+            hover_action = _compute_hover_action().to(device=self.device)
+            with torch.no_grad():
+                nn.init.zeros_(self.mean_head.weight)
+                self.mean_head.bias.copy_(hover_action)
 
     def compute(
         self, inputs: dict[str, torch.Tensor], role: str = ""

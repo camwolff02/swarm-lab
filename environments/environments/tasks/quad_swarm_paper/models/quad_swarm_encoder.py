@@ -19,6 +19,8 @@ class QuadSwarmEncoderCfg:
     obstacle_obs_dim: int = 9
     hidden_size: int = 256
     attention_heads: int = 4
+    initial_log_std: float = -1.0
+    init_policy_to_hover: bool = True
 
     @property
     def observation_dim(self) -> int:

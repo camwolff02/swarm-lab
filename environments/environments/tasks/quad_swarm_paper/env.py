@@ -44,6 +44,11 @@ METRIC_NAMES = (
     "replay_active",
     "timeout",
     "crash",
+    "avg_altitude",
+    "floor_fraction",
+    "action_mean",
+    "thrust_ratio_mean",
+    "crash_signal",
 )
 
 
@@ -146,7 +151,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         self._last_obstacle_collision_events = torch.zeros_like(self._last_robot_collision_events)
         self._last_floor_events = torch.zeros_like(self._last_robot_collision_events)
         self._last_success = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
-        self._episode_floor_crash_counts = torch.zeros(self.num_envs, device=self.device, dtype=torch.float32)
+        self._episode_crash_signal = torch.zeros(self.num_envs, device=self.device, dtype=torch.float32)
         self._replay_activation_history: deque[float] = deque(
             maxlen=max(int(self.cfg.replay_activation_episodes), 1)
         )
@@ -158,6 +163,23 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             replay_probability=self.cfg.replay_probability,
         )
         initialize_episode_metrics(self, METRIC_NAMES)
+
+        # T04: Startup log line
+        total_max_thrust = sum(CRAZYFLIE_PARAMS.max_thrusts)
+        weight = CRAZYFLIE_PARAMS.mass * 9.81
+        thrust_to_weight = total_max_thrust / weight
+        hover_ratio = CRAZYFLIE_PARAMS.hover_thrust / (total_max_thrust / 4.0)
+        hover_action = hover_ratio * 2.0 - 1.0
+        print(
+            f"[QuadSwarm] vehicle_mass: {CRAZYFLIE_PARAMS.mass:.4f}, "
+            f"num_rotors: {len(CRAZYFLIE_PARAMS.max_thrusts)}, "
+            f"hover_thrust: {CRAZYFLIE_PARAMS.hover_thrust:.4f}, "
+            f"max_thrust_per_rotor: {CRAZYFLIE_PARAMS.max_thrusts[0]:.4f}, "
+            f"total_thrust_to_weight: {thrust_to_weight:.3f}, "
+            f"hover_ratio: {hover_ratio:.3f}, "
+            f"hover_action: {hover_action:.3f}, "
+            f"initial_policy_log_std: -1.0"
+        )
 
     def _setup_scene(self) -> None:
         self.drones = {}
@@ -214,6 +236,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             resolution=self.cfg.local_sdf_resolution,
         )
         observations = torch.cat((self_obs, neighbor_obs, obstacle_obs), dim=-1)
+        observations = observations.clamp(-float(self.cfg.observation_clip), float(self.cfg.observation_clip))
         return {agent: observations[:, index] for index, agent in enumerate(self._agent_ids)}
 
     def _get_states(self) -> torch.Tensor | None:
@@ -239,20 +262,24 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             + float(self.cfg.tilt_penalty_scale) * orientation_cost
             + float(self.cfg.angular_velocity_penalty_scale) * spin
         )
-        reward = reward + _paper_proximity_penalty(
+
+        collision_scale = self._anneal_scale() if self.cfg.collision_penalty_anneal_steps > 0 else 1.0
+        reward = reward + collision_scale * _paper_proximity_penalty(
             state["positions"],
             falloff_radius=self.cfg.robot_proximity_radius,
             max_penalty=self.cfg.proximity_penalty,
             dt=dt,
         )
-        reward = reward + binary_event_penalty(
+        reward = reward + collision_scale * binary_event_penalty(
             self._last_robot_collision_events,
             penalty=self.cfg.robot_collision_penalty,
         )
-        reward = reward + binary_event_penalty(
+        reward = reward + collision_scale * binary_event_penalty(
             self._last_obstacle_collision_events,
             penalty=self.cfg.obstacle_collision_penalty,
         )
+
+        reward = reward.clamp(-float(self.cfg.reward_clip), float(self.cfg.reward_clip))
 
         record_metric(self, "success", self._last_success.float())
         collision = self._last_robot_collision_events.any(dim=1) | self._last_obstacle_collision_events.any(dim=1)
@@ -260,6 +287,26 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         final_distance = torch.linalg.norm(self._goals - state["positions"], dim=-1).mean(dim=1)
         record_metric(self, "final_distance", final_distance)
         record_metric(self, "crash", self._last_floor_events.any(dim=1).float())
+
+        record_metric(self, "avg_altitude", state["positions"][..., 2].mean(dim=1))
+        record_metric(self, "floor_fraction", self._last_floor_events.float().mean(dim=1))
+        record_metric(self, "action_mean", self._last_actions.mean(dim=(1, 2)))
+        stacked_thrust_ratio = torch.stack(
+            [self._thrust_targets[agent] / self._max_thrusts for agent in self._agent_ids],
+            dim=1,
+        )
+        record_metric(self, "thrust_ratio_mean", stacked_thrust_ratio.mean(dim=(1, 2)))
+        record_metric(self, "crash_signal", self._episode_crash_signal)
+
+        if self.cfg.debug_rollout_dump and self.episode_length_buf[0] < 300:
+            print(
+                f"[RolloutDump] Env 0 Step {self.episode_length_buf[0].item()}: "
+                f"Alt: {state['positions'][0, :, 2].mean().item():.3f}, "
+                f"Floor: {self._last_floor_events[0].float().mean().item():.3f}, "
+                f"Act: {self._last_actions[0].mean().item():.3f}, "
+                f"ThrustRatio: {stacked_thrust_ratio[0].mean().item():.3f}, "
+                f"GoalDist: {final_distance[0].item():.3f}"
+            )
 
         return {agent: reward[:, index] for index, agent in enumerate(self._agent_ids)}
 
@@ -307,7 +354,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         record_metric(self, "robot_obstacle_collisions", obstacle_counts)
 
         crashed = floor_events.any(dim=1)
-        self._episode_floor_crash_counts += floor_events.to(dtype=torch.float32).sum(dim=1)
+        self._episode_crash_signal += self.step_dt * floor_events.float().mean(dim=1)
         terminated_env = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         if self.cfg.terminate_on_collision:
             terminated_env = terminated_env | collision_envs
@@ -357,7 +404,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         self._previous_robot_collisions[env_ids_tensor] = False
         self._previous_obstacle_collisions[env_ids_tensor] = False
         self._last_actions[env_ids_tensor] = 0.0
-        self._episode_floor_crash_counts[env_ids_tensor] = 0.0
+        self._episode_crash_signal[env_ids_tensor] = 0.0
         self._replay.reset_history(env_ids_tensor)
         reset_episode_metrics(self, env_ids_tensor)
         self._last_state = None
@@ -371,12 +418,16 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         if not completed.any():
             return
 
-        crash_counts = self._episode_floor_crash_counts[env_ids][completed].detach().cpu().tolist()
-        self._replay_activation_history.extend(float(count) for count in crash_counts)
+        signals = self._episode_crash_signal[env_ids][completed].detach().cpu().tolist()
+        self._replay_activation_history.extend(float(signal) for signal in signals)
         required = int(self.cfg.replay_activation_episodes)
         if len(self._replay_activation_history) >= required:
-            average_crashes = sum(self._replay_activation_history) / len(self._replay_activation_history)
-            self._replay_active = average_crashes < 1.0
+            average_signal = sum(self._replay_activation_history) / len(self._replay_activation_history)
+            self._replay_active = average_signal < float(self.cfg.replay_activation_crash_signal_threshold)
+
+    def _anneal_scale(self) -> float:
+        steps = max(int(self.cfg.collision_penalty_anneal_steps), 1)
+        return min(float(self.common_step_counter) / float(steps), 1.0)
 
     def _reset_fresh(self, env_ids: torch.Tensor) -> None:
         obstacle_positions, obstacle_mask = sample_obstacle_field(

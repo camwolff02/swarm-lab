@@ -67,6 +67,12 @@ class QuadSwarmPaperEnvCfg(DirectMARLEnvCfg):
     replay_lag_s: float = spec.REPLAY_LAG_S
     collision_grace_period_s: float = spec.COLLISION_GRACE_PERIOD_S
     replay_activation_episodes: int = spec.REPLAY_ACTIVATION_EPISODES
+    replay_activation_crash_signal_threshold: float = spec.REPLAY_ACTIVATION_CRASH_SIGNAL_THRESHOLD
+
+    observation_clip: float = spec.OBSERVATION_CLIP
+    reward_clip: float = spec.REWARD_CLIP
+    collision_penalty_anneal_steps: int = spec.COLLISION_PENALTY_ANNEAL_STEPS
+    debug_rollout_dump: bool = spec.DEBUG_ROLLOUT_DUMP
 
     goal_reached_radius: float = spec.GOAL_REACHED_RADIUS
     floor_crash_height: float = spec.FLOOR_CRASH_HEIGHT

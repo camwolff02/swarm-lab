@@ -39,6 +39,8 @@ def _generate_quad_swarm_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict
         obstacle_obs_dim=int(model_cfg.get("obstacle_obs_dim", 9)),
         hidden_size=int(model_cfg.get("hidden_size", 256)),
         attention_heads=int(model_cfg.get("attention_heads", 4)),
+        initial_log_std=float(model_cfg.get("initial_log_std", -1.0)),
+        init_policy_to_hover=bool(model_cfg.get("init_policy_to_hover", True)),
     )
     share_parameters = bool(model_cfg.get("share_parameters", False))
     if share_parameters:
