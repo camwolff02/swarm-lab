@@ -22,9 +22,13 @@ LOCAL_SDF_RESOLUTION = 0.1
 
 EPISODE_LENGTH_S = 15.0
 SIM_DT = 0.01
-DECIMATION = 2
-
-HIDDEN_SIZE = 256
+DECIMATION = (
+    2  # Possibly increase from 2 to 4 to reduce RL frequency relative to the physics frequency, improve stuttering
+    # Decimation controls how many environment steps we wait before acting.
+    # The ration between the physics frequency and the control frequency
+    # If physics runs at 100Hz, and Decimation = 2, agent acts at 50Hz. If Decimation = 5, agent acts at 20Hz
+)
+HIDDEN_SIZE = 25
 ATTENTION_HEADS = 4
 LEARNING_RATE = 1.0e-4
 ROLLOUT_LENGTH = 128

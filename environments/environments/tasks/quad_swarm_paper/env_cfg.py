@@ -51,7 +51,7 @@ class QuadSwarmPaperEnvCfg(DirectMARLEnvCfg):
             restitution=0.0,
         ),
     )
-    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=1024, env_spacing=12.0, replicate_physics=True)
+    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=2048, env_spacing=12.0, replicate_physics=True)
     robot_cfg = CRAZYFLIE_CFG.replace(prim_path="{ENV_REGEX_NS}/drone_0")
 
     num_drones: int = spec.NUM_DRONES

@@ -19,7 +19,7 @@ agent:
   class: IPPO
   rollouts: 128
   learning_epochs: 8
-  mini_batches: 8
+  mini_batches: 16  # Increased form 8 to handle doubling the env count
   discount_factor: 0.99
   lambda: 1.0
   learning_rate: 1.0e-4
@@ -81,7 +81,7 @@ agent:
 
 trainer:
   class: SequentialTrainer
-  timesteps: 1000000
+  timesteps:  500000  # Reduced from 1M after doubling num_envs to 2048
   headless: true
   environment_info: episode
   close_environment_at_exit: true
