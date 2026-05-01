@@ -14,8 +14,16 @@
 - The stock skrl IPPO runner still owns the trainer, memory, and per-agent optimizer/update path.
 - `share_parameters: true` in the stock path aliases the same model instances into multiple skrl agent slots, which is unsafe for training because stock IPPO creates per-agent optimizer state.
 
-## Phase 1 Boundary
+## Shared Trainer Update
 
-- Phase 1 adds explicit shared-policy/shared-value ownership helpers and tensor collation helpers.
-- Phase 1 does not implement PPO rollout storage, GAE, minibatching, optimizer stepping, checkpointing, or a replacement trainer.
-- Enabling the explicit shared mode with the stock skrl runner must fail closed until the dedicated shared trainer/update path is implemented.
+- The dedicated shared path now lives in `environments/environments/tasks/quad_swarm_paper/agents/shared_ippo.py`.
+- It keeps one shared policy, one shared value function, one policy optimizer, and one value optimizer.
+- Rollouts are pooled over `[time, env, drone]` and flattened for shared PPO minibatches.
+- The shared PPO minibatch cap is an implementation detail to keep each backward pass at the existing skrl per-agent batch scale after pooling drones. It does not change rollout length, learning epochs, learning rate, discounting, observation structure, reward terms, or the shared homogeneous controller assumption.
+- The stock skrl path remains available when `training.shared_homogeneous_ippo: false`.
+
+## Paper Parameter Alignment
+
+- The local handoff lists the starting parity target as learning rate `1e-4`, rollout length `128`, hidden size `256`, separate actor/critic weights, no recurrence, replay probability `0.75`, episode duration `15.0 s`, visible neighbors `2`, obstacle density `0.2`, and obstacle size `0.6`.
+- The active shared-IPPO config keeps those values where they are represented in this port.
+- `paper_spec.HIDDEN_SIZE` has been corrected to `256` so the central constants match the active model config and handoff documentation.

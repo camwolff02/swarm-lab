@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Sequence
+from typing import Any
 
 import torch
 import warp as wp
@@ -15,7 +16,7 @@ from cpsquare_lab.tasks.common.metrics import (
     record_metric,
     reset_episode_metrics,
 )
-from cpsquare_lab.tasks.swarm.collision_replay import CollisionReplayManager, SwarmReplaySnapshot
+from cpsquare_lab.tasks.swarm.collision_replay import CollisionReplayManager, SwarmReplayBatch, SwarmReplaySnapshot
 from cpsquare_lab.tasks.swarm.events import (
     floor_crash_events,
     robot_obstacle_collision_events,
@@ -31,6 +32,7 @@ from isaaclab.envs import DirectMARLEnv
 from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 
 from . import paper_spec as spec
+from .env_cache import EnvCache, SwarmKinematicsState
 from .env_cfg import QuadSwarmPaperEnvCfg
 from .obstacle_room import sample_obstacle_aware_start_goal_pairs, sample_obstacle_field, sample_start_goal_pairs
 
@@ -85,7 +87,9 @@ def _paper_neighbor_features(
     if neighbor_count < k:
         pad = torch.zeros((num_envs, num_agents, k - neighbor_count, 6), device=positions.device, dtype=positions.dtype)
         features = torch.cat((features, pad), dim=2)
-        index_pad = torch.full((num_envs, num_agents, k - neighbor_count), -1, device=positions.device, dtype=torch.long)
+        index_pad = torch.full(
+            (num_envs, num_agents, k - neighbor_count), -1, device=positions.device, dtype=torch.long
+        )
         neighbor_indices = torch.cat((neighbor_indices, index_pad), dim=2)
 
     return features.reshape(num_envs, num_agents, k * 6), neighbor_indices
@@ -116,6 +120,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
     cfg: QuadSwarmPaperEnvCfg
 
     def __init__(self, cfg: QuadSwarmPaperEnvCfg, render_mode: str | None = None, **kwargs) -> None:
+        self.cache = EnvCache(self)
         self._agent_ids = list(cfg.possible_agents)
         super().__init__(cfg, render_mode=render_mode, **kwargs)
 
@@ -181,6 +186,19 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             f"initial_policy_log_std: -1.0"
         )
 
+    def step(self, actions: dict[str, Any]) -> Any:
+        self.cache.new_step()
+        self._last_state = None
+        return super().step(actions)
+
+    def reset(
+        self,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[dict[str, torch.Tensor], dict[str, dict]]:
+        self.cache.new_step()
+        return super().reset(seed=seed, options=options)
+
     def _setup_scene(self) -> None:
         self.drones = {}
         for agent in self._agent_ids:
@@ -213,12 +231,13 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             drone.set_thrust_target(self._thrust_targets[agent])
 
     def _get_observations(self) -> dict[str, torch.Tensor]:
-        state = self._collect_swarm_state()
+        tracking = self.cache.swarm_tracking(self._agent_ids, phase="observation")
+        state = self._state_dict_from_kinematics(tracking.kinematics)
         obstacle_positions = self._obstacle_positions
         obstacle_mask = self._obstacle_mask if self.cfg.enable_obstacles else torch.zeros_like(self._obstacle_mask)
         self_obs = multirotor_self_observation(
             positions=state["positions"],
-            goals=self._goals,
+            goals=tracking.target_pos,
             linear_velocities=state["linear_velocities"],
             rotation_matrices=state["rotation_matrices"],
             angular_velocities=state["angular_velocities"],
@@ -243,12 +262,11 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         return None
 
     def _get_rewards(self) -> dict[str, torch.Tensor]:
-        state = getattr(self, "_last_state", None)
-        if state is None:
-            state = self._collect_swarm_state()
+        tracking = self.cache.swarm_tracking(self._agent_ids, phase="reward")
+        state = self._state_dict_from_kinematics(tracking.kinematics)
 
         dt = float(self.cfg.sim.dt)
-        distance = torch.linalg.norm(self._goals - state["positions"], dim=-1)
+        distance = tracking.distance
         effort = torch.linalg.norm(self._last_actions, dim=-1)
         spin = torch.linalg.norm(state["angular_velocities"], dim=-1)
         up_z = state["rotation_matrices"][..., 2, 2]
@@ -284,7 +302,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         record_metric(self, "success", self._last_success.float())
         collision = self._last_robot_collision_events.any(dim=1) | self._last_obstacle_collision_events.any(dim=1)
         record_metric(self, "collision", collision.float())
-        final_distance = torch.linalg.norm(self._goals - state["positions"], dim=-1).mean(dim=1)
+        final_distance = tracking.distance.mean(dim=1)
         record_metric(self, "final_distance", final_distance)
         record_metric(self, "crash", self._last_floor_events.any(dim=1).float())
 
@@ -311,7 +329,8 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         return {agent: reward[:, index] for index, agent in enumerate(self._agent_ids)}
 
     def _get_dones(self) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
-        state = self._collect_swarm_state()
+        tracking = self.cache.swarm_tracking(self._agent_ids, phase="reward")
+        state = self._state_dict_from_kinematics(tracking.kinematics)
         self._last_state = state
 
         robot_events, active_robot_collisions, robot_pair_counts = robot_robot_collision_events(
@@ -328,7 +347,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             previous_collision_matrix=self._previous_obstacle_collisions,
         )
         floor_events = floor_crash_events(state["positions"], minimum_height=self.cfg.floor_crash_height)
-        goal_distances = torch.linalg.norm(self._goals - state["positions"], dim=-1)
+        goal_distances = tracking.distance
         success = torch.all(goal_distances <= self.cfg.goal_reached_radius, dim=1)
 
         self._last_robot_collision_events = robot_events
@@ -386,19 +405,22 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         flush_episode_metrics(self, env_ids_tensor)
         super()._reset_idx(env_ids_tensor)
 
-        replay_samples = self._replay.sample(env_ids_tensor) if self.cfg.enable_replay and self._replay_active else {}
-        fresh_env_ids = [
-            env_id for env_id in env_ids_tensor.detach().cpu().tolist() if int(env_id) not in replay_samples
-        ]
-        if fresh_env_ids:
-            fresh_tensor = torch.tensor(fresh_env_ids, device=self.device, dtype=torch.long)
-            self._reset_fresh(fresh_tensor)
-        for env_id, snapshot in replay_samples.items():
-            self._restore_snapshot(env_id, snapshot)
+        replay_batch = (
+            self._replay.sample_batch(env_ids_tensor) if self.cfg.enable_replay and self._replay_active else None
+        )
+        if replay_batch is None:
+            self._reset_fresh(env_ids_tensor)
+        else:
+            replay_mask = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+            replay_mask[replay_batch.env_ids] = True
+            fresh_tensor = env_ids_tensor[~replay_mask[env_ids_tensor]]
+            if fresh_tensor.numel() > 0:
+                self._reset_fresh(fresh_tensor)
+            self._restore_snapshot_batch(replay_batch)
 
-        if replay_samples:
+        if replay_batch is not None:
             replay_metric = torch.zeros(self.num_envs, device=self.device)
-            replay_metric[list(replay_samples.keys())] = 1.0
+            replay_metric[replay_batch.env_ids] = 1.0
             record_metric(self, "replay_reset", replay_metric)
 
         self._previous_robot_collisions[env_ids_tensor] = False
@@ -409,6 +431,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         reset_episode_metrics(self, env_ids_tensor)
         self._last_state = None
         self._sync_obstacle_visuals(env_ids_tensor)
+        self.cache.on_reset()
 
     def _update_replay_activation(self, env_ids: torch.Tensor) -> None:
         if not self.cfg.enable_replay or self._replay_active:
@@ -474,6 +497,21 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             angular_velocities=snapshot.angular_velocities.to(self.device),
         )
 
+    def _restore_snapshot_batch(self, replay_batch: SwarmReplayBatch) -> None:
+        env_ids = replay_batch.env_ids.to(device=self.device, dtype=torch.long)
+        snapshot = replay_batch.snapshot
+        self._goals[env_ids] = snapshot.goals.to(self.device)
+        self._obstacle_positions[env_ids] = snapshot.obstacle_positions.to(self.device)
+        self._obstacle_mask[env_ids] = snapshot.obstacle_mask.to(self.device)
+        self.episode_length_buf[env_ids] = snapshot.episode_lengths.to(self.device)
+        self._write_swarm_state(
+            env_ids,
+            positions=snapshot.positions.to(self.device),
+            orientations=snapshot.orientations.to(self.device),
+            linear_velocities=snapshot.linear_velocities.to(self.device),
+            angular_velocities=snapshot.angular_velocities.to(self.device),
+        )
+
     def _write_swarm_state(
         self,
         env_ids: torch.Tensor,
@@ -502,28 +540,16 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             drone.set_thrust_target(self._hover_thrust[env_ids], env_ids=env_ids)
             self._thrust_targets[agent][env_ids] = self._hover_thrust[env_ids]
 
-    def _collect_swarm_state(self) -> dict[str, torch.Tensor]:
-        positions = []
-        orientations = []
-        linear_velocities = []
-        angular_velocities = []
-        rotation_matrices = []
-        for agent in self._agent_ids:
-            drone = self.drones[agent]
-            root_quat = wp.to_torch(drone.data.root_quat_w)
-            positions.append(wp.to_torch(drone.data.root_pos_w) - self.scene.env_origins)
-            orientations.append(root_quat)
-            linear_velocities.append(wp.to_torch(drone.data.root_lin_vel_w))
-            angular_velocity = getattr(drone.data, "root_ang_vel_b", drone.data.root_ang_vel_w)
-            angular_velocities.append(wp.to_torch(angular_velocity))
-            rotation_matrices.append(math_utils.matrix_from_quat(root_quat))
+    def _collect_swarm_state(self, phase: str = "reward") -> dict[str, torch.Tensor]:
+        return self._state_dict_from_kinematics(self.cache.swarm_kinematics(self._agent_ids, phase=phase))
 
+    def _state_dict_from_kinematics(self, state: SwarmKinematicsState) -> dict[str, torch.Tensor]:
         return {
-            "positions": torch.stack(positions, dim=1),
-            "orientations": torch.stack(orientations, dim=1),
-            "linear_velocities": torch.stack(linear_velocities, dim=1),
-            "angular_velocities": torch.stack(angular_velocities, dim=1),
-            "rotation_matrices": torch.stack(rotation_matrices, dim=1),
+            "positions": state.root_pos_env,
+            "orientations": state.root_quat_w,
+            "linear_velocities": state.root_lin_vel_w,
+            "angular_velocities": state.root_ang_vel_b,
+            "rotation_matrices": state.rot_mat_w,
         }
 
     def _make_snapshot(self, state: dict[str, torch.Tensor]) -> SwarmReplaySnapshot:

@@ -5,11 +5,11 @@ from __future__ import annotations
 import math
 
 import torch
-
-import isaaclab.utils.math as math_utils
 from cpsquare_lab.tasks.swarm.grid_sdf import (
     get_cell_centers,
 )
+
+import isaaclab.utils.math as math_utils
 
 from . import paper_spec as spec
 
@@ -26,10 +26,10 @@ def sample_obstacle_occupancy(
     num_cells = grid_shape[0] * grid_shape[1]
     obstacle_count = int(float(density) * num_cells)
     occupancy = torch.zeros((num_envs, num_cells), device=device, dtype=torch.bool)
-    for env_id in range(num_envs):
-        if obstacle_count > 0:
-            indices = torch.randperm(num_cells, device=device)[:obstacle_count]
-            occupancy[env_id, indices] = True
+    if obstacle_count > 0:
+        scores = torch.rand((num_envs, num_cells), device=device)
+        indices = torch.topk(scores, k=obstacle_count, dim=1).indices
+        occupancy.scatter_(1, indices, True)
     return occupancy.reshape(num_envs, *grid_shape)
 
 
@@ -99,19 +99,24 @@ def sample_obstacle_aware_start_goal_pairs(
     goals = torch.zeros_like(starts)
 
     fallback_positions = obstacle_positions.to(device=device, dtype=torch.float32)
-    for env_id in range(num_envs):
-        free_indices = torch.nonzero(~obstacle_mask[env_id], as_tuple=False).squeeze(-1)
-        if free_indices.numel() < 2 * num_drones:
-            free_indices = torch.arange(num_slots, device=device)
+    free_counts = (~obstacle_mask).sum(dim=1)
+    enough_free_cells = free_counts >= 2 * num_drones
+    masked_obstacles = obstacle_mask & enough_free_cells[:, None]
+    scores = torch.rand((num_envs, num_slots), device=device).masked_fill(masked_obstacles, -torch.inf)
+    selected = torch.topk(scores, k=2 * num_drones, dim=1).indices
+    start_indices = selected[:, :num_drones]
+    goal_indices = selected[:, num_drones : 2 * num_drones]
 
-        shuffled = free_indices[torch.randperm(free_indices.numel(), device=device)]
-        start_indices = shuffled[:num_drones]
-        goal_indices = shuffled[num_drones : 2 * num_drones]
-        if goal_indices.numel() < num_drones:
-            goal_indices = shuffled[:num_drones].flip(0)
-
-        starts[env_id, :, :2] = fallback_positions[env_id, start_indices, :2]
-        goals[env_id, :, :2] = fallback_positions[env_id, goal_indices, :2]
+    starts[..., :2] = torch.gather(
+        fallback_positions[..., :2],
+        dim=1,
+        index=start_indices[..., None].expand(-1, -1, 2),
+    )
+    goals[..., :2] = torch.gather(
+        fallback_positions[..., :2],
+        dim=1,
+        index=goal_indices[..., None].expand(-1, -1, 2),
+    )
 
     starts[..., 2] = altitude
     goals[..., 2] = altitude

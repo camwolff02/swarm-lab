@@ -28,7 +28,7 @@ DECIMATION = (
     # The ration between the physics frequency and the control frequency
     # If physics runs at 100Hz, and Decimation = 2, agent acts at 50Hz. If Decimation = 5, agent acts at 20Hz
 )
-HIDDEN_SIZE = 25
+HIDDEN_SIZE = 256
 ATTENTION_HEADS = 4
 LEARNING_RATE = 1.0e-4
 ROLLOUT_LENGTH = 128

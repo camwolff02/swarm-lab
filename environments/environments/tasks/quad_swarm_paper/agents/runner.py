@@ -15,9 +15,12 @@ import warnings
 from typing import Any
 
 from skrl.models.torch import Model
+from skrl.utils import set_seed
 from skrl.utils.runner.torch import Runner
 
 from environments.tasks.quad_swarm_paper.agents.shared_ippo import (
+    SharedIPPOAgent,
+    SharedIPPOTrainer,
     encoder_cfg_from_model_config,
     shared_homogeneous_ippo_enabled,
 )
@@ -27,6 +30,7 @@ from environments.tasks.quad_swarm_paper.models.quad_swarm_skrl_models import (
 )
 
 _MODEL_FACTORY_NAME = "quad_swarm_paper_attention"
+_ORIGINAL_RUNNER_INIT = None
 _ORIGINAL_GENERATE_MODELS = None
 
 
@@ -36,8 +40,8 @@ def _generate_quad_swarm_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict
     if shared_homogeneous_ippo_enabled(cfg):
         raise NotImplementedError(
             "training.shared_homogeneous_ippo=True cannot use stock skrl IPPO. "
-            "Phase 1 provides shared model ownership and collation helpers only; "
-            "the dedicated shared rollout/update trainer must be implemented before enabling this mode."
+            "Use the quad swarm Runner constructor path, which installs the dedicated "
+            "shared-policy/shared-optimizer trainer before stock model generation."
         )
 
     device = env.device
@@ -89,16 +93,30 @@ def _generate_quad_swarm_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict
 def install_quad_swarm_runner_patch() -> None:
     """Install a narrow quad-swarm model factory hook into skrl's stock Runner."""
 
-    global _ORIGINAL_GENERATE_MODELS
+    global _ORIGINAL_GENERATE_MODELS, _ORIGINAL_RUNNER_INIT
     if getattr(Runner, "_quad_swarm_paper_patch", False):
         return
 
+    _ORIGINAL_RUNNER_INIT = Runner.__init__
     _ORIGINAL_GENERATE_MODELS = Runner._generate_models
+
+    def _init(self: Runner, env: Any, cfg: dict[str, Any]) -> None:
+        if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME and shared_homogeneous_ippo_enabled(cfg):
+            self._env = env
+            self._cfg = cfg
+            set_seed(self._cfg.get("seed", None))
+            self._cfg["agent"]["rewards_shaper"] = None
+            self._agent = SharedIPPOAgent(env, self._cfg)
+            self._models = {"shared": {"policy": self._agent.policy, "value": self._agent.value}}
+            self._trainer = SharedIPPOTrainer(env, self._agent, self._cfg.get("trainer", {}))
+            return
+        _ORIGINAL_RUNNER_INIT(self, env, cfg)
 
     def _generate_models(self: Runner, env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model]]:
         if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME:
             return _generate_quad_swarm_models(env, cfg)
         return _ORIGINAL_GENERATE_MODELS(self, env, cfg)
 
+    Runner.__init__ = _init
     Runner._generate_models = _generate_models
     Runner._quad_swarm_paper_patch = True

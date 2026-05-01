@@ -2,7 +2,7 @@ seed: 42
 
 models:
   factory: quad_swarm_paper_attention
-  share_parameters: false
+  share_parameters: true
   hidden_size: 256
   attention_heads: 4
   self_obs_dim: 19
@@ -12,7 +12,7 @@ models:
   init_policy_to_hover: true
 
 training:
-  shared_homogeneous_ippo: false
+  shared_homogeneous_ippo: true
 
 memory:
   class: RandomMemory
@@ -23,6 +23,10 @@ agent:
   rollouts: 128
   learning_epochs: 8
   mini_batches: 16  # Increased form 8 to handle doubling the env count
+  # Custom shared homogeneous IPPO only, not a paper/release hyperparameter:
+  # keep each backward pass at the stock per-agent skrl batch scale even though
+  # rollout samples are pooled over drones.
+  shared_mini_batch_size: 16384
   discount_factor: 0.99
   lambda: 1.0
   learning_rate: 1.0e-4
