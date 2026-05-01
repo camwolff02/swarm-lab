@@ -11,6 +11,9 @@ models:
   initial_log_std: -1.0
   init_policy_to_hover: true
 
+training:
+  shared_homogeneous_ippo: false
+
 memory:
   class: RandomMemory
   memory_size: -1

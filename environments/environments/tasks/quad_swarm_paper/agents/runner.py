@@ -17,7 +17,10 @@ from typing import Any
 from skrl.models.torch import Model
 from skrl.utils.runner.torch import Runner
 
-from environments.tasks.quad_swarm_paper.models.quad_swarm_encoder import QuadSwarmEncoderCfg
+from environments.tasks.quad_swarm_paper.agents.shared_ippo import (
+    encoder_cfg_from_model_config,
+    shared_homogeneous_ippo_enabled,
+)
 from environments.tasks.quad_swarm_paper.models.quad_swarm_skrl_models import (
     QuadSwarmDeterministicValue,
     QuadSwarmGaussianPolicy,
@@ -30,18 +33,17 @@ _ORIGINAL_GENERATE_MODELS = None
 def _generate_quad_swarm_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model]]:
     """Build paper policy/value modules for skrl's stock Runner."""
 
+    if shared_homogeneous_ippo_enabled(cfg):
+        raise NotImplementedError(
+            "training.shared_homogeneous_ippo=True cannot use stock skrl IPPO. "
+            "Phase 1 provides shared model ownership and collation helpers only; "
+            "the dedicated shared rollout/update trainer must be implemented before enabling this mode."
+        )
+
     device = env.device
     possible_agents = env.possible_agents
     model_cfg = cfg.get("models", {})
-    encoder_cfg = QuadSwarmEncoderCfg(
-        self_obs_dim=int(model_cfg.get("self_obs_dim", 19)),
-        neighbor_obs_dim=int(model_cfg.get("neighbor_obs_dim", 12)),
-        obstacle_obs_dim=int(model_cfg.get("obstacle_obs_dim", 9)),
-        hidden_size=int(model_cfg.get("hidden_size", 256)),
-        attention_heads=int(model_cfg.get("attention_heads", 4)),
-        initial_log_std=float(model_cfg.get("initial_log_std", -1.0)),
-        init_policy_to_hover=bool(model_cfg.get("init_policy_to_hover", True)),
-    )
+    encoder_cfg = encoder_cfg_from_model_config(model_cfg)
     share_parameters = bool(model_cfg.get("share_parameters", False))
     if share_parameters:
         warnings.warn(
