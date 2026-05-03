@@ -11,6 +11,7 @@ from .encoder import FormationAttentionEncoder, FormationAttentionEncoderCfg
 
 
 def _space_size(space: gym.Space) -> int:
+    """Space size."""
     size = 1
     for dim in space.shape:
         size *= int(dim)
@@ -18,6 +19,7 @@ def _space_size(space: gym.Space) -> int:
 
 
 def _states(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
+    """States."""
     return inputs.get("states", inputs.get("observations"))
 
 
@@ -33,6 +35,7 @@ class FormationGaussianPolicy(GaussianMixin, Model):
         encoder_cfg: FormationAttentionEncoderCfg = FormationAttentionEncoderCfg(),
         clip_actions: bool = False,
     ) -> None:
+        """Initialize the FormationGaussianPolicy instance."""
         Model.__init__(self, observation_space=observation_space, action_space=action_space, device=device)
         GaussianMixin.__init__(self, clip_actions=clip_actions)
         self.encoder = FormationAttentionEncoder(encoder_cfg)
@@ -46,6 +49,7 @@ class FormationGaussianPolicy(GaussianMixin, Model):
     def compute(
         self, inputs: dict[str, torch.Tensor], role: str = ""
     ) -> tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
+        """Compute the value for the current inputs."""
         del role
         mean = self.mean_head(self.encoder(_states(inputs)))
         return mean, self.log_std_parameter.expand_as(mean), {}
@@ -62,6 +66,7 @@ class FormationDeterministicValue(DeterministicMixin, Model):
         *,
         hidden_units: tuple[int, ...] = (256, 256, 256),
     ) -> None:
+        """Initialize the FormationDeterministicValue instance."""
         Model.__init__(self, observation_space=observation_space, action_space=action_space, device=device)
         DeterministicMixin.__init__(self)
         layers: list[nn.Module] = []
@@ -72,5 +77,6 @@ class FormationDeterministicValue(DeterministicMixin, Model):
         self.net = nn.Sequential(*layers)
 
     def compute(self, inputs: dict[str, torch.Tensor], role: str = "") -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+        """Compute the value for the current inputs."""
         del role
         return self.net(_states(inputs)), {}

@@ -94,6 +94,7 @@ class QuadSwarmPaperEnvCfg(DirectMARLEnvCfg):
     tilt_penalty_scale: float = spec.TILT_PENALTY_SCALE
 
     def __post_init__(self) -> None:
+        """Finalize derived Isaac Lab configuration fields."""
         self.possible_agents = [f"drone_{index}" for index in range(self.num_drones)]
         obs_size = spec.SELF_OBS_SIZE + self.visible_neighbors * spec.NEIGHBOR_OBS_SIZE + spec.OBSTACLE_OBS_SIZE
         self.observation_spaces = {

@@ -28,10 +28,12 @@ class FormationAttentionEncoderCfg:
 
     @property
     def other_count(self) -> int:
+        """Return the configured value."""
         return self.num_drones - 1
 
     @property
     def observation_dim(self) -> int:
+        """Return the configured value."""
         return (
             self.self_obs_dim
             + self.other_count * self.other_obs_dim
@@ -41,11 +43,14 @@ class FormationAttentionEncoderCfg:
 
     @property
     def output_dim(self) -> int:
+        """Return the configured value."""
         return self.hidden_units[-1]
 
 
 class _SplitEmbedding(nn.Module):
+    """_SplitEmbedding API surface."""
     def __init__(self, cfg: FormationAttentionEncoderCfg) -> None:
+        """Initialize the _SplitEmbedding instance."""
         super().__init__()
         self.cfg = cfg
         self.self_embed = nn.Linear(cfg.self_obs_dim, cfg.attention_dim)
@@ -55,6 +60,7 @@ class _SplitEmbedding(nn.Module):
         self.norm = nn.LayerNorm(cfg.attention_dim)
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
+        """Run the module forward pass."""
         cfg = self.cfg
         self_end = cfg.self_obs_dim
         other_end = self_end + cfg.other_count * cfg.other_obs_dim
@@ -79,6 +85,7 @@ class FormationAttentionEncoder(nn.Module):
     """Self-attention plus self-query cross-attention encoder from the source implementation."""
 
     def __init__(self, cfg: FormationAttentionEncoderCfg = FormationAttentionEncoderCfg()) -> None:
+        """Initialize the FormationAttentionEncoder instance."""
         super().__init__()
         self.cfg = cfg
         self.split_embed = _SplitEmbedding(cfg)
@@ -101,6 +108,7 @@ class FormationAttentionEncoder(nn.Module):
         self.trunk = nn.Sequential(*layers)
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
+        """Run the module forward pass."""
         if observations.shape[-1] != self.cfg.observation_dim:
             raise ValueError(f"Expected observation dim {self.cfg.observation_dim}, got {observations.shape[-1]}.")
 

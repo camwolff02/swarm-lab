@@ -1,0 +1,42 @@
+site_name: Physical AI Lab
+site_description: Developer documentation for the Physical AI Lab Isaac Sim workspace.
+repo_name: physical-ai-lab
+docs_dir: docs
+site_dir: site
+theme:
+  name: material
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - docs/gen_ref_pages.py
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - .
+            - environments
+            - ../cpsquare-lab/src
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+nav:
+  - Home: index.md
+  - Training: training.md
+  - API Reference: reference/
+  - Development: development.md
+  - Notes:
+      - Quad Swarm Port: quad_swarm_port_notes.md
+      - Shared IPPO Phase 0: shared_ippo_phase0.md
+      - Formation Swarm Plan: xie_formation_swarm_plan.md
+      - Env Cache Validation: env_cache_validation.md
+      - Viser Compatibility: viser_isaacsim6_compatibility.md

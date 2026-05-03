@@ -64,6 +64,7 @@ class SharedRolloutStorage:
         action_dim: int,
         device: torch.device,
     ) -> SharedRolloutStorage:
+        """Create."""
         tensor_shape = (int(rollouts), int(num_envs), int(num_agents))
         return cls(
             observations=torch.zeros((*tensor_shape, observation_dim), device=device, dtype=torch.float32),
@@ -77,6 +78,7 @@ class SharedRolloutStorage:
 
     @property
     def full(self) -> bool:
+        """Return the configured value."""
         return self.index >= self.observations.shape[0]
 
     def add(
@@ -90,6 +92,7 @@ class SharedRolloutStorage:
         terminated: torch.Tensor,
         truncated: torch.Tensor,
     ) -> None:
+        """Add the provided data to the current object."""
         if self.full:
             raise RuntimeError("Shared rollout storage is full. Call reset() after PPO update.")
         self.observations[self.index].copy_(observations.detach())
@@ -102,6 +105,7 @@ class SharedRolloutStorage:
         self.index += 1
 
     def reset(self) -> None:
+        """Reset internal state for the requested environments."""
         self.index = 0
 
 
@@ -109,6 +113,7 @@ class SharedIPPOAgent:
     """Paper-faithful homogeneous decentralized IPPO with one shared update stream."""
 
     def __init__(self, env: Any, cfg: Mapping[str, Any]) -> None:
+        """Initialize the SharedIPPOAgent instance."""
         self.env = env
         self.cfg = cfg
         self.components = build_shared_ippo_components(env, cfg)
@@ -185,15 +190,18 @@ class SharedIPPOAgent:
         self._running_mode = "train"
 
     def set_running_mode(self, mode: str) -> None:
+        """Set the requested runtime value."""
         self._running_mode = mode
 
     def set_mode(self, mode: str) -> None:
+        """Set the requested runtime value."""
         self.policy.set_mode(mode)
         self.value.set_mode(mode)
 
     def act(
         self, states: Mapping[str, torch.Tensor], timestep: int, timesteps: int
     ) -> tuple[dict[str, torch.Tensor], torch.Tensor, torch.Tensor]:
+        """Act."""
         del timestep, timesteps
         observations = stack_agent_observations(states, self.agent_ids)
         flat_observations = flatten_agent_batch(observations)
@@ -219,6 +227,7 @@ class SharedIPPOAgent:
         log_probs: torch.Tensor,
         values: torch.Tensor,
     ) -> None:
+        """Record transition."""
         observations = stack_agent_observations(states, self.agent_ids)
         action_tensor = stack_agent_tensors(actions, self.agent_ids, label="actions")
         reward_tensor = stack_agent_tensors(rewards, self.agent_ids, label="rewards")
@@ -241,6 +250,7 @@ class SharedIPPOAgent:
         self._instant_reward_count += 1
 
     def post_interaction(self, timestep: int, timesteps: int) -> None:
+        """Post interaction."""
         if self.storage.full:
             self.set_mode("train")
             self._update(timestep=timestep, timesteps=timesteps)
@@ -254,9 +264,11 @@ class SharedIPPOAgent:
             self.write_checkpoint(timestep=step, timesteps=timesteps)
 
     def track_data(self, tag: str, value: float | torch.Tensor) -> None:
+        """Track data."""
         self.tracking_data.setdefault(tag, []).append(value)
 
     def track_environment_info(self, infos: Mapping[str, Any], key: str) -> None:
+        """Track environment info."""
         if key not in infos:
             return
         for name, value in infos[key].items():
@@ -266,6 +278,7 @@ class SharedIPPOAgent:
                 self.track_data(f"Info / {name}", float(value))
 
     def write_tracking_data(self, timestep: int) -> None:
+        """Write tracking data."""
         if self.writer is None:
             return
         if self._instant_reward_count:
@@ -288,6 +301,7 @@ class SharedIPPOAgent:
         self.tracking_data.clear()
 
     def write_checkpoint(self, timestep: int, timesteps: int) -> None:
+        """Write checkpoint."""
         del timesteps
         checkpoint_dir = os.path.join(self.experiment_dir, "checkpoints")
         os.makedirs(checkpoint_dir, exist_ok=True)
@@ -306,6 +320,7 @@ class SharedIPPOAgent:
         )
 
     def load(self, path: str) -> None:
+        """Load persisted state from disk."""
         checkpoint = torch.load(path, map_location=self.device, weights_only=False)
         if "policy" in checkpoint and "value" in checkpoint:
             self.policy.load_state_dict(checkpoint["policy"])
@@ -322,6 +337,7 @@ class SharedIPPOAgent:
         self.value.load_state_dict(checkpoint[first_agent]["value"])
 
     def _update(self, *, timestep: int, timesteps: int) -> None:
+        """Update."""
         del timestep, timesteps
         if self._last_next_observations is None:
             raise RuntimeError("Cannot update shared IPPO before at least one transition has been recorded.")
@@ -424,6 +440,7 @@ class SharedIPPOAgent:
         self.track_data("Learning / Shared minibatches per epoch", float(minibatches_per_epoch))
 
     def _compute_gae(self, *, next_values: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Compute gae."""
         rewards = self.storage.rewards
         dones = self.storage.terminated | self.storage.truncated
         values = self.storage.values
@@ -444,6 +461,7 @@ class SharedIPPOTrainer:
     """Minimal sequential trainer for the shared homogeneous IPPO agent."""
 
     def __init__(self, env: Any, agent: SharedIPPOAgent, cfg: Mapping[str, Any]) -> None:
+        """Initialize the SharedIPPOTrainer instance."""
         self.env = env
         self.agent = agent
         self.timesteps = int(cfg.get("timesteps", 0))
@@ -453,6 +471,7 @@ class SharedIPPOTrainer:
         self.disable_progressbar = bool(cfg.get("disable_progressbar", False))
 
     def train(self) -> None:
+        """Train."""
         self.agent.set_running_mode("train")
         self.agent.set_mode("eval")
         states, infos = self.env.reset()
@@ -485,6 +504,7 @@ class SharedIPPOTrainer:
             self.env.close()
 
     def eval(self) -> None:
+        """Eval."""
         self.agent.set_running_mode("eval")
         self.agent.set_mode("eval")
         states, _ = self.env.reset()
@@ -500,7 +520,6 @@ class SharedIPPOTrainer:
 
 def shared_homogeneous_ippo_enabled(cfg: Mapping[str, Any]) -> bool:
     """Return whether the explicit shared-training mode is requested."""
-
     training_cfg = cfg.get("training", {})
     if not isinstance(training_cfg, Mapping):
         return False
@@ -509,7 +528,6 @@ def shared_homogeneous_ippo_enabled(cfg: Mapping[str, Any]) -> bool:
 
 def encoder_cfg_from_model_config(model_cfg: Mapping[str, Any]) -> QuadSwarmEncoderCfg:
     """Build the paper encoder config from the skrl YAML model section."""
-
     return QuadSwarmEncoderCfg(
         self_obs_dim=int(model_cfg.get("self_obs_dim", 19)),
         neighbor_obs_dim=int(model_cfg.get("neighbor_obs_dim", 12)),
@@ -523,7 +541,6 @@ def encoder_cfg_from_model_config(model_cfg: Mapping[str, Any]) -> QuadSwarmEnco
 
 def build_shared_ippo_components(env: Any, cfg: Mapping[str, Any]) -> SharedIPPOComponents:
     """Create exactly one policy, one value function, and one optimizer per role."""
-
     agent_ids = tuple(env.possible_agents)
     if not agent_ids:
         raise ValueError("Shared IPPO requires at least one agent in env.possible_agents.")
@@ -571,7 +588,6 @@ def stack_agent_observations(obs_dict: Mapping[str, torch.Tensor], agent_ids: Se
     The ordering is always the explicit ``agent_ids`` order, expected to be
     ``env.possible_agents`` for the quad swarm task.
     """
-
     tensors = _ordered_agent_tensors(obs_dict, agent_ids, label="observations")
     return torch.stack(tensors, dim=1)
 
@@ -580,14 +596,12 @@ def stack_agent_tensors(
     tensor_dict: Mapping[str, torch.Tensor], agent_ids: Sequence[str], *, label: str
 ) -> torch.Tensor:
     """Stack a homogeneous per-agent tensor dict into ``[num_envs, num_agents, ...]``."""
-
     tensors = _ordered_agent_tensors(tensor_dict, agent_ids, label=label)
     return torch.stack(tensors, dim=1)
 
 
 def flatten_agent_batch(tensor: torch.Tensor) -> torch.Tensor:
     """Flatten ``[num_envs, num_agents, ...]`` to ``[num_envs * num_agents, ...]``."""
-
     if tensor.ndim < 3:
         raise ValueError(f"Expected at least 3 dimensions [E, N, ...], got shape {tuple(tensor.shape)}.")
     return tensor.reshape(tensor.shape[0] * tensor.shape[1], *tensor.shape[2:])
@@ -595,7 +609,6 @@ def flatten_agent_batch(tensor: torch.Tensor) -> torch.Tensor:
 
 def unflatten_agent_batch(tensor: torch.Tensor, *, num_envs: int, agent_ids: Sequence[str]) -> torch.Tensor:
     """Unflatten ``[num_envs * num_agents, ...]`` to ``[num_envs, num_agents, ...]``."""
-
     num_agents = len(agent_ids)
     if num_envs <= 0 or num_agents <= 0:
         raise ValueError("num_envs and agent_ids must describe a non-empty [E, N] batch.")
@@ -607,7 +620,6 @@ def unflatten_agent_batch(tensor: torch.Tensor, *, num_envs: int, agent_ids: Seq
 
 def unstack_agent_actions(action_tensor: torch.Tensor, agent_ids: Sequence[str]) -> dict[str, torch.Tensor]:
     """Convert ``[num_envs, num_agents, act_dim]`` actions back to the env dict API."""
-
     if action_tensor.ndim < 3:
         raise ValueError(f"Expected at least 3 dimensions [E, N, ...], got shape {tuple(action_tensor.shape)}.")
     if action_tensor.shape[1] != len(agent_ids):
@@ -619,7 +631,6 @@ def unstack_agent_actions(action_tensor: torch.Tensor, agent_ids: Sequence[str])
 
 def flatten_rollout_tensor(tensor: torch.Tensor) -> torch.Tensor:
     """Flatten pooled rollout tensors ``[T, E, N, ...]`` to ``[T * E * N, ...]``."""
-
     if tensor.ndim < 4:
         raise ValueError(f"Expected at least 4 dimensions [T, E, N, ...], got shape {tuple(tensor.shape)}.")
     return tensor.reshape(tensor.shape[0] * tensor.shape[1] * tensor.shape[2], *tensor.shape[3:])
@@ -627,13 +638,11 @@ def flatten_rollout_tensor(tensor: torch.Tensor) -> torch.Tensor:
 
 def optimizer_parameter_ids(optimizer: torch.optim.Optimizer) -> tuple[int, ...]:
     """Return optimizer-owned parameter object ids in param-group order."""
-
     return tuple(id(param) for group in optimizer.param_groups for param in group["params"])
 
 
 def assert_optimizer_owns_model_once(model: Model, optimizer: torch.optim.Optimizer) -> None:
     """Validate that an optimizer owns each model parameter exactly once."""
-
     model_param_ids = tuple(id(param) for param in model.parameters())
     optimizer_param_ids = optimizer_parameter_ids(optimizer)
     if len(optimizer_param_ids) != len(set(optimizer_param_ids)):
@@ -645,6 +654,7 @@ def assert_optimizer_owns_model_once(model: Model, optimizer: torch.optim.Optimi
 def _ordered_agent_tensors(
     tensor_dict: Mapping[str, torch.Tensor], agent_ids: Sequence[str], *, label: str
 ) -> list[torch.Tensor]:
+    """Ordered agent tensors."""
     if not agent_ids:
         raise ValueError(f"Cannot collate {label} without agent ids.")
 
@@ -664,6 +674,7 @@ def _ordered_agent_tensors(
 
 
 def _validate_homogeneous_spaces(env: Any, agent_ids: Sequence[str]) -> None:
+    """Validate homogeneous spaces."""
     reference_agent = agent_ids[0]
     reference_obs_shape = tuple(env.observation_spaces[reference_agent].shape)
     reference_action_shape = tuple(env.action_spaces[reference_agent].shape)
@@ -679,6 +690,7 @@ def _validate_homogeneous_spaces(env: Any, agent_ids: Sequence[str]) -> None:
 
 
 def _flat_space_size(space: Any) -> int:
+    """Flat space size."""
     if not hasattr(space, "shape") or space.shape is None:
         raise ValueError(f"Expected a Box-like space with a shape, got {space}.")
     size = 1
@@ -688,6 +700,7 @@ def _flat_space_size(space: Any) -> int:
 
 
 def _resolve_interval(value: Any, trainer_cfg: Mapping[str, Any], *, divisor: int) -> int:
+    """Resolve interval."""
     if value == "auto":
         return int(int(trainer_cfg.get("timesteps", 0)) / divisor)
     return int(value)
@@ -696,6 +709,7 @@ def _resolve_interval(value: Any, trainer_cfg: Mapping[str, Any], *, divisor: in
 def _resolve_shared_mini_batch_size(
     *, agent_cfg: Mapping[str, Any], rollouts: int, num_envs: int, mini_batches: int
 ) -> int:
+    """Resolve shared mini batch size."""
     configured = agent_cfg.get("shared_mini_batch_size")
     if configured is not None:
         return int(configured)
@@ -707,6 +721,7 @@ def _resolve_shared_mini_batch_size(
 
 
 def _any_done(terminated: Mapping[str, torch.Tensor], truncated: Mapping[str, torch.Tensor]) -> bool:
+    """Any done."""
     first_terminated = next(iter(terminated.values()))
     first_truncated = next(iter(truncated.values()))
     return bool((first_terminated | first_truncated).any().item())

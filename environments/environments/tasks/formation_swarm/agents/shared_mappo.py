@@ -21,6 +21,7 @@ class ValueNorm1(nn.Module):
     """Exponential value normalizer used by the paper's released MAPPO code."""
 
     def __init__(self, input_shape: int | Sequence[int] = 1, *, beta: float = 0.995, epsilon: float = 1.0e-5) -> None:
+        """Initialize the ValueNorm1 instance."""
         super().__init__()
         shape = torch.Size((input_shape,)) if isinstance(input_shape, int) else torch.Size(input_shape)
         self.input_shape = shape
@@ -31,6 +32,7 @@ class ValueNorm1(nn.Module):
         self.register_buffer("debiasing_term", torch.tensor(0.0))
 
     def running_mean_var(self) -> tuple[torch.Tensor, torch.Tensor]:
+        """Run the command-line entry point."""
         debiasing_term = self.debiasing_term.clamp(min=self.epsilon)
         mean = self.running_mean / debiasing_term
         mean_sq = self.running_mean_sq / debiasing_term
@@ -38,6 +40,7 @@ class ValueNorm1(nn.Module):
 
     @torch.no_grad()
     def update(self, values: torch.Tensor) -> None:
+        """Update."""
         dims = tuple(range(values.dim() - len(self.input_shape)))
         weight = self.beta
         self.running_mean.mul_(weight).add_(values.mean(dim=dims) * (1.0 - weight))
@@ -45,10 +48,12 @@ class ValueNorm1(nn.Module):
         self.debiasing_term.mul_(weight).add_(1.0 - weight)
 
     def normalize(self, values: torch.Tensor) -> torch.Tensor:
+        """Normalize."""
         mean, var = self.running_mean_var()
         return (values - mean) / torch.sqrt(var)
 
     def denormalize(self, values: torch.Tensor) -> torch.Tensor:
+        """Denormalize."""
         mean, var = self.running_mean_var()
         return values * torch.sqrt(var) + mean
 
@@ -74,6 +79,7 @@ class FormationSharedMAPPO(MAPPO):
         cfg: dict[str, Any] | None = None,
         shared_observation_spaces: Mapping[str, int | Sequence[int] | gym.Space] | None = None,
     ) -> None:
+        """Initialize the FormationSharedMAPPO instance."""
         super().__init__(
             possible_agents=possible_agents,
             models=models,
@@ -110,6 +116,7 @@ class FormationSharedMAPPO(MAPPO):
                 self.checkpoint_modules[uid]["value_normalizer"] = self._value_normalizer
 
     def _make_scheduler(self, optimizer: torch.optim.Optimizer) -> torch.optim.lr_scheduler.LRScheduler | None:
+        """Make scheduler."""
         scheduler_cls = self._learning_rate_scheduler[self._shared_uid]
         if scheduler_cls is None:
             return None
@@ -127,6 +134,7 @@ class FormationSharedMAPPO(MAPPO):
         timestep: int,
         timesteps: int,
     ) -> None:
+        """Record transition."""
         MultiAgent.record_transition(self, states, actions, rewards, next_states, terminated, truncated, infos, timestep, timesteps)
 
         if not self.memories:
@@ -160,11 +168,13 @@ class FormationSharedMAPPO(MAPPO):
             )
 
     def _denormalize_values(self, values: torch.Tensor) -> torch.Tensor:
+        """Denormalize values."""
         if not self._use_value_norm:
             return values
         return self._value_normalizer.denormalize(values)
 
     def _normalize_returns(self, returns: torch.Tensor) -> torch.Tensor:
+        """Normalize returns."""
         if not self._use_value_norm:
             return returns
         return self._value_normalizer.normalize(returns)
@@ -179,6 +189,7 @@ class FormationSharedMAPPO(MAPPO):
         discount_factor: float,
         lambda_coefficient: float,
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Compute gae."""
         advantage = torch.zeros_like(last_values)
         advantages = torch.zeros_like(rewards)
         not_dones = dones.logical_not()
@@ -191,16 +202,19 @@ class FormationSharedMAPPO(MAPPO):
         return advantages + values, advantages
 
     def _flatten_memory_tensor(self, name: str) -> torch.Tensor:
+        """Flatten memory tensor."""
         return torch.cat(
             [self.memories[uid].get_tensor_by_name(name).reshape(-1, self.memories[uid].get_tensor_by_name(name).shape[-1]) for uid in self.possible_agents],
             dim=0,
         )
 
     def _make_minibatches(self, batch_size: int, mini_batches: int) -> torch.Tensor:
+        """Make minibatches."""
         usable = (batch_size // mini_batches) * mini_batches
         return torch.randperm(usable, device=self.device).reshape(mini_batches, -1)
 
     def _update(self, timestep: int, timesteps: int) -> None:
+        """Update."""
         returns_by_uid: dict[str, torch.Tensor] = {}
         advantages_by_uid: dict[str, torch.Tensor] = {}
 
@@ -340,11 +354,13 @@ class FormationSharedMAPPO(MAPPO):
             self.track_data("Learning / Critic learning rate (shared)", self.critic_scheduler.get_last_lr()[0])
 
     def _critic_loss(self, target: torch.Tensor, prediction: torch.Tensor) -> torch.Tensor:
+        """Critic loss."""
         if self._use_huber_loss:
             return F.huber_loss(prediction, target, delta=self._huber_delta, reduction="none")
         return F.mse_loss(prediction, target, reduction="none")
 
     def _step_schedulers(self, kl_divergences: list[torch.Tensor]) -> None:
+        """Step schedulers."""
         for scheduler in (self.actor_scheduler, self.critic_scheduler):
             if scheduler is None:
                 continue

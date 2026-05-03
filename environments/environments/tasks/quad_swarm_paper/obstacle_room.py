@@ -22,7 +22,6 @@ def sample_obstacle_occupancy(
     device: torch.device | str = "cpu",
 ) -> torch.Tensor:
     """Sample paper-style obstacle occupancy over the centered 8x8 grid."""
-
     num_cells = grid_shape[0] * grid_shape[1]
     obstacle_count = int(float(density) * num_cells)
     occupancy = torch.zeros((num_envs, num_cells), device=device, dtype=torch.bool)
@@ -40,7 +39,6 @@ def sample_obstacle_field(
     device: torch.device | str = "cpu",
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Return fixed obstacle slots and masks for a sampled paper obstacle map."""
-
     occupancy = sample_obstacle_occupancy(num_envs, density=density, device=device)
     cell_centers = get_cell_centers(spec.OBSTACLE_GRID_SHAPE, spec.OBSTACLE_CELL_SIZE, device=device)
     obstacle_positions = torch.zeros((num_envs, cell_centers.shape[0], 3), device=device, dtype=torch.float32)
@@ -58,7 +56,6 @@ def sample_start_goal_pairs(
     device: torch.device | str = "cpu",
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Sample start/goal pairs on opposite sides of the room."""
-
     base_angles = torch.linspace(0.0, 2.0 * math.pi, num_drones + 1, device=device)[:-1]
     phase = torch.rand((num_envs, 1), device=device) * 2.0 * math.pi
     angles = base_angles.unsqueeze(0) + phase
@@ -93,7 +90,6 @@ def sample_obstacle_aware_start_goal_pairs(
     positions, then places agents and goals in free cells.  This keeps fresh
     resets from starting a quadrotor inside an occupied obstacle column.
     """
-
     num_envs, num_slots = obstacle_mask.shape
     starts = torch.zeros((num_envs, num_drones, 3), device=device, dtype=torch.float32)
     goals = torch.zeros_like(starts)

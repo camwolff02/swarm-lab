@@ -38,6 +38,21 @@ METRIC_NAMES = (
 
 
 def _laplacian(points: torch.Tensor, normalize: bool) -> torch.Tensor:
+    r"""Compute the pairwise-distance graph Laplacian for formation points.
+
+    For pairwise distance matrix \(D_{ij}=\lVert p_i-p_j\rVert_2\) and degree
+    \(d_i=\sum_j D_{ij}\), the unnormalized Laplacian is
+
+    \[
+    L = \operatorname{diag}(d) - D.
+    \]
+
+    With ``normalize=True``, the function returns
+
+    \[
+    L_\text{norm} = I - \operatorname{diag}(d)^{-1/2}D\operatorname{diag}(d)^{-1/2}.
+    \]
+    """
     distances = torch.cdist(points, points)
     degree = distances.sum(dim=-1)
     if normalize:
@@ -49,16 +64,31 @@ def _laplacian(points: torch.Tensor, normalize: bool) -> torch.Tensor:
 
 
 def _formation_cost(points: torch.Tensor, desired_laplacian: torch.Tensor, *, normalize: bool) -> torch.Tensor:
+    r"""Return the matrix-norm distance from the desired formation Laplacian.
+
+    \[
+    c_L(P) = \lVert L^\star - L(P)\rVert_F.
+    \]
+    """
     return torch.linalg.matrix_norm(desired_laplacian - _laplacian(points, normalize), dim=(-2, -1)).unsqueeze(-1)
 
 
 def _pairwise_without_self(values: torch.Tensor) -> torch.Tensor:
+    """Remove diagonal self-pairs from a batched pairwise tensor."""
     count = values.shape[-2]
     eye = torch.eye(count, device=values.device, dtype=torch.bool)
     return values[:, ~eye].reshape(values.shape[0], count, count - 1, values.shape[-1])
 
 
 def _other_drone_observation(positions: torch.Tensor, velocities: torch.Tensor) -> torch.Tensor:
+    r"""Build relative position, distance, and velocity features for other drones.
+
+    For ego drone \(i\) and neighbor \(j\), the feature block is
+
+    \[
+    \left[\frac{p_i-p_j}{2},\; \frac{\lVert p_i-p_j\rVert_2}{2},\; v_i-v_j\right].
+    \]
+    """
     relative_pos = positions.unsqueeze(2) - positions.unsqueeze(1)
     relative_vel = velocities.unsqueeze(2) - velocities.unsqueeze(1)
     other_pos = _pairwise_without_self(relative_pos)
@@ -68,11 +98,40 @@ def _other_drone_observation(positions: torch.Tensor, velocities: torch.Tensor) 
 
 
 class FormationSwarmEnv(DirectMARLEnv):
-    """Directed formation flight with static columns and dynamic balls."""
+    r"""Directed formation flight with static columns and dynamic balls.
+
+    The environment tracks a four-objective reward decomposition:
+
+    \[
+    r = w_s r_\text{smooth} + w_o r_\text{obstacle}
+      + w_f r_\text{forward} + w_\ell r_\text{formation}.
+    \]
+
+    The formation objective compares the current pairwise-distance Laplacian against
+    the desired formation Laplacian. For normalized formation cost \(c_L\), drone count
+    \(N\), current formation diameter \(s\), and desired diameter \(s^\star\):
+
+    \[
+    r_L = \frac{1}{2}\left(
+      \frac{1}{1 + \left(10(c_L-0.04)/N\right)^2} - 0.04N
+    \right),
+    \]
+
+    \[
+    r_\text{size} = 3\left(
+      \frac{\frac{1}{1+(s-s^\star)^2} + \frac{1}{1+c_L^\text{raw}} - 2}{N}
+      - 0.04N
+    \right) + 2.36.
+    \]
+
+    These scalar terms are combined with separation penalties, obstacle penalties,
+    forward/height/heading rewards, and smooth-action terms inside ``_get_rewards``.
+    """
 
     cfg: FormationSwarmEnvCfg
 
     def __init__(self, cfg: FormationSwarmEnvCfg, render_mode: str | None = None, **kwargs) -> None:
+        """Initialize the FormationSwarmEnv instance."""
         self._agent_ids = list(cfg.possible_agents)
         self._last_actions = torch.zeros(cfg.scene.num_envs, cfg.num_drones, spec.ACTION_DIM, device=cfg.sim.device)
         super().__init__(cfg, render_mode=render_mode, **kwargs)
@@ -124,6 +183,7 @@ class FormationSwarmEnv(DirectMARLEnv):
         initialize_episode_metrics(self, METRIC_NAMES)
 
     def _setup_scene(self) -> None:
+        """Create drone assets, obstacles, ground, and cloned environments."""
         self.drones = {}
         for agent in self._agent_ids:
             robot_cfg = self.cfg.robot_cfg.replace(prim_path=f"/World/envs/env_.*/{agent}")
@@ -142,6 +202,13 @@ class FormationSwarmEnv(DirectMARLEnv):
         self._spawn_obstacle_visuals()
 
     def _pre_physics_step(self, actions: dict[str, torch.Tensor]) -> None:
+        r"""Map formation policy actions into CTBR command order.
+
+        Formation policies emit \([c,\omega_x,\omega_y,\omega_z]\). The shared
+        ``CtbrAction`` term expects \([\omega_x,\omega_y,\omega_z,c]\), so the method
+        applies that permutation before the CTBR action equations documented in
+        :class:`cpsquare_lab.embodiments.multirotor.common.actions.CtbrAction`.
+        """
         self._update_balls()
         for index, agent in enumerate(self._agent_ids):
             action = torch.nan_to_num(actions[agent].to(self.device), nan=0.0, posinf=1.0, neginf=-1.0)
@@ -151,10 +218,12 @@ class FormationSwarmEnv(DirectMARLEnv):
             self._current_rotor_actions[:, index] = self._ctbr_actions[agent].processed_actions
 
     def _apply_action(self) -> None:
+        """Apply action."""
         for action in self._ctbr_actions.values():
             action.apply_actions()
 
     def _get_observations(self) -> dict[str, torch.Tensor]:
+        """Get observations."""
         state = self._collect_state()
         pos = state["pos"]
         vel = state["vel"]
@@ -186,9 +255,30 @@ class FormationSwarmEnv(DirectMARLEnv):
         return {agent: observations[:, index] for index, agent in enumerate(self._agent_ids)}
 
     def _get_states(self) -> torch.Tensor:
+        """Get states."""
         return torch.cat([self.obs_dict[agent].reshape(self.num_envs, -1) for agent in self._agent_ids], dim=-1)
 
     def _get_rewards(self) -> dict[str, torch.Tensor]:
+        r"""Compute the multi-objective formation reward.
+
+        The smoothness objective rewards low collective effort and small action
+        changes:
+
+        \[
+        r_\text{effort} = \max\left(2.5-\sum_i \rho_i, 0\right),\qquad
+        r_\Delta = \max\left(0.5-\lVert m_t-m_{t-1}\rVert_2, 0\right),
+        \]
+
+        with \(\rho_i=\operatorname{clip}((m_i+1)/2,0,1)\). Static-column obstacle
+        cost uses XY distance \(d_c\):
+
+        \[
+        r_\text{column} =
+        \operatorname{mean}\left(\operatorname{clip}(d_c, r_\text{col}, r_\text{safe}) - r_\text{safe}\right).
+        \]
+
+        The final per-drone reward is the weighted sum shown in the class docstring.
+        """
         state = self._collect_state()
         pos = state["pos"]
         vel = state["vel"]
@@ -314,6 +404,7 @@ class FormationSwarmEnv(DirectMARLEnv):
         return {agent: reward[:, index] for index, agent in enumerate(self._agent_ids)}
 
     def _get_dones(self) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
+        """Get dones."""
         state = self._collect_state()
         pos = state["pos"]
         pairwise_dist = torch.cdist(pos, pos)
@@ -335,6 +426,7 @@ class FormationSwarmEnv(DirectMARLEnv):
         return {agent: terminated for agent in self._agent_ids}, {agent: time_out for agent in self._agent_ids}
 
     def _reset_idx(self, env_ids: Sequence[int] | torch.Tensor | None) -> None:
+        """Reset idx."""
         if env_ids is None:
             env_ids_tensor = torch.arange(self.num_envs, device=self.device, dtype=torch.long)
         elif isinstance(env_ids, torch.Tensor):
@@ -359,6 +451,7 @@ class FormationSwarmEnv(DirectMARLEnv):
         reset_episode_metrics(self, env_ids_tensor)
 
     def _collect_state(self) -> dict[str, torch.Tensor]:
+        """Collect state."""
         pos, quat, vel, omega = [], [], [], []
         for drone in self.drones.values():
             pos.append(wp.to_torch(drone.data.root_pos_w) - self.scene.env_origins)
@@ -380,6 +473,7 @@ class FormationSwarmEnv(DirectMARLEnv):
         linear_velocities: torch.Tensor,
         angular_velocities: torch.Tensor,
     ) -> None:
+        """Write swarm state."""
         for drone_index, drone in enumerate(self.drones.values()):
             root_pose = wp.to_torch(drone.data.default_root_pose)[env_ids].clone()
             root_vel = wp.to_torch(drone.data.default_root_vel)[env_ids].clone()
@@ -396,6 +490,7 @@ class FormationSwarmEnv(DirectMARLEnv):
             drone.write_joint_velocity_to_sim_index(velocity=joint_vel, env_ids=env_ids)
 
     def _sample_columns(self, env_ids: torch.Tensor) -> None:
+        """Sample columns."""
         target_speed = torch.linalg.norm(self._target_vel[:2]).clamp_min(1.0)
         length = float(target_speed * self.cfg.episode_length_s) - 2.0 * spec.STATIC_MARGIN
         cols = int((2.0 * spec.GRID_BORDER) // spec.GRID_SIZE)
@@ -416,6 +511,7 @@ class FormationSwarmEnv(DirectMARLEnv):
         self._columns[env_ids] = torch.stack((x, y, z), dim=-1)
 
     def _reset_balls(self, env_ids: torch.Tensor) -> None:
+        """Reset balls."""
         self._ball_active[env_ids] = False
         self._balls_pos[env_ids] = torch.tensor((0.0, 0.0, -10.0), device=self.device)
         self._balls_vel[env_ids] = 0.0
@@ -423,6 +519,7 @@ class FormationSwarmEnv(DirectMARLEnv):
         self._ball_launch_step[env_ids] = (spec.THROW_THRESHOLD_STEPS + launch_offsets).long()
 
     def _update_balls(self) -> None:
+        """Update balls."""
         if self.cfg.num_balls == 0:
             return
         should_launch = (self.episode_length_buf.unsqueeze(-1) >= self._ball_launch_step) & ~self._ball_active
@@ -464,6 +561,7 @@ class FormationSwarmEnv(DirectMARLEnv):
         self._sync_obstacle_visuals(torch.arange(self.num_envs, device=self.device))
 
     def _spawn_view_camera(self) -> None:
+        """Spawn view camera."""
         camera_path = self.cfg.viewer.cam_prim_path
         if not camera_path or camera_path == "/OmniverseKit_Persp" or self.sim.stage.GetPrimAtPath(camera_path).IsValid():
             return
@@ -474,6 +572,7 @@ class FormationSwarmEnv(DirectMARLEnv):
         camera_cfg.func(camera_path, camera_cfg, translation=tuple(float(v) for v in eye[0]), orientation=tuple(float(v) for v in orientation))
 
     def _spawn_obstacle_visuals(self) -> None:
+        """Spawn obstacle visuals."""
         self._column_prims = []
         self._ball_prims = []
         if not self.cfg.spawn_obstacle_visuals:
@@ -489,6 +588,7 @@ class FormationSwarmEnv(DirectMARLEnv):
             self._ball_prims.append(prim)
 
     def _sync_obstacle_visuals(self, env_ids: torch.Tensor) -> None:
+        """Sync obstacle visuals."""
         if not getattr(self, "_column_prims", None) and not getattr(self, "_ball_prims", None):
             return
         if not (env_ids == 0).any():

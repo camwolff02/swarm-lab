@@ -24,14 +24,17 @@ class QuadSwarmEncoderCfg:
 
     @property
     def observation_dim(self) -> int:
+        """Return the configured value."""
         return self.self_obs_dim + self.neighbor_obs_dim + self.obstacle_obs_dim
 
     @property
     def output_dim(self) -> int:
+        """Return the configured value."""
         return 2 * self.hidden_size
 
 
 def _two_layer_mlp(input_dim: int, hidden_size: int) -> nn.Sequential:
+    """Two layer mlp."""
     return nn.Sequential(
         nn.Linear(input_dim, hidden_size),
         nn.Tanh(),
@@ -44,6 +47,7 @@ class QuadSwarmEncoder(nn.Module):
     """Encode ``[self, neighbor, obstacle]`` observations with the paper attention layout."""
 
     def __init__(self, cfg: QuadSwarmEncoderCfg = QuadSwarmEncoderCfg()) -> None:
+        """Initialize the QuadSwarmEncoder instance."""
         super().__init__()
         self.cfg = cfg
         self.self_embed_layer = _two_layer_mlp(cfg.self_obs_dim, cfg.hidden_size)
@@ -53,6 +57,7 @@ class QuadSwarmEncoder(nn.Module):
         self.feed_forward = nn.Sequential(nn.Linear(3 * cfg.hidden_size, cfg.output_dim), nn.Tanh())
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
+        """Run the module forward pass."""
         if observations.shape[-1] != self.cfg.observation_dim:
             raise ValueError(
                 f"Expected observation dim {self.cfg.observation_dim}, got {observations.shape[-1]}."

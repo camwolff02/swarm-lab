@@ -1,4 +1,25 @@
-"""Constants for Xie et al. multi-UAV formation control."""
+r"""Constants for the Xie et al. multi-UAV formation-control task.
+
+The values in this module define the task contract used by the environment,
+models, and agent YAML files. Distances are meters, velocities are meters per
+second, angular rates are radians per second unless a downstream controller
+explicitly documents degrees, and time-step constants are simulator seconds.
+
+The four MORL weights scalarize smoothness, obstacle, forward-progress, and formation
+objectives:
+
+\[
+r = w_s r_\text{smooth} + w_o r_\text{obstacle}
+  + w_f r_\text{forward} + w_\ell r_\text{formation}.
+\]
+
+The observation dimension follows the task observation layout:
+
+\[
+D_\text{obs} =
+D_\text{self} + (N-1)D_\text{other} + B D_\text{dynamic} + D_\text{static}.
+\]
+"""
 
 from __future__ import annotations
 
@@ -11,12 +32,17 @@ FORMATION = (
     (-0.5, 0.866, 0.0),
     (-0.5, -0.866, 0.0),
 )
+# Equilateral triangle vertices. ``0.866`` approximates sqrt(3) / 2, so scaling
+# by ``FORMATION_SIZE`` preserves the source paper's triangular shape.
 FORMATION_SIZE = 1.0
 TARGET_POS = (0.0, 0.0, 1.5)
 TARGET_VEL = (0.0, 2.0, 0.0)
 TARGET_HEADING = (1.0, 0.0, 0.0)
 
 SIM_DT = 0.01
+# The control policy runs every ``DECIMATION`` physics steps. With ``SIM_DT`` at
+# 0.01 s and decimation 2, the physics loop runs at 100 Hz and actions update at
+# 50 Hz.
 DECIMATION = 2
 EPISODE_LENGTH_S = 9.0
 
@@ -56,6 +82,9 @@ MORL_SMOOTH_WEIGHT = 0.5123452752249692
 MORL_FORMATION_WEIGHT = 0.14240923087088264
 MORL_OBSTACLE_WEIGHT = 0.2187620445033934
 MORL_FORWARD_WEIGHT = 0.1264834494007547
+# MORL weights are the scalarization coefficients used to combine smoothness,
+# formation, obstacle-avoidance, and forward-progress objectives into one PPO
+# reward. They intentionally sum to 1.0 within floating-point tolerance.
 
 FORMATION_COEFF = 5.0
 FORMATION_SIZE_COEFF = 5.0

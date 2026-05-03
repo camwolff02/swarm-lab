@@ -25,6 +25,7 @@ class PaperMultiheadAttention(nn.Module):
     """
 
     def __init__(self, embed_dim: int, num_heads: int, head_dim: int | None = None) -> None:
+        """Initialize the PaperMultiheadAttention instance."""
         super().__init__()
         self.embed_dim = int(embed_dim)
         self.num_heads = int(num_heads)
@@ -40,6 +41,7 @@ class PaperMultiheadAttention(nn.Module):
         tokens: torch.Tensor,
         mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, None]:
+        """Run the module forward pass."""
         batch_size, sequence_length, _ = tokens.shape
         q = self.w_qs(tokens).view(batch_size, sequence_length, self.num_heads, self.head_dim).transpose(1, 2)
         k = self.w_ks(tokens).view(batch_size, sequence_length, self.num_heads, self.head_dim).transpose(1, 2)

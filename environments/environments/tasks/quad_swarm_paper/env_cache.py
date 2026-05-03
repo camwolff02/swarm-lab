@@ -55,6 +55,7 @@ class EnvCache:
     _VALID_PHASES = frozenset(("reward", "observation"))
 
     def __init__(self, env: Any) -> None:
+        """Initialize the EnvCache instance."""
         self._env = env
         self._assets: dict[str, Any] = {}
         self._action_terms: dict[str, Any] = {}
@@ -66,24 +67,20 @@ class EnvCache:
 
     def new_step(self) -> None:
         """Invalidate per-step feature caches before simulator state advances."""
-
         self._clear_phase_caches()
 
     def on_reset(self) -> None:
         """Invalidate derived features after reset mutates simulator state."""
-
         self._clear_phase_caches()
 
     def invalidate_all(self) -> None:
         """Clear handles and all derived caches after unusual out-of-band mutation."""
-
         self._assets.clear()
         self._action_terms.clear()
         self._clear_phase_caches()
 
     def asset(self, asset_name: str) -> Any:
         """Return a persistent asset handle by name."""
-
         if asset_name in self._assets:
             self.stats["asset_hits"] += 1
             return self._assets[asset_name]
@@ -95,7 +92,6 @@ class EnvCache:
 
     def action_term(self, term_name: str) -> Any:
         """Return a persistent action-term handle by name."""
-
         if term_name in self._action_terms:
             self.stats["action_term_hits"] += 1
             return self._action_terms[term_name]
@@ -110,7 +106,6 @@ class EnvCache:
 
     def kinematics(self, asset_name: str, phase: CachePhase) -> KinematicsState:
         """Return cached root kinematics for one asset in the requested phase."""
-
         cache = self._phase_cache(phase)
         key = ("kinematics", asset_name)
         if key in cache:
@@ -138,7 +133,6 @@ class EnvCache:
         phase: CachePhase,
     ) -> SwarmKinematicsState:
         """Return cached stacked kinematics for the provided asset order."""
-
         names = tuple(asset_names)
         cache = self._phase_cache(phase)
         key = ("swarm_kinematics", names)
@@ -161,7 +155,6 @@ class EnvCache:
 
     def tracking(self, asset_name: str, action_term_name: str | None, phase: CachePhase) -> TrackingState:
         """Return cached target-tracking features for one asset."""
-
         cache = self._phase_cache(phase)
         key = ("tracking", asset_name, action_term_name)
         if key in cache:
@@ -190,7 +183,6 @@ class EnvCache:
         action_term_name: str | None = None,
     ) -> TrackingState:
         """Return cached stacked target-tracking features for a stable asset order."""
-
         names = tuple(asset_names)
         cache = self._phase_cache(phase)
         key = ("swarm_tracking", names, action_term_name)
@@ -214,15 +206,18 @@ class EnvCache:
         return tracking
 
     def _phase_cache(self, phase: CachePhase) -> dict[tuple[Any, ...], Any]:
+        """Phase cache."""
         if phase not in self._VALID_PHASES:
             raise ValueError(f"Unknown cache phase {phase!r}. Expected one of {sorted(self._VALID_PHASES)}.")
         return self._phase_caches[phase]
 
     def _clear_phase_caches(self) -> None:
+        """Clear phase caches."""
         for cache in self._phase_caches.values():
             cache.clear()
 
     def _resolve_asset(self, asset_name: str) -> Any:
+        """Resolve asset."""
         scene = getattr(self._env, "scene", None)
         if scene is not None:
             try:
@@ -240,6 +235,7 @@ class EnvCache:
         raise KeyError(f"Unable to resolve asset {asset_name!r} from the environment.")
 
     def _target_position(self, asset_name: str, action_term: Any | None) -> torch.Tensor:
+        """Target position."""
         target = _read_target_from_action_term(action_term)
         if target is not None:
             return target
@@ -251,6 +247,7 @@ class EnvCache:
         return goals[:, agent_ids.index(asset_name)]
 
     def _swarm_target_position(self, asset_names: tuple[str, ...], action_term: Any | None) -> torch.Tensor:
+        """Swarm target position."""
         target = _read_target_from_action_term(action_term)
         if target is not None:
             return target
@@ -264,12 +261,14 @@ class EnvCache:
 
 
 def _as_torch(value: Any) -> torch.Tensor:
+    """As torch."""
     if isinstance(value, torch.Tensor):
         return value
     return wp.to_torch(value)
 
 
 def _read_target_from_action_term(action_term: Any | None) -> torch.Tensor | None:
+    """Read target from action term."""
     if action_term is None:
         return None
 

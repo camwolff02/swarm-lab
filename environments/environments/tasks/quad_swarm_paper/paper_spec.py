@@ -1,4 +1,24 @@
-"""Paper constants for the quadrotor swarm obstacle-navigation task."""
+r"""Constants for the quadrotor swarm obstacle-navigation paper task.
+
+The constants define the observation contract, room geometry, policy cadence,
+collision radii, and reward scales used by the task implementation and model
+builders. Distances are meters and times are seconds unless noted otherwise.
+
+The observation dimension is computed from the self-state vector, visible-neighbor
+features, and local obstacle SDF grid:
+
+\[
+D_\text{obs} = D_\text{self} + kD_\text{neighbor} + D_\text{sdf}.
+\]
+
+The dense reward scales in this module parameterize the environment equation
+
+\[
+r_\text{dense} = -\Delta t\left(
+  w_d d + w_a\lVert a\rVert_2 + w_f f + w_q q + w_\omega\lVert\omega\rVert_2
+\right).
+\]
+"""
 
 from __future__ import annotations
 
@@ -7,6 +27,10 @@ VISIBLE_NEIGHBORS = 2
 SELF_OBS_SIZE = 19
 NEIGHBOR_OBS_SIZE = 6
 OBSTACLE_OBS_SIZE = 9
+# Observations are concatenated as ``[self, k nearest neighbors, local SDF]``.
+# The self vector contains goal-relative pose and vehicle state, each neighbor
+# contributes relative position and velocity, and the obstacle vector is a 3x3
+# local signed-distance grid.
 OBS_SIZE = SELF_OBS_SIZE + VISIBLE_NEIGHBORS * NEIGHBOR_OBS_SIZE + OBSTACLE_OBS_SIZE
 ACTION_SIZE = 4
 
@@ -22,18 +46,19 @@ LOCAL_SDF_RESOLUTION = 0.1
 
 EPISODE_LENGTH_S = 15.0
 SIM_DT = 0.01
-DECIMATION = (
-    2  # Possibly increase from 2 to 4 to reduce RL frequency relative to the physics frequency, improve stuttering
-    # Decimation controls how many environment steps we wait before acting.
-    # The ration between the physics frequency and the control frequency
-    # If physics runs at 100Hz, and Decimation = 2, agent acts at 50Hz. If Decimation = 5, agent acts at 20Hz
-)
+# Decimation is the ratio between physics frequency and policy frequency. With
+# ``SIM_DT = 0.01`` and ``DECIMATION = 2``, physics runs at 100 Hz and the policy
+# updates at 50 Hz.
+DECIMATION = 2
 HIDDEN_SIZE = 256
 ATTENTION_HEADS = 4
 LEARNING_RATE = 1.0e-4
 ROLLOUT_LENGTH = 128
 BATCH_SIZE = 1024
 REPLAY_PROBABILITY = 0.75
+# Collision replay waits this many simulated seconds before storing a state that
+# later collided. Resetting from the lagged state exposes the policy to the
+# lead-up, not just the terminal collision frame.
 REPLAY_LAG_S = 1.5
 
 GOAL_REACHED_RADIUS = 0.35

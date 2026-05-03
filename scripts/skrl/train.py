@@ -3,8 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""
-Script to train RL agent with skrl.
+"""Script to train RL agent with skrl.
 
 Visit the skrl documentation (https://skrl.readthedocs.io) to see the examples structured in
 a more user-friendly way.
@@ -114,7 +113,6 @@ def _append_render_carb_settings_to_kit_args(env_cfg, launcher_args) -> None:
     running. Some RTX settings, such as Fabric render-delegate options, must be
     present at Kit startup to avoid renderer warnings and stale dynamic geometry.
     """
-
     settings = getattr(getattr(getattr(env_cfg, "sim", None), "render", None), "carb_settings", None)
     if not settings:
         return

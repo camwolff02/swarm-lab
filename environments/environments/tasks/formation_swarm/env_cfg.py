@@ -65,6 +65,7 @@ class FormationSwarmEnvCfg(DirectMARLEnvCfg):
     use_ctbr_tanh: bool = True
 
     def __post_init__(self) -> None:
+        """Finalize derived Isaac Lab configuration fields."""
         self.possible_agents = [f"drone_{index}" for index in range(self.num_drones)]
         other_dim = (self.num_drones - 1) * spec.OTHER_OBS_DIM
         obs_dim = spec.SELF_OBS_DIM + other_dim + self.num_balls * spec.DYNAMIC_OBS_DIM + spec.STATIC_SDF_DIM

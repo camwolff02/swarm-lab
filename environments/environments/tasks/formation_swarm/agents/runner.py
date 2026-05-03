@@ -23,6 +23,7 @@ _ORIGINAL_GENERATE_AGENT = None
 
 
 def _encoder_cfg_from_model_config(model_cfg: dict[str, Any]) -> FormationAttentionEncoderCfg:
+    """Encoder cfg from model config."""
     return FormationAttentionEncoderCfg(
         num_drones=int(model_cfg.get("num_drones", 3)),
         num_balls=int(model_cfg.get("num_balls", 2)),
@@ -33,6 +34,7 @@ def _encoder_cfg_from_model_config(model_cfg: dict[str, Any]) -> FormationAttent
 
 
 def _generate_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model]]:
+    """Generate models."""
     device = env.device
     model_cfg = cfg.get("models", {})
     encoder_cfg = _encoder_cfg_from_model_config(model_cfg)
@@ -69,6 +71,7 @@ def _generate_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model
 
 
 def _generate_shared_mappo_agent(self: Runner, env: Any, cfg: dict[str, Any], models: dict[str, dict[str, Model]]) -> FormationSharedMAPPO:
+    """Generate shared mappo agent."""
     device = env.device
     possible_agents = env.possible_agents
     observation_spaces = env.observation_spaces
@@ -106,7 +109,6 @@ def _generate_shared_mappo_agent(self: Runner, env: Any, cfg: dict[str, Any], mo
 
 def install_formation_swarm_runner_patch() -> None:
     """Install a narrow model factory hook into SKRL's stock Runner."""
-
     global _ORIGINAL_GENERATE_AGENT, _ORIGINAL_GENERATE_MODELS
     skrl_runner_module.ExponentialLR = ExponentialLR
     if getattr(Runner, "_formation_swarm_patch", False):
@@ -116,6 +118,7 @@ def install_formation_swarm_runner_patch() -> None:
     _ORIGINAL_GENERATE_AGENT = Runner._generate_agent
 
     def _patched_generate_models(self: Runner, env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model]]:
+        """Patched generate models."""
         if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME:
             return _generate_models(env, cfg)
         return _ORIGINAL_GENERATE_MODELS(self, env, cfg)
@@ -123,6 +126,7 @@ def install_formation_swarm_runner_patch() -> None:
     def _patched_generate_agent(
         self: Runner, env: Any, cfg: dict[str, Any], models: dict[str, dict[str, Model]]
     ) -> FormationSharedMAPPO:
+        """Patched generate agent."""
         if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME:
             return _generate_shared_mappo_agent(self, env, cfg, models)
         return _ORIGINAL_GENERATE_AGENT(self, env, cfg, models)

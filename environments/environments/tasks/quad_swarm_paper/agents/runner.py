@@ -36,7 +36,6 @@ _ORIGINAL_GENERATE_MODELS = None
 
 def _generate_quad_swarm_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model]]:
     """Build paper policy/value modules for skrl's stock Runner."""
-
     if shared_homogeneous_ippo_enabled(cfg):
         raise NotImplementedError(
             "training.shared_homogeneous_ippo=True cannot use stock skrl IPPO. "
@@ -59,6 +58,7 @@ def _generate_quad_swarm_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict
         )
 
     def make_pair(agent_id: str) -> dict[str, Model]:
+        """Make pair."""
         return {
             "policy": QuadSwarmGaussianPolicy(
                 env.observation_spaces[agent_id],
@@ -92,7 +92,6 @@ def _generate_quad_swarm_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict
 
 def install_quad_swarm_runner_patch() -> None:
     """Install a narrow quad-swarm model factory hook into skrl's stock Runner."""
-
     global _ORIGINAL_GENERATE_MODELS, _ORIGINAL_RUNNER_INIT
     if getattr(Runner, "_quad_swarm_paper_patch", False):
         return
@@ -101,6 +100,7 @@ def install_quad_swarm_runner_patch() -> None:
     _ORIGINAL_GENERATE_MODELS = Runner._generate_models
 
     def _init(self: Runner, env: Any, cfg: dict[str, Any]) -> None:
+        """Init."""
         if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME and shared_homogeneous_ippo_enabled(cfg):
             self._env = env
             self._cfg = cfg
@@ -113,6 +113,7 @@ def install_quad_swarm_runner_patch() -> None:
         _ORIGINAL_RUNNER_INIT(self, env, cfg)
 
     def _generate_models(self: Runner, env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model]]:
+        """Generate models."""
         if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME:
             return _generate_quad_swarm_models(env, cfg)
         return _ORIGINAL_GENERATE_MODELS(self, env, cfg)

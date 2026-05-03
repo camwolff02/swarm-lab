@@ -3,8 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""
-Script to print all the available environments in Isaac Lab.
+"""Script to print all the available environments in Isaac Lab.
 
 The script iterates over all registered environments and stores the details in a table.
 It prints the name of the environment, the entry point and the config file.

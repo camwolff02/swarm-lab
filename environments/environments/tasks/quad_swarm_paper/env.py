@@ -60,8 +60,22 @@ def _paper_neighbor_features(
     *,
     k: int,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Return neighbor features selected by the release's closing-distance heuristic."""
+    r"""Return neighbor features selected by the release's closing-distance heuristic.
 
+    For ego robot \(i\) and candidate neighbor \(j\), define
+
+    \[
+    r_{ij}=p_j-p_i,\qquad v_{ij}=v_j-v_i,\qquad d_{ij}=\lVert r_{ij}\rVert_2.
+    \]
+
+    The release selects the \(k\) smallest closing metrics
+
+    \[
+    m_{ij}=d_{ij}+\frac{r_{ij}}{\max(d_{ij},\epsilon)}^\top v_{ij}.
+    \]
+
+    The returned feature block for each selected neighbor is \([r_{ij}, v_{ij}]\).
+    """
     num_envs, num_agents, _ = positions.shape
     if k <= 0:
         empty = torch.empty((num_envs, num_agents, 0), device=positions.device, dtype=positions.dtype)
@@ -102,8 +116,18 @@ def _paper_proximity_penalty(
     max_penalty: float,
     dt: float,
 ) -> torch.Tensor:
-    """Return the release's smooth robot-robot falloff penalty."""
+    r"""Return the release's smooth robot-robot falloff penalty.
 
+    For falloff radius \(R\), maximum penalty \(P\), and timestep \(\Delta t\), each
+    active neighbor contributes
+
+    \[
+    r_{ij} = -\Delta t\,P\left(1-\frac{d_{ij}}{R}\right)
+    \quad\text{when}\quad d_{ij}\le R.
+    \]
+
+    Contributions are summed per ego robot and clipped at zero by the implementation.
+    """
     num_agents = positions.shape[1]
     rel_positions = positions.unsqueeze(1) - positions.unsqueeze(2)
     distances = torch.linalg.norm(rel_positions, dim=-1)
@@ -115,11 +139,33 @@ def _paper_proximity_penalty(
 
 
 class QuadSwarmPaperEnv(DirectMARLEnv):
-    """Paper-style decentralized quadrotor swarm obstacle-navigation task."""
+    r"""Paper-style decentralized quadrotor swarm obstacle-navigation task.
+
+    The action is a normalized per-rotor thrust command. For action \(a_i\) and rotor
+    maximum thrust \(T_i^\max\), the applied target is
+
+    \[
+    T_i = T_i^\max\,\operatorname{clip}\left(\frac{a_i+1}{2},0,1\right).
+    \]
+
+    The dense reward is integrated over the simulator step \(\Delta t\). For agent
+    distance-to-goal \(d\), action norm \(\lVert a\rVert_2\), angular-velocity norm
+    \(\lVert\omega\rVert_2\), floor indicator \(f\), and orientation cost \(q\):
+
+    \[
+    r_\text{dense} = -\Delta t\left(
+      w_d d + w_a\lVert a\rVert_2 + w_f f + w_q q + w_\omega\lVert\omega\rVert_2
+    \right).
+    \]
+
+    Collision and proximity penalties are then added, annealed by the configured
+    collision scale, and the result is clipped to ``[-reward_clip, reward_clip]``.
+    """
 
     cfg: QuadSwarmPaperEnvCfg
 
     def __init__(self, cfg: QuadSwarmPaperEnvCfg, render_mode: str | None = None, **kwargs) -> None:
+        """Initialize the QuadSwarmPaperEnv instance."""
         self.cache = EnvCache(self)
         self._agent_ids = list(cfg.possible_agents)
         super().__init__(cfg, render_mode=render_mode, **kwargs)
@@ -187,6 +233,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         )
 
     def step(self, actions: dict[str, Any]) -> Any:
+        """Step."""
         self.cache.new_step()
         self._last_state = None
         return super().step(actions)
@@ -196,10 +243,12 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         seed: int | None = None,
         options: dict[str, Any] | None = None,
     ) -> tuple[dict[str, torch.Tensor], dict[str, dict]]:
+        """Reset internal state for the requested environments."""
         self.cache.new_step()
         return super().reset(seed=seed, options=options)
 
     def _setup_scene(self) -> None:
+        """Setup scene."""
         self.drones = {}
         for agent in self._agent_ids:
             robot_cfg = self.cfg.robot_cfg.replace(prim_path=f"/World/envs/env_.*/{agent}")
@@ -219,6 +268,11 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         self._spawn_obstacle_visuals()
 
     def _pre_physics_step(self, actions: dict[str, torch.Tensor]) -> None:
+        r"""Convert normalized rotor actions into thrust targets.
+
+        This method applies \(T_i=T_i^\max\operatorname{clip}((a_i+1)/2,0,1)\) through
+        :func:`cpsquare_lab.embodiments.multirotor.common.action_mapping.normalized_rotor_actions_to_thrust`.
+        """
         for drone_index, agent in enumerate(self._agent_ids):
             action = torch.nan_to_num(actions[agent].to(self.device), nan=0.0, posinf=1.0, neginf=-1.0).clamp(
                 -1.0, 1.0
@@ -227,10 +281,12 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             self._thrust_targets[agent] = normalized_rotor_actions_to_thrust(action, self._max_thrusts)
 
     def _apply_action(self) -> None:
+        """Apply action."""
         for agent, drone in self.drones.items():
             drone.set_thrust_target(self._thrust_targets[agent])
 
     def _get_observations(self) -> dict[str, torch.Tensor]:
+        """Get observations."""
         tracking = self.cache.swarm_tracking(self._agent_ids, phase="observation")
         state = self._state_dict_from_kinematics(tracking.kinematics)
         obstacle_positions = self._obstacle_positions
@@ -259,9 +315,18 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         return {agent: observations[:, index] for index, agent in enumerate(self._agent_ids)}
 
     def _get_states(self) -> torch.Tensor | None:
+        """Get states."""
         return None
 
     def _get_rewards(self) -> dict[str, torch.Tensor]:
+        r"""Compute dense navigation reward plus collision penalties.
+
+        The orientation cost is \(q=1\) for robots already at or below the configured
+        floor-crash height; otherwise it is \(q=-R_{zz}\), where \(R_{zz}\) is the
+        world \(z\) component of the body \(z\)-axis. This makes upright robots
+        receive a positive contribution through the leading negative sign, while
+        inverted robots are penalized.
+        """
         tracking = self.cache.swarm_tracking(self._agent_ids, phase="reward")
         state = self._state_dict_from_kinematics(tracking.kinematics)
 
@@ -329,6 +394,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         return {agent: reward[:, index] for index, agent in enumerate(self._agent_ids)}
 
     def _get_dones(self) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
+        """Get dones."""
         tracking = self.cache.swarm_tracking(self._agent_ids, phase="reward")
         state = self._state_dict_from_kinematics(tracking.kinematics)
         self._last_state = state
@@ -394,6 +460,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         return terminated, time_outs
 
     def _reset_idx(self, env_ids: Sequence[int] | torch.Tensor | None) -> None:
+        """Reset idx."""
         if env_ids is None:
             env_ids_tensor = torch.arange(self.num_envs, device=self.device, dtype=torch.long)
         elif isinstance(env_ids, torch.Tensor):
@@ -434,6 +501,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         self.cache.on_reset()
 
     def _update_replay_activation(self, env_ids: torch.Tensor) -> None:
+        """Update replay activation."""
         if not self.cfg.enable_replay or self._replay_active:
             return
 
@@ -449,10 +517,12 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             self._replay_active = average_signal < float(self.cfg.replay_activation_crash_signal_threshold)
 
     def _anneal_scale(self) -> float:
+        """Anneal scale."""
         steps = max(int(self.cfg.collision_penalty_anneal_steps), 1)
         return min(float(self.common_step_counter) / float(steps), 1.0)
 
     def _reset_fresh(self, env_ids: torch.Tensor) -> None:
+        """Reset fresh."""
         obstacle_positions, obstacle_mask = sample_obstacle_field(
             len(env_ids),
             density=self.cfg.obstacle_density if self.cfg.enable_obstacles else 0.0,
@@ -484,6 +554,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         )
 
     def _restore_snapshot(self, env_id: int, snapshot: SwarmReplaySnapshot) -> None:
+        """Restore snapshot."""
         env_ids = torch.tensor([env_id], device=self.device, dtype=torch.long)
         self._goals[env_ids] = snapshot.goals.to(self.device)
         self._obstacle_positions[env_ids] = snapshot.obstacle_positions.to(self.device)
@@ -498,6 +569,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         )
 
     def _restore_snapshot_batch(self, replay_batch: SwarmReplayBatch) -> None:
+        """Restore snapshot batch."""
         env_ids = replay_batch.env_ids.to(device=self.device, dtype=torch.long)
         snapshot = replay_batch.snapshot
         self._goals[env_ids] = snapshot.goals.to(self.device)
@@ -521,6 +593,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         linear_velocities: torch.Tensor,
         angular_velocities: torch.Tensor,
     ) -> None:
+        """Write swarm state."""
         for drone_index, agent in enumerate(self._agent_ids):
             drone = self.drones[agent]
             root_pose = wp.to_torch(drone.data.default_root_pose)[env_ids].clone()
@@ -541,9 +614,11 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             self._thrust_targets[agent][env_ids] = self._hover_thrust[env_ids]
 
     def _collect_swarm_state(self, phase: str = "reward") -> dict[str, torch.Tensor]:
+        """Collect swarm state."""
         return self._state_dict_from_kinematics(self.cache.swarm_kinematics(self._agent_ids, phase=phase))
 
     def _state_dict_from_kinematics(self, state: SwarmKinematicsState) -> dict[str, torch.Tensor]:
+        """State dict from kinematics."""
         return {
             "positions": state.root_pos_env,
             "orientations": state.root_quat_w,
@@ -553,6 +628,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         }
 
     def _make_snapshot(self, state: dict[str, torch.Tensor]) -> SwarmReplaySnapshot:
+        """Make snapshot."""
         return SwarmReplaySnapshot(
             positions=state["positions"],
             orientations=state["orientations"],
@@ -565,6 +641,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         )
 
     def _spawn_view_camera(self) -> None:
+        """Spawn view camera."""
         camera_path = self.cfg.viewer.cam_prim_path
         if not camera_path or camera_path == "/OmniverseKit_Persp":
             return
@@ -590,6 +667,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
         )
 
     def _spawn_obstacle_visuals(self) -> None:
+        """Spawn obstacle visuals."""
         self._obstacle_visual_prims = []
         if not self.cfg.spawn_obstacle_actors:
             return
@@ -610,6 +688,7 @@ class QuadSwarmPaperEnv(DirectMARLEnv):
             self._obstacle_visual_prims.append(prim)
 
     def _sync_obstacle_visuals(self, env_ids: torch.Tensor) -> None:
+        """Sync obstacle visuals."""
         if not getattr(self, "_obstacle_visual_prims", None):
             return
 
