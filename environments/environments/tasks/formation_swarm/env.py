@@ -97,6 +97,21 @@ def _other_drone_observation(positions: torch.Tensor, velocities: torch.Tensor) 
     return torch.cat((other_pos / 2.0, other_dist / 2.0, other_vel), dim=-1).reshape(positions.shape[0], positions.shape[1], -1)
 
 
+def _resolve_curriculum_settings(cfg: FormationSwarmEnvCfg) -> tuple[int, int, int, int]:
+    """Return active static/ball counts and throw schedule for the paper CL stage."""
+    if cfg.curriculum_stage == 1:
+        return 0, 0, spec.CURRICULUM_DELAYED_THROW_THRESHOLD_STEPS, spec.CURRICULUM_DELAYED_THROW_TIME_RANGE_STEPS
+    if cfg.curriculum_stage == 2:
+        return cfg.static_obstacles, 0, spec.CURRICULUM_DELAYED_THROW_THRESHOLD_STEPS, spec.CURRICULUM_DELAYED_THROW_TIME_RANGE_STEPS
+    if cfg.curriculum_stage == 3:
+        return cfg.static_obstacles, cfg.num_balls, cfg.throw_threshold_steps, cfg.throw_time_range_steps
+    if cfg.curriculum_stage == 0:
+        active_static = cfg.static_obstacles if cfg.active_static_obstacles is None else cfg.active_static_obstacles
+        active_balls = cfg.num_balls if cfg.active_balls is None else cfg.active_balls
+        return active_static, active_balls, cfg.throw_threshold_steps, cfg.throw_time_range_steps
+    raise ValueError("curriculum_stage must be 0 (custom), 1 (obstacle-free), 2 (static), or 3 (mixed)")
+
+
 class FormationSwarmEnv(DirectMARLEnv):
     r"""Directed formation flight with static columns and dynamic balls.
 
@@ -145,6 +160,11 @@ class FormationSwarmEnv(DirectMARLEnv):
         self._formation_l_unnormalized = _laplacian(self._formation, normalize=False)
         self._standard_formation_size = torch.cdist(self._formation, self._formation).max()
         self._drone_ids = torch.eye(3, device=self.device, dtype=torch.float32)[: self.cfg.num_drones]
+        active_static, active_balls, throw_threshold, throw_range = _resolve_curriculum_settings(cfg)
+        self._active_static_obstacles = max(0, min(int(active_static), self.cfg.static_obstacles))
+        self._active_balls = max(0, min(int(active_balls), self.cfg.num_balls))
+        self._throw_threshold_steps = int(throw_threshold)
+        self._throw_time_range_steps = int(throw_range)
         self._grid_offsets = torch.tensor(
             [[-0.1, -0.1], [-0.1, 0.0], [-0.1, 0.1], [0.0, -0.1], [0.0, 0.0], [0.0, 0.1], [0.1, -0.1], [0.1, 0.0], [0.1, 0.1]],
             device=self.device,
@@ -176,6 +196,7 @@ class FormationSwarmEnv(DirectMARLEnv):
         self._ball_start_vel = torch.zeros_like(self._balls_pos)
         self._ball_launch_step = torch.zeros(self.num_envs, self.cfg.num_balls, device=self.device, dtype=torch.long)
         self._ball_active = torch.zeros(self.num_envs, self.cfg.num_balls, device=self.device, dtype=torch.bool)
+        self._ball_launched = torch.zeros_like(self._ball_active)
         self._last_hit_ball = torch.zeros(self.num_envs, self.cfg.num_drones, device=self.device, dtype=torch.bool)
         self._last_hit_column = torch.zeros_like(self._last_hit_ball)
         self._last_too_close = torch.zeros_like(self._last_hit_ball)
@@ -248,8 +269,11 @@ class FormationSwarmEnv(DirectMARLEnv):
         obs_ball = obs_ball.masked_fill(inactive, 0.0).reshape(self.num_envs, self.cfg.num_drones, -1)
 
         grid = pos[..., :2].unsqueeze(2) + self._grid_offsets.view(1, 1, -1, 2)
-        rel_columns = self._columns[:, None, :, None, :2] - grid[:, :, None, :, :]
-        obs_static = torch.linalg.norm(rel_columns, dim=-1).amin(dim=2)
+        if self._active_static_obstacles > 0:
+            rel_columns = self._columns[:, None, : self._active_static_obstacles, None, :2] - grid[:, :, None, :, :]
+            obs_static = torch.linalg.norm(rel_columns, dim=-1).amin(dim=2)
+        else:
+            obs_static = torch.zeros(self.num_envs, self.cfg.num_drones, spec.STATIC_SDF_DIM, device=self.device)
 
         observations = torch.cat((obs_self, obs_others, obs_ball, obs_static), dim=-1).clamp(-20.0, 20.0)
         return {agent: observations[:, index] for index, agent in enumerate(self._agent_ids)}
@@ -306,22 +330,44 @@ class FormationSwarmEnv(DirectMARLEnv):
         vel_reward = torch.clamp(torch.clamp(torch.linalg.norm(self._target_vel), min=1.0) - torch.linalg.norm(vel_error, dim=-1), min=0.0)
         height_reward = torch.clamp(1.0 - (pos[..., 2] - self._target_pos[2]).abs(), min=0.0)
 
-        rel_ball_pos = self._balls_pos.unsqueeze(1) - pos.unsqueeze(2)
-        ball_dist = torch.linalg.norm(rel_ball_pos, dim=-1)
-        active_ball = self._ball_active.unsqueeze(1)
-        ball_hard = torch.zeros_like(ball_dist)
-        ball_hard[ball_dist < spec.OBS_SAFE_DISTANCE] = -(spec.BALL_HARD_REWARD_COEFF / spec.BALL_REWARD_COEFF)
-        k = 0.5 * (spec.BALL_HARD_REWARD_COEFF / spec.BALL_REWARD_COEFF) / (spec.SOFT_OBS_SAFE_DISTANCE - spec.OBS_SAFE_DISTANCE)
-        ball_soft = (ball_dist.clamp(spec.OBS_SAFE_DISTANCE, spec.SOFT_OBS_SAFE_DISTANCE) - spec.SOFT_OBS_SAFE_DISTANCE) * k
-        ball_soft = ball_soft + (ball_dist - spec.SOFT_OBS_SAFE_DISTANCE).clamp_min(0.0)
-        ball_reward = ((ball_hard + ball_soft) * active_ball).amin(dim=-1)
+        if self.cfg.num_balls > 0:
+            rel_ball_pos = self._balls_pos.unsqueeze(1) - pos.unsqueeze(2)
+            ball_dist = torch.linalg.norm(rel_ball_pos, dim=-1)
+            active_ball = self._ball_active.unsqueeze(1)
+            ball_hard = torch.zeros_like(ball_dist)
+            ball_hard[ball_dist < spec.OBS_SAFE_DISTANCE] = -(spec.BALL_HARD_REWARD_COEFF / spec.BALL_REWARD_COEFF)
+            k = 0.5 * (spec.BALL_HARD_REWARD_COEFF / spec.BALL_REWARD_COEFF) / (spec.SOFT_OBS_SAFE_DISTANCE - spec.OBS_SAFE_DISTANCE)
+            ball_soft = (ball_dist.clamp(spec.OBS_SAFE_DISTANCE, spec.SOFT_OBS_SAFE_DISTANCE) - spec.SOFT_OBS_SAFE_DISTANCE) * k
+            ball_soft = ball_soft + (ball_dist - spec.SOFT_OBS_SAFE_DISTANCE).clamp_min(0.0)
+            ball_reward = ((ball_hard + ball_soft) * active_ball).amin(dim=-1)
+            ball_any_mask = active_ball.any(dim=-1)
+            launched_active = (
+                self._ball_launched[:, : self._active_balls].all(dim=-1, keepdim=True)
+                if self._active_balls > 0
+                else torch.zeros(self.num_envs, 1, device=self.device, dtype=torch.bool)
+            )
+            after_throw_mask = (~ball_any_mask) & launched_active
+            hit_ball = ((ball_dist < spec.BALL_RADIUS) & active_ball).any(dim=-1)
+        else:
+            ball_any_mask = torch.zeros(self.num_envs, 1, device=self.device, dtype=torch.bool)
+            after_throw_mask = torch.zeros_like(ball_any_mask)
+            ball_reward = torch.zeros(self.num_envs, self.cfg.num_drones, device=self.device)
+            hit_ball = torch.zeros(self.num_envs, self.cfg.num_drones, device=self.device, dtype=torch.bool)
 
-        rel_col = self._columns.unsqueeze(1) - pos.unsqueeze(2)
-        col_dist = torch.linalg.norm(rel_col[..., :2], dim=-1)
-        cube_reward = (col_dist.clamp(spec.COLUMN_RADIUS, spec.OBS_SAFE_DISTANCE) - spec.OBS_SAFE_DISTANCE).mean(dim=-1)
-
-        hit_ball = ((ball_dist < spec.BALL_RADIUS) & active_ball).any(dim=-1)
-        hit_column = (col_dist < spec.COLUMN_RADIUS).any(dim=-1)
+        if self._active_static_obstacles > 0:
+            rel_col = self._columns[:, : self._active_static_obstacles].unsqueeze(1) - pos.unsqueeze(2)
+            col_dist = torch.linalg.norm(rel_col[..., :2], dim=-1)
+            cube_reward = (col_dist.clamp(spec.COLUMN_RADIUS, spec.OBS_SAFE_DISTANCE) - spec.OBS_SAFE_DISTANCE).mean(dim=-1)
+            hit_column = (col_dist < spec.COLUMN_RADIUS).any(dim=-1)
+            column_near = (
+                (col_dist < (spec.SOFT_OBS_SAFE_DISTANCE + 1.0)).any(dim=(1, 2)).unsqueeze(-1)
+                if self.cfg.use_cube_reward_mask
+                else torch.zeros(self.num_envs, 1, device=self.device, dtype=torch.bool)
+            )
+        else:
+            cube_reward = torch.zeros(self.num_envs, self.cfg.num_drones, device=self.device)
+            hit_column = torch.zeros_like(hit_ball)
+            column_near = torch.zeros(self.num_envs, 1, device=self.device, dtype=torch.bool)
         hit_reward = (hit_ball | hit_column).float()
         crash = (pos[..., 2] < spec.CRASH_MIN_HEIGHT) | (pos[..., 2] > spec.CRASH_MAX_HEIGHT)
         too_close = separation < spec.HARD_SAFE_DISTANCE
@@ -354,11 +400,14 @@ class FormationSwarmEnv(DirectMARLEnv):
             - bad_env * spec.TRUNCATED_REWARD
         )
 
-        column_near = (col_dist < (spec.SOFT_OBS_SAFE_DISTANCE + 1.0)).any(dim=(1, 2)).unsqueeze(-1)
-        obstacle_present = active_ball.any(dim=-1) | column_near
-        coeff = torch.where(obstacle_present, torch.full_like(obstacle_present, 0.2, dtype=torch.float32), torch.ones_like(obstacle_present, dtype=torch.float32))
+        obstacle_present = ball_any_mask | column_near
+        coeff = torch.where(
+            obstacle_present,
+            torch.full_like(obstacle_present, spec.HAS_OBSTACLE_COEFF, dtype=torch.float32),
+            torch.full_like(obstacle_present, spec.NO_OBSTACLE_COEFF, dtype=torch.float32),
+        )
         morl_formation = (
-            reward_size * coeff * spec.FORMATION_SIZE_COEFF
+            (reward_size * coeff + reward_size * after_throw_mask * spec.AFTER_THROW_COEFF) * spec.FORMATION_SIZE_COEFF
             + reward_formation * spec.FORMATION_COEFF * coeff
             + separation_reward * spec.SEPARATION_COEFF
             + too_close_reward * spec.TOO_CLOSE_PENALTY
@@ -370,9 +419,8 @@ class FormationSwarmEnv(DirectMARLEnv):
             + pos_reward * spec.POSITION_REWARD_COEFF * truncated
             + vel_reward * spec.VELOCITY_COEFF * coeff
             + reward_heading * spec.HEADING_COEFF
-            + truncated * spec.TRUNCATED_REWARD
-            - bad_env * spec.TRUNCATED_REWARD
-        )
+        ) * coeff
+        morl_forward = morl_forward + truncated * spec.TRUNCATED_REWARD - bad_env * spec.TRUNCATED_REWARD
         reward = (
             morl_smooth * spec.MORL_SMOOTH_WEIGHT
             + morl_obstacle * spec.MORL_OBSTACLE_WEIGHT
@@ -410,11 +458,20 @@ class FormationSwarmEnv(DirectMARLEnv):
         pairwise_dist = torch.cdist(pos, pos)
         pairwise_dist = pairwise_dist.masked_fill(torch.eye(self.cfg.num_drones, device=self.device, dtype=torch.bool), torch.inf)
         separation = pairwise_dist.amin(dim=-1)
-        ball_dist = torch.linalg.norm(self._balls_pos.unsqueeze(1) - pos.unsqueeze(2), dim=-1)
-        active_ball = self._ball_active.unsqueeze(1)
-        col_dist = torch.linalg.norm((self._columns.unsqueeze(1) - pos.unsqueeze(2))[..., :2], dim=-1)
-        self._last_hit_ball = ((ball_dist < spec.BALL_RADIUS) & active_ball).any(dim=-1)
-        self._last_hit_column = (col_dist < spec.COLUMN_RADIUS).any(dim=-1)
+        if self.cfg.num_balls > 0:
+            ball_dist = torch.linalg.norm(self._balls_pos.unsqueeze(1) - pos.unsqueeze(2), dim=-1)
+            active_ball = self._ball_active.unsqueeze(1)
+            self._last_hit_ball = ((ball_dist < spec.BALL_RADIUS) & active_ball).any(dim=-1)
+        else:
+            self._last_hit_ball = torch.zeros(self.num_envs, self.cfg.num_drones, device=self.device, dtype=torch.bool)
+        if self._active_static_obstacles > 0:
+            col_dist = torch.linalg.norm(
+                (self._columns[:, : self._active_static_obstacles].unsqueeze(1) - pos.unsqueeze(2))[..., :2],
+                dim=-1,
+            )
+            self._last_hit_column = (col_dist < spec.COLUMN_RADIUS).any(dim=-1)
+        else:
+            self._last_hit_column = torch.zeros_like(self._last_hit_ball)
         self._last_too_close = separation < spec.HARD_SAFE_DISTANCE
         self._last_crash = (pos[..., 2] < spec.CRASH_MIN_HEIGHT) | (pos[..., 2] > spec.CRASH_MAX_HEIGHT)
         terminated = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
@@ -491,13 +548,16 @@ class FormationSwarmEnv(DirectMARLEnv):
 
     def _sample_columns(self, env_ids: torch.Tensor) -> None:
         """Sample columns."""
+        self._columns[env_ids] = torch.tensor((0.0, 0.0, -10.0), device=self.device)
+        if self._active_static_obstacles == 0:
+            return
         target_speed = torch.linalg.norm(self._target_vel[:2]).clamp_min(1.0)
         length = float(target_speed * self.cfg.episode_length_s) - 2.0 * spec.STATIC_MARGIN
         cols = int((2.0 * spec.GRID_BORDER) // spec.GRID_SIZE)
         rows = max(int(length // spec.GRID_SIZE), 1)
         total = rows * cols
         random_values = torch.randint(total, (len(env_ids), total), device=self.device)
-        indices = torch.argsort(random_values, dim=-1)[:, : self.cfg.static_obstacles]
+        indices = torch.argsort(random_values, dim=-1)[:, : self._active_static_obstacles]
         grid_a = indices // cols
         grid_b = indices % cols
         x0 = grid_a.float() * spec.GRID_SIZE + spec.STATIC_MARGIN
@@ -508,26 +568,34 @@ class FormationSwarmEnv(DirectMARLEnv):
         x = x0 * cos_theta - y0 * sin_theta
         y = x0 * sin_theta + y0 * cos_theta
         z = torch.zeros_like(x)
-        self._columns[env_ids] = torch.stack((x, y, z), dim=-1)
+        self._columns[env_ids, : self._active_static_obstacles] = torch.stack((x, y, z), dim=-1)
 
     def _reset_balls(self, env_ids: torch.Tensor) -> None:
         """Reset balls."""
         self._ball_active[env_ids] = False
+        self._ball_launched[env_ids] = False
         self._balls_pos[env_ids] = torch.tensor((0.0, 0.0, -10.0), device=self.device)
         self._balls_vel[env_ids] = 0.0
-        launch_offsets = torch.rand(len(env_ids), self.cfg.num_balls, device=self.device) * spec.THROW_TIME_RANGE_STEPS
-        self._ball_launch_step[env_ids] = (spec.THROW_THRESHOLD_STEPS + launch_offsets).long()
+        self._ball_launch_step[env_ids] = self.max_episode_length + 1
+        if self._active_balls > 0:
+            launch_offsets = torch.rand(len(env_ids), self._active_balls, device=self.device) * self._throw_time_range_steps
+            self._ball_launch_step[env_ids, : self._active_balls] = (self._throw_threshold_steps + launch_offsets).long()
 
     def _update_balls(self) -> None:
         """Update balls."""
         if self.cfg.num_balls == 0:
             return
+        active_slots = torch.arange(self.cfg.num_balls, device=self.device) < self._active_balls
         should_launch = (self.episode_length_buf.unsqueeze(-1) >= self._ball_launch_step) & ~self._ball_active
+        should_launch = should_launch & active_slots.view(1, -1)
         if should_launch.any():
             state = self._collect_state()
             center = state["pos"].mean(dim=1)
             env_ids, ball_ids = should_launch.nonzero(as_tuple=True)
-            speed = torch.rand(len(env_ids), device=self.device) * (spec.MAX_BALL_SPEED - spec.MIN_BALL_SPEED) + spec.MIN_BALL_SPEED
+            if self.cfg.random_ball_speed:
+                speed = torch.rand(len(env_ids), device=self.device) * (spec.MAX_BALL_SPEED - spec.MIN_BALL_SPEED) + spec.MIN_BALL_SPEED
+            else:
+                speed = torch.full((len(env_ids),), float(self.cfg.ball_speed), device=self.device)
             direction_xy = torch.rand(len(env_ids), 2, device=self.device) * 2.0 - 1.0
             direction_xy = direction_xy / torch.linalg.norm(direction_xy, dim=-1, keepdim=True).clamp_min(1.0e-6)
             t_hit = torch.rand(len(env_ids), device=self.device) * 0.8 + 0.8
@@ -544,6 +612,7 @@ class FormationSwarmEnv(DirectMARLEnv):
             self._balls_vel[env_ids, ball_ids] = vel
             self._ball_launch_step[env_ids, ball_ids] = self.episode_length_buf[env_ids]
             self._ball_active[env_ids, ball_ids] = True
+            self._ball_launched[env_ids, ball_ids] = True
 
         active_envs, active_balls = self._ball_active.nonzero(as_tuple=True)
         if len(active_envs) > 0:
@@ -595,8 +664,11 @@ class FormationSwarmEnv(DirectMARLEnv):
             return
         origin = self.scene.env_origins[0].detach().cpu()
         for index, prim in enumerate(self._column_prims):
-            position = self._columns[0, index].detach().cpu() + origin
-            position[2] = spec.STATIC_HEIGHT / 2.0
+            if index < self._active_static_obstacles:
+                position = self._columns[0, index].detach().cpu() + origin
+                position[2] = spec.STATIC_HEIGHT / 2.0
+            else:
+                position = torch.tensor((0.0, 0.0, -10.0))
             sim_utils.standardize_xform_ops(prim, translation=tuple(float(v) for v in position))
         for index, prim in enumerate(self._ball_prims):
             position = self._balls_pos[0, index].detach().cpu() + origin

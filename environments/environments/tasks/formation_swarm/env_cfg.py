@@ -53,10 +53,17 @@ class FormationSwarmEnvCfg(DirectMARLEnvCfg):
     num_drones: int = spec.NUM_DRONES
     num_balls: int = spec.NUM_BALLS
     static_obstacles: int = spec.STATIC_OBSTACLES
+    curriculum_stage: int = 3
+    active_balls: int | None = None
+    active_static_obstacles: int | None = None
     formation_size: float = spec.FORMATION_SIZE
     target_pos: tuple[float, float, float] = spec.TARGET_POS
     target_vel: tuple[float, float, float] = spec.TARGET_VEL
     target_heading: tuple[float, float, float] = spec.TARGET_HEADING
+    ball_speed: float = spec.BALL_SPEED
+    throw_threshold_steps: int = spec.THROW_THRESHOLD_STEPS
+    throw_time_range_steps: int = spec.THROW_TIME_RANGE_STEPS
+    use_cube_reward_mask: bool = False
 
     spawn_obstacle_visuals: bool = True
     terminate_on_collision: bool = True
@@ -81,4 +88,3 @@ class FormationSwarmEnvCfg(DirectMARLEnvCfg):
         self.viewer.eye = (5.0, -8.0, 5.0)
         self.viewer.lookat = (0.0, 5.0, 1.2)
         self.viewer.cam_prim_path = "/World/FormationSwarmCamera"
-

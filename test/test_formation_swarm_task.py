@@ -7,7 +7,13 @@ import torch
 
 from environments.tasks.formation_swarm import paper_spec as spec
 from environments.tasks.formation_swarm.agents.runner import _generate_models
-from environments.tasks.formation_swarm.env import _formation_cost, _laplacian, _other_drone_observation, _pairwise_without_self
+from environments.tasks.formation_swarm.env import (
+    _formation_cost,
+    _laplacian,
+    _other_drone_observation,
+    _pairwise_without_self,
+    _resolve_curriculum_settings,
+)
 from environments.tasks.formation_swarm.models import FormationAttentionEncoder, FormationAttentionEncoderCfg
 
 
@@ -64,12 +70,48 @@ def test_model_factory_uses_shared_actor_and_observation_critic():
     assert models["drone_0"]["value"].observation_space.shape == obs_space.shape
 
 
-def test_obstacle_presence_broadcast_shape():
+def test_static_columns_do_not_downweight_formation_by_default():
     batch = 64
-    active_ball = torch.zeros(batch, 1, spec.NUM_BALLS, dtype=torch.bool)
+    active_ball = torch.zeros(batch, 1, dtype=torch.bool)
     col_dist = torch.ones(batch, spec.NUM_DRONES, spec.STATIC_OBSTACLES)
 
-    column_near = (col_dist < (spec.SOFT_OBS_SAFE_DISTANCE + 1.0)).any(dim=(1, 2)).unsqueeze(-1)
-    obstacle_present = active_ball.any(dim=-1) | column_near
+    use_cube_reward_mask = False
+    column_near = (
+        (col_dist < (spec.SOFT_OBS_SAFE_DISTANCE + 1.0)).any(dim=(1, 2)).unsqueeze(-1)
+        if use_cube_reward_mask
+        else torch.zeros(batch, 1, dtype=torch.bool)
+    )
+    obstacle_present = active_ball | column_near
 
     assert obstacle_present.shape == (batch, 1)
+    assert not obstacle_present.any()
+
+
+def test_paper_curriculum_stage_settings_keep_observation_slots_stable():
+    base = {
+        "static_obstacles": spec.STATIC_OBSTACLES,
+        "num_balls": spec.NUM_BALLS,
+        "active_static_obstacles": None,
+        "active_balls": None,
+        "throw_threshold_steps": spec.THROW_THRESHOLD_STEPS,
+        "throw_time_range_steps": spec.THROW_TIME_RANGE_STEPS,
+    }
+
+    assert _resolve_curriculum_settings(SimpleNamespace(**base, curriculum_stage=1)) == (
+        0,
+        0,
+        spec.CURRICULUM_DELAYED_THROW_THRESHOLD_STEPS,
+        spec.CURRICULUM_DELAYED_THROW_TIME_RANGE_STEPS,
+    )
+    assert _resolve_curriculum_settings(SimpleNamespace(**base, curriculum_stage=2)) == (
+        spec.STATIC_OBSTACLES,
+        0,
+        spec.CURRICULUM_DELAYED_THROW_THRESHOLD_STEPS,
+        spec.CURRICULUM_DELAYED_THROW_TIME_RANGE_STEPS,
+    )
+    assert _resolve_curriculum_settings(SimpleNamespace(**base, curriculum_stage=3)) == (
+        spec.STATIC_OBSTACLES,
+        spec.NUM_BALLS,
+        spec.THROW_THRESHOLD_STEPS,
+        spec.THROW_TIME_RANGE_STEPS,
+    )

@@ -62,6 +62,12 @@ parser.add_argument(
     "--distributed", action="store_true", default=False, help="Run training with multiple GPUs or nodes."
 )
 parser.add_argument("--checkpoint", type=str, default=None, help="Path to model checkpoint to resume training.")
+parser.add_argument(
+    "--reset_optimizer_on_resume",
+    action="store_true",
+    default=False,
+    help="After loading --checkpoint, reinitialize optimizer/scheduler state from the current agent config.",
+)
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
 parser.add_argument("--export_io_descriptors", action="store_true", default=False, help="Export IO descriptors.")
 parser.add_argument(
@@ -241,6 +247,11 @@ def main():
         if resume_path:
             print(f"[INFO] Loading model checkpoint from: {resume_path}")
             runner.agent.load(resume_path)
+            if args_cli.reset_optimizer_on_resume:
+                if not hasattr(runner.agent, "reset_optimizer_state"):
+                    raise AttributeError("The selected skrl agent does not support --reset_optimizer_on_resume")
+                runner.agent.reset_optimizer_state()
+                print("[INFO] Reset optimizer and scheduler state after loading checkpoint.")
 
         # run training
         try:

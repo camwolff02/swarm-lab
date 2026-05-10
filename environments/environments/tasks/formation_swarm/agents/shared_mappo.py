@@ -115,6 +115,18 @@ class FormationSharedMAPPO(MAPPO):
             if self._use_value_norm:
                 self.checkpoint_modules[uid]["value_normalizer"] = self._value_normalizer
 
+    def reset_optimizer_state(self) -> None:
+        """Recreate optimizers and schedulers from config after loading model weights."""
+        self.actor_optimizer = torch.optim.Adam(self.policy.parameters(), lr=self._learning_rate[self._shared_uid])
+        self.critic_optimizer = torch.optim.Adam(self.value.parameters(), lr=self._learning_rate[self._shared_uid])
+        self.actor_scheduler = self._make_scheduler(self.actor_optimizer)
+        self.critic_scheduler = self._make_scheduler(self.critic_optimizer)
+        self.optimizers = {uid: self.actor_optimizer for uid in self.possible_agents}
+        self.schedulers = {uid: self.actor_scheduler for uid in self.possible_agents if self.actor_scheduler is not None}
+        for uid in self.possible_agents:
+            self.checkpoint_modules[uid]["actor_optimizer"] = self.actor_optimizer
+            self.checkpoint_modules[uid]["critic_optimizer"] = self.critic_optimizer
+
     def _make_scheduler(self, optimizer: torch.optim.Optimizer) -> torch.optim.lr_scheduler.LRScheduler | None:
         """Make scheduler."""
         scheduler_cls = self._learning_rate_scheduler[self._shared_uid]
