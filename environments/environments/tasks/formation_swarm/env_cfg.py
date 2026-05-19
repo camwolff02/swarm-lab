@@ -4,65 +4,30 @@ from __future__ import annotations
 
 import gymnasium as gym
 import numpy as np
+from cpsquare_lab.embodiments.multirotor.cf2x.sim.robot import CRAZYFLIE_CFG
+from cpsquare_lab.tasks.common.physics import physx_swarm_cfg
 
 import isaaclab.sim as sim_utils
-from isaaclab.envs import DirectMARLEnvCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sim import SimulationCfg
 from isaaclab.utils import configclass
 
-from cpsquare_lab.embodiments.multirotor.cf2x.sim.robot import CRAZYFLIE_CFG
-from cpsquare_lab.tasks.common.physics import physx_swarm_cfg
-
-from . import paper_spec as spec
+from .paper_spec import PaperSpecEnvCfg
 
 
 @configclass
-class FormationSwarmEnvCfg(DirectMARLEnvCfg):
+class FormationSwarmEnvCfg(PaperSpecEnvCfg):
     """Configuration for Xie et al. formation maintenance with obstacle avoidance."""
 
-    decimation = spec.DECIMATION
-    episode_length_s = spec.EPISODE_LENGTH_S
-    possible_agents = [f"drone_{index}" for index in range(spec.NUM_DRONES)]
-    observation_spaces = {
-        agent: gym.spaces.Box(low=-np.inf, high=np.inf, shape=(spec.OBS_DIM,), dtype=np.float32)
-        for agent in possible_agents
-    }
-    action_spaces = {
-        agent: gym.spaces.Box(low=-1.0, high=1.0, shape=(spec.ACTION_DIM,), dtype=np.float32)
-        for agent in possible_agents
-    }
     state_space = -1
-
-    sim: SimulationCfg = SimulationCfg(
-        dt=spec.SIM_DT,
-        render_interval=decimation,
-        physics=physx_swarm_cfg(),
-        render=sim_utils.RenderCfg(
-            carb_settings={"/rtx/hydra/readTransformsFromFabricInRenderDelegate": False},
-        ),
-        physics_material=sim_utils.RigidBodyMaterialCfg(
-            static_friction=1.0,
-            dynamic_friction=1.0,
-            restitution=0.0,
-        ),
-    )
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=1024, env_spacing=12.0, replicate_physics=True)
-    robot_cfg = CRAZYFLIE_CFG.replace(prim_path="{ENV_REGEX_NS}/drone_0")
 
-    num_drones: int = spec.NUM_DRONES
-    num_balls: int = spec.NUM_BALLS
-    static_obstacles: int = spec.STATIC_OBSTACLES
+    # TODO make this modular to swap out Drone
+    robot_cfg = CRAZYFLIE_CFG.replace(prim_path="{ENV_REGEX_NS}/robot_0")
+
     curriculum_stage: int = 3
     active_balls: int | None = None
     active_static_obstacles: int | None = None
-    formation_size: float = spec.FORMATION_SIZE
-    target_pos: tuple[float, float, float] = spec.TARGET_POS
-    target_vel: tuple[float, float, float] = spec.TARGET_VEL
-    target_heading: tuple[float, float, float] = spec.TARGET_HEADING
-    ball_speed: float = spec.BALL_SPEED
-    throw_threshold_steps: int = spec.THROW_THRESHOLD_STEPS
-    throw_time_range_steps: int = spec.THROW_TIME_RANGE_STEPS
     use_cube_reward_mask: bool = False
 
     spawn_obstacle_visuals: bool = True
@@ -73,18 +38,37 @@ class FormationSwarmEnvCfg(DirectMARLEnvCfg):
 
     def __post_init__(self) -> None:
         """Finalize derived Isaac Lab configuration fields."""
-        self.possible_agents = [f"drone_{index}" for index in range(self.num_drones)]
-        other_dim = (self.num_drones - 1) * spec.OTHER_OBS_DIM
-        obs_dim = spec.SELF_OBS_DIM + other_dim + self.num_balls * spec.DYNAMIC_OBS_DIM + spec.STATIC_SDF_DIM
-        self.observation_spaces = {
-            agent: gym.spaces.Box(low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32)
-            for agent in self.possible_agents
-        }
-        self.action_spaces = {
-            agent: gym.spaces.Box(low=-1.0, high=1.0, shape=(spec.ACTION_DIM,), dtype=np.float32)
-            for agent in self.possible_agents
-        }
-        self.state_space = -1
+        super().__post_init__()
+
+        # Scene Configuration
         self.viewer.eye = (5.0, -8.0, 5.0)
         self.viewer.lookat = (0.0, 5.0, 1.2)
         self.viewer.cam_prim_path = "/World/FormationSwarmCamera"
+
+        # Scene Construction
+        self.sim: SimulationCfg = SimulationCfg(
+            dt=self.sim_dt,
+            render_interval=self.decimation,
+            physics=physx_swarm_cfg(),
+            render=sim_utils.RenderCfg(
+                carb_settings={"/rtx/hydra/readTransformsFromFabricInRenderDelegate": False},
+            ),
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                static_friction=1.0,
+                dynamic_friction=1.0,
+                restitution=0.0,
+            ),
+        )
+        self.possible_agents = [f"robot_{index}" for index in range(self.num_drones)]
+
+        other_dim = (self.num_drones - 1) * self.other_obs_dim
+        self.obs_dim = self.self_obs_dim + other_dim + self.num_balls * self.dynamic_obs_dim + self.static_sdf_dim
+
+        self.observation_spaces = {
+            agent: gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.obs_dim,), dtype=np.float32)
+            for agent in self.possible_agents
+        }
+        self.action_spaces = {
+            agent: gym.spaces.Box(low=-1.0, high=1.0, shape=(self.action_dim,), dtype=np.float32)
+            for agent in self.possible_agents
+        }

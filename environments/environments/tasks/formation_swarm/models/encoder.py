@@ -8,23 +8,25 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from .. import paper_spec as spec
+from ..paper_spec import PaperSpecEnvCfg
+
+_PAPER_SPEC_DEFAULTS = PaperSpecEnvCfg()
 
 
 @dataclass(frozen=True)
 class FormationAttentionEncoderCfg:
     """Shape and model-size configuration for the formation encoder."""
 
-    num_drones: int = spec.NUM_DRONES
-    num_balls: int = spec.NUM_BALLS
-    self_obs_dim: int = spec.SELF_OBS_DIM
-    other_obs_dim: int = spec.OTHER_OBS_DIM
-    dynamic_obs_dim: int = spec.DYNAMIC_OBS_DIM
-    static_obs_dim: int = spec.STATIC_SDF_DIM
-    attention_dim: int = spec.ATTENTION_DIM
-    attention_heads: int = spec.ATTENTION_HEADS
-    hidden_units: tuple[int, ...] = spec.MLP_HIDDEN
-    initial_log_std: float = spec.INITIAL_LOG_STD
+    num_drones: int = _PAPER_SPEC_DEFAULTS.num_drones
+    num_balls: int = _PAPER_SPEC_DEFAULTS.num_balls
+    self_obs_dim: int = _PAPER_SPEC_DEFAULTS.self_obs_dim
+    other_obs_dim: int = _PAPER_SPEC_DEFAULTS.other_obs_dim
+    dynamic_obs_dim: int = _PAPER_SPEC_DEFAULTS.dynamic_obs_dim
+    static_obs_dim: int = _PAPER_SPEC_DEFAULTS.static_sdf_dim
+    attention_dim: int = _PAPER_SPEC_DEFAULTS.attention_dim
+    attention_heads: int = _PAPER_SPEC_DEFAULTS.attention_heads
+    hidden_units: tuple[int, ...] = tuple(_PAPER_SPEC_DEFAULTS.mlp_hidden)
+    initial_log_std: float = _PAPER_SPEC_DEFAULTS.initial_log_std
 
     @property
     def other_count(self) -> int:

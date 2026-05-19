@@ -6,13 +6,10 @@ from collections.abc import Sequence
 
 import torch
 import warp as wp
-from cpsquare_lab.embodiments.multirotor.cf2x.sim.robot import CRAZYFLIE_CTBR_CONTROLLER_CFG
-from cpsquare_lab.embodiments.multirotor.common.actions import (
-    ActionType,
-    CtbrAction,
-    CtbrActionCfg,
-    HandleOutOfRangeAction,
-)
+from cpsquare_lab.embodiments.multirotor.cf2x.sim.robot import CRAZYFLIE_LEE_CTBR_CONTROLLER_CFG, CRAZYFLIE_PARAMS
+from cpsquare_lab.embodiments.multirotor.common.actions import LeeBodyWrenchAction, LeeBodyWrenchActionCfg
+
+# from cpsquare_lab.embodiments.multirotor.common.actions import CtbrAction, CtbrActionCfg
 from cpsquare_lab.tasks.common.metrics import (
     flush_episode_metrics,
     initialize_episode_metrics,
@@ -194,23 +191,38 @@ class FormationSwarmEnv(DirectMARLEnv):
             dtype=torch.float32,
         )
 
+        # self._ctbr_actions = {
+        #     agent: CtbrAction(
+        #         CtbrActionCfg(
+        #             asset_name=agent,
+        #             controller_class=PIDRateController,
+        #             controller_params=CRAZYFLIE_PARAMS.__dict__,
+        #             thrust_ratio_range=(0.0, 0.9),
+        #             use_tanh=self.cfg.use_ctbr_tanh,
+        #         ),
+        #         self,
+        #     )
+        #     for agent in self._agent_ids
+        # }
         # TODO make more drone agnostic
         self._ctbr_actions = {
-            agent: CtbrAction(
-                CtbrActionCfg(
+            agent: LeeBodyWrenchAction(
+                LeeBodyWrenchActionCfg(
                     asset_name=agent,
-                    controller_cfg=CRAZYFLIE_CTBR_CONTROLLER_CFG,
-                    max_roll_pitch_rate=3,
-                    max_yaw_rate=2,
-                    action_type=ActionType.NORM_NEG_1_TO_1,
-                    handle_out_of_range=HandleOutOfRangeAction.TANH,
+                    controller_cfg=CRAZYFLIE_LEE_CTBR_CONTROLLER_CFG,
+                    max_thrusts=CRAZYFLIE_PARAMS.max_thrusts,
+                    min_thrust_ratio=CRAZYFLIE_PARAMS.min_thrust_ratio,
+                    max_thrust_ratio=CRAZYFLIE_PARAMS.max_thrust_ratio,
+                    filter_alpha=CRAZYFLIE_PARAMS.lpf_coef,
+                    use_tanh=True,
                 ),
                 self,
             )
             for agent in self._agent_ids
         }
-        # TODO don't hard code number of drone motors, get it from config
-        self._previous_rotor_actions = torch.zeros(self.num_envs, self.cfg.num_drones, 4, device=self.device)
+        self._previous_rotor_actions = torch.zeros(
+            self.num_envs, self.cfg.num_drones, CRAZYFLIE_PARAMS.num_rotors, device=self.device
+        )
         self._current_rotor_actions = self._previous_rotor_actions.clone()
 
         self._columns = torch.zeros(self.num_envs, self.cfg.static_obstacles, 3, device=self.device)

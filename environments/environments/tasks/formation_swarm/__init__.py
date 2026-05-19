@@ -9,7 +9,7 @@ from .agents.runner import install_formation_swarm_runner_patch
 install_formation_swarm_runner_patch()
 
 gym.register(
-    id="Isaac-Formation-Swarm-Crazyflie-v1",
+    id="Isaac-Formation-Swarm-Crazyflie-v3",
     entry_point=f"{__name__}.env:FormationSwarmEnv",
     disable_env_checker=True,
     kwargs={

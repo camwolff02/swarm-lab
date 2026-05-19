@@ -555,6 +555,7 @@ version = "0.1.0"
 source = { editable = "../cpsquare-lab" }
 dependencies = [
     { name = "jsonschema" },
+    { name = "pydantic" },
     { name = "pyyaml" },
     { name = "torch" },
     { name = "torchvision" },
@@ -569,6 +570,7 @@ requires-dist = [
     { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "onnxruntime-gpu", marker = "extra == 'cf2x'" },
     { name = "pip", marker = "extra == 'cf2x'" },
+    { name = "pydantic", specifier = ">=2.11.10" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "scipy", marker = "extra == 'cf2x'" },
     { name = "tinyobjloader", marker = "extra == 'sim'", specifier = "==2.0.0rc13" },
