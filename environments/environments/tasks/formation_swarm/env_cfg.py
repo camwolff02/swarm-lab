@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import gymnasium as gym
 import numpy as np
-from cpsquare_lab.embodiments.multirotor.cf2x.sim.robot import CRAZYFLIE_CFG
+from cpsquare_lab.embodiments.multirotor.cf2x.sim.robot import CRAZYFLIE_CFG, CRAZYFLIE_CTBR_CONTROLLER_CFG
+from cpsquare_lab.embodiments.multirotor.common.actions import (
+    ActionType,
+    CtbrActionCfg,
+    HandleOutOfRangeAction,
+)
 from cpsquare_lab.tasks.common.physics import physx_swarm_cfg
 
 import isaaclab.sim as sim_utils
@@ -15,12 +20,17 @@ from isaaclab.utils import configclass
 from .paper_spec import PaperSpecEnvCfg
 
 
+class ActionTermDict(dict[str, CtbrActionCfg]):
+    """Dictionary of action terms that also accepts manager runtime attributes."""
+
+
 @configclass
 class FormationSwarmEnvCfg(PaperSpecEnvCfg):
     """Configuration for Xie et al. formation maintenance with obstacle avoidance."""
 
     state_space = -1
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=1024, env_spacing=12.0, replicate_physics=True)
+    actions: ActionTermDict = ActionTermDict()
 
     # TODO make this modular to swap out Drone
     robot_cfg = CRAZYFLIE_CFG.replace(prim_path="{ENV_REGEX_NS}/robot_0")
@@ -60,6 +70,18 @@ class FormationSwarmEnvCfg(PaperSpecEnvCfg):
             ),
         )
         self.possible_agents = [f"robot_{index}" for index in range(self.num_drones)]
+        out_of_range_action = HandleOutOfRangeAction.TANH if self.use_ctbr_tanh else HandleOutOfRangeAction.CLIP
+        self.actions = ActionTermDict({
+            agent: CtbrActionCfg(
+                asset_name=agent,
+                controller_cfg=CRAZYFLIE_CTBR_CONTROLLER_CFG,
+                max_roll_pitch_rate=3,
+                max_yaw_rate=2,
+                action_type=ActionType.NORM_NEG_1_TO_1,
+                handle_out_of_range=out_of_range_action,
+            )
+            for agent in self.possible_agents
+        })
 
         other_dim = (self.num_drones - 1) * self.other_obs_dim
         self.obs_dim = self.self_obs_dim + other_dim + self.num_balls * self.dynamic_obs_dim + self.static_sdf_dim

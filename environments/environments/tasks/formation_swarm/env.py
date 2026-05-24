@@ -6,12 +6,10 @@ from collections.abc import Sequence
 
 import torch
 import warp as wp
-from cpsquare_lab.embodiments.multirotor.cf2x.sim.robot import CRAZYFLIE_CTBR_CONTROLLER_CFG
-from cpsquare_lab.embodiments.multirotor.common.actions import (
-    ActionType,
-    CtbrAction,
-    CtbrActionCfg,
-    HandleOutOfRangeAction,
+from cpsquare_lab.embodiments.multirotor.common.actions import ActionType
+from cpsquare_lab.embodiments.multirotor.common.ctbr import (
+    normalized_hover_ctbr_action_from_multirotor_cfg,
+    raw_hover_ctbr_action_from_multirotor_cfg,
 )
 from cpsquare_lab.tasks.common.metrics import (
     flush_episode_metrics,
@@ -23,6 +21,7 @@ from cpsquare_lab.tasks.common.metrics import (
 import isaaclab.sim as sim_utils
 import isaaclab.utils.math as math_utils
 from isaaclab.envs import DirectMARLEnv
+from isaaclab.managers import ActionManager
 from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 
 from .env_cfg import FormationSwarmEnvCfg
@@ -194,24 +193,9 @@ class FormationSwarmEnv(DirectMARLEnv):
             dtype=torch.float32,
         )
 
-        # TODO make more drone agnostic
-        self._ctbr_actions = {
-            agent: CtbrAction(
-                CtbrActionCfg(
-                    asset_name=agent,
-                    controller_cfg=CRAZYFLIE_CTBR_CONTROLLER_CFG,
-                    max_roll_pitch_rate=3,
-                    max_yaw_rate=2,
-                    action_type=ActionType.NORM_NEG_1_TO_1,
-                    handle_out_of_range=HandleOutOfRangeAction.TANH,
-                ),
-                self,
-            )
-            for agent in self._agent_ids
-        }
-        # TODO don't hard code number of drone motors, get it from config
-        self._previous_rotor_actions = torch.zeros(self.num_envs, self.cfg.num_drones, 4, device=self.device)
-        self._current_rotor_actions = self._previous_rotor_actions.clone()
+        self.action_manager = ActionManager(self.cfg.actions, self)
+        self._previous_action_features = torch.zeros(self.num_envs, self.cfg.num_drones, 4, device=self.device)
+        self._current_action_features = self._previous_action_features.clone()
 
         self._columns = torch.zeros(self.num_envs, self.cfg.static_obstacles, 3, device=self.device)
         self._balls_pos = torch.zeros(self.num_envs, self.cfg.num_balls, 3, device=self.device)
@@ -255,17 +239,53 @@ class FormationSwarmEnv(DirectMARLEnv):
         :class:`cpsquare_lab.embodiments.multirotor.common.actions.CtbrAction`.
         """
         self._update_balls()
+        ctbr_actions = []
         for index, agent in enumerate(self._agent_ids):
             action = torch.nan_to_num(actions[agent].to(self.device), nan=0.0, posinf=1.0, neginf=-1.0)
             self._last_actions[:, index] = action
-            ctbr_action = torch.cat((action[:, 1:4], action[:, 0:1]), dim=-1)
-            self._ctbr_actions[agent].process_actions(ctbr_action)
-            self._current_rotor_actions[:, index] = self._ctbr_actions[agent].processed_actions
+            self._current_action_features[:, index] = action
+            ctbr_actions.append(torch.cat((action[:, 1:4], action[:, 0:1]), dim=-1))
+        self.action_manager.process_action(torch.cat(ctbr_actions, dim=-1))
 
     def _apply_action(self) -> None:
         """Apply action."""
-        for action in self._ctbr_actions.values():
-            action.apply_actions()
+        self.action_manager.apply_action()
+
+    def _hover_ctbr_action(self, agent: str) -> torch.Tensor:
+        """Return the configured hover action in CTBR term order."""
+        action_cfg = self.cfg.actions[agent]
+        if action_cfg.action_type == ActionType.RAW:
+            hover_action = raw_hover_ctbr_action_from_multirotor_cfg(self.cfg.robot_cfg)
+        else:
+            hover_action = normalized_hover_ctbr_action_from_multirotor_cfg(self.cfg.robot_cfg)
+        return torch.tensor(hover_action, device=self.device, dtype=torch.float32)
+
+    def _set_hover_actions(self, env_ids: torch.Tensor) -> None:
+        """Seed reset environments with hover commands in manager and policy-action order."""
+        if len(env_ids) == 0:
+            return
+
+        manager_action = self.action_manager.action.clone()
+        action_offset = 0
+        for index, agent in enumerate(self._agent_ids):
+            hover_ctbr = self._hover_ctbr_action(agent).unsqueeze(0).expand(len(env_ids), -1)
+            term_dim = self.action_manager.get_term(agent).action_dim
+            if term_dim != hover_ctbr.shape[-1]:
+                raise ValueError(f"Expected CTBR action dim {hover_ctbr.shape[-1]} for '{agent}', got {term_dim}.")
+
+            manager_action[env_ids, action_offset : action_offset + term_dim] = hover_ctbr
+            action_offset += term_dim
+
+            # The policy contract and observation history use [collective, wx, wy, wz],
+            # while CtbrAction follows [wx, wy, wz, collective].
+            hover_policy_action = torch.cat((hover_ctbr[:, 3:4], hover_ctbr[:, :3]), dim=-1)
+            self._last_actions[env_ids, index] = hover_policy_action
+            self._current_action_features[env_ids, index] = hover_policy_action
+            self._previous_action_features[env_ids, index] = hover_policy_action
+
+        self._previous_actions = self._last_actions.clone()
+        self.action_manager.process_action(manager_action)
+        self.action_manager.apply_action()
 
     def _get_observations(self) -> dict[str, torch.Tensor]:
         """Get observations."""
@@ -282,7 +302,7 @@ class FormationSwarmEnv(DirectMARLEnv):
         ).reshape(self.num_envs, self.cfg.num_drones, 3)
         rel_vel = self._target_vel.view(1, 1, 3) - vel
         ids = self._drone_ids.view(1, self.cfg.num_drones, 3).expand(self.num_envs, -1, -1)
-        obs_self = torch.cat((pos, quat, vel, omega, heading, up, self._current_rotor_actions, rel_vel, ids), dim=-1)
+        obs_self = torch.cat((pos, quat, vel, omega, heading, up, self._current_action_features, rel_vel, ids), dim=-1)
 
         obs_others = _other_drone_observation(pos, vel)
 
@@ -436,9 +456,9 @@ class FormationSwarmEnv(DirectMARLEnv):
             - bad_env * self.cfg.truncated_reward
         )
 
-        rotor_ratio = ((self._current_rotor_actions + 1.0) * 0.5).clamp(0.0, 1.0)
-        effort = torch.clamp(2.5 - rotor_ratio.sum(dim=-1), min=0.0)
-        throttle_diff = torch.linalg.norm(self._current_rotor_actions - self._previous_rotor_actions, dim=-1)
+        collective_ratio = ((self._current_action_features[..., 0] + 1.0) * 0.5).clamp(0.0, 1.0)
+        effort = torch.clamp(2.5 - self.cfg.action_dim * collective_ratio, min=0.0)
+        throttle_diff = torch.abs(self._current_action_features[..., 0] - self._previous_action_features[..., 0])
         throttle_smooth = torch.clamp(0.5 - throttle_diff, min=0.0)
         action_diff = torch.linalg.norm(
             self._last_actions - getattr(self, "_previous_actions", self._last_actions), dim=-1
@@ -502,7 +522,7 @@ class FormationSwarmEnv(DirectMARLEnv):
         self._last_hit_column = hit_column
         self._last_too_close = too_close
         self._last_crash = crash
-        self._previous_rotor_actions.copy_(self._current_rotor_actions)
+        self._previous_action_features.copy_(self._current_action_features)
         self._previous_actions = self._last_actions.clone()
         return {agent: reward[:, index] for index, agent in enumerate(self._agent_ids)}
 
@@ -557,12 +577,8 @@ class FormationSwarmEnv(DirectMARLEnv):
         )
         self._sample_columns(env_ids_tensor)
         self._reset_balls(env_ids_tensor)
-        self._last_actions[env_ids_tensor] = 0.0
-        self._previous_actions = self._last_actions.clone()
-        for index, action in enumerate(self._ctbr_actions.values()):
-            action.reset(env_ids_tensor)
-            self._current_rotor_actions[env_ids_tensor, index] = action.processed_actions[env_ids_tensor]
-            self._previous_rotor_actions[env_ids_tensor, index] = action.processed_actions[env_ids_tensor]
+        self.action_manager.reset(env_ids_tensor)
+        self._set_hover_actions(env_ids_tensor)
         self._sync_obstacle_visuals(env_ids_tensor)
         reset_episode_metrics(self, env_ids_tensor)
 

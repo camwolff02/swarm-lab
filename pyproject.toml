@@ -4,27 +4,23 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 [project]
-name = "physical-ai-lab"
+name = "test-env"
 version = "0.2.0"
 description = "UV-managed environment for Physical AI Lab development on Isaac Sim and Isaac Lab."
-requires-python = ">=3.12, <3.14"
+requires-python = ">=3.12, <3.13"
 dependencies = [
-  "setuptools==81.0.0",
-  "tensorboard>=2.20.0",
+  # "setuptools==81.0.0",
+  # "tensorboard>=2.20.0",
   "torch==2.10.0",
   "torchvision==0.25.0",
-  "isaacsim[all,extscache]==6.0.0",
-  "jinja2==3.1.5",
-  "tinyobjloader==2.0.0rc13",
-  "pip>=26.0.1",
-  "skrl>=1.4.3, <2.0.0",
-  "viser>=0.2.11,<1.0.16",          # See docs/viser_isaacsim6_compatibility.md.
+  # "jinja2==3.1.5",
+  # "tinyobjloader==2.0.0rc13",
+  # "skrl<2.0.0",
+  # "environments",
+  # "usd-core>=26.5",
   "cpsquare-lab",
-  "environments",
+  "iceoryx2>=0.9.0",
 ]
-
-[tool.uv]
-package = false
 
 [tool.ruff]
 line-length = 120
@@ -163,36 +159,34 @@ markers = ["isaacsim_ci: mark test to run in isaacsim ci"]
 [[tool.uv.index]]
 name = "pypi"
 url = "https://pypi.org/simple"
+explicit = false
 
 [[tool.uv.index]]
 name = "nvidia"
 url = "https://pypi.nvidia.com"
+explicit = true
 
 [[tool.uv.index]]
 name = "pytorch-cu128"
 url = "https://download.pytorch.org/whl/cu128"
+explicit = true
 
-[tool.uv.workspace]
-members = ["environments"]
 
 [tool.uv.sources]
-isaacsim = { index = "nvidia" }
-jinja2 = { index = "pypi" }
 torch = { index = "pytorch-cu128" }
 torchvision = { index = "pytorch-cu128" }
-# cpsquare-lab = { git = "git+ssh://git@github.com/camwolff02/cpsquare-lab", lfs = true }
+torchaudio = { index = "pytorch-cu128" }
 cpsquare-lab = { path = "../cpsquare-lab", editable = true }
-environments = { workspace = true }
 
 [dependency-groups]
-dev = ["mypy>=1.20.0", "pyright>=1.1.408", "pytest>=9.0.0", "ruff>=0.15.9"]
-docs = [
-  "mkdocs>=1.6.1",
-  "mkdocs-gen-files>=0.5.0",
-  "mkdocs-literate-nav>=0.6.2",
-  "mkdocs-material>=9.7.6",
-  "mkdocstrings[python]>=0.30.0",
-]
+dev = [
+  "ruff>=0.15.9",
+  "ty>=0.0.39",
 
-[project.optional-dependencies]
-detatched = ["zenoh-ros2-sdk>=0.1.7", "eclipse-zenoh>=1.9.0"]
+  "pytest>=9.0.0",
+  "jupyterlab>=4.5.7",
+  "pip>=26.0.1",
+
+  "mypy>=1.20.0",
+  "pyright>=1.1.408",
+]

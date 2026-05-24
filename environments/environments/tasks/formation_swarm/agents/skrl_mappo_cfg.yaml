@@ -21,9 +21,8 @@ agent:
   discount_factor: 0.995
   lambda: 0.95
   learning_rate: 5.0e-4
-  learning_rate_scheduler: ExponentialLR
-  learning_rate_scheduler_kwargs:
-    gamma: 0.9985
+  learning_rate_scheduler: null
+  learning_rate_scheduler_kwargs: {}
   state_preprocessor: null
   state_preprocessor_kwargs: {}
   shared_state_preprocessor: null
@@ -52,8 +51,8 @@ agent:
   experiment:
     directory: formation_swarm
     experiment_name: ""
-    write_interval: auto
-    checkpoint_interval: auto
+    write_interval: 10000
+    checkpoint_interval: 10000
     store_separately: false
     wandb: false
 
