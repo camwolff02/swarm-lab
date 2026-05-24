@@ -22,7 +22,7 @@ from isaaclab.envs.mdp import (
     last_action,  # noqa: F401
     projected_gravity as projected_gravity_b,  # noqa: F401
 )
-from isaaclab.utils.math import quat_apply, wrap_to_pi
+from isaaclab.utils.math import euler_xyz_from_quat, quat_apply_inverse, wrap_to_pi
 
 
 def _root_env(env) -> object:
@@ -32,15 +32,6 @@ def _root_env(env) -> object:
     return env
 
 
-def _as_torch(value) -> torch.Tensor:
-    """Return a torch view for Isaac Lab beta2 tensor wrappers."""
-    if torch.is_tensor(value):
-        return value
-    if hasattr(value, "torch"):
-        return value.torch
-    return torch.as_tensor(value)
-
-
 def _asset(env, asset_cfg) -> object:
     """Look up an articulation asset from a SceneEntityCfg."""
     return _root_env(env).scene[asset_cfg.name]
@@ -48,17 +39,17 @@ def _asset(env, asset_cfg) -> object:
 
 def _root_pos(env, agent_id: str) -> torch.Tensor:
     """World position of an articulation relative to the env origin [m], shape (num_envs, 3)."""
-    return _as_torch(_root_env(env).scene[agent_id].data.root_pos_w)
+    return _root_env(env).scene[agent_id].data.root_pos_w.torch
 
 
 def _root_quat(env, agent_id: str) -> torch.Tensor:
-    """World quaternion of an articulation [w,x,y,z], shape (num_envs, 4)."""
-    return _as_torch(_root_env(env).scene[agent_id].data.root_quat_w)
+    """World quaternion of an articulation [x, y, z, w], shape (num_envs, 4)."""
+    return _root_env(env).scene[agent_id].data.root_quat_w.torch
 
 
 def _root_lin_vel(env, agent_id: str) -> torch.Tensor:
     """World linear velocity of an articulation [m/s], shape (num_envs, 3)."""
-    return _as_torch(_root_env(env).scene[agent_id].data.root_lin_vel_w)
+    return _root_env(env).scene[agent_id].data.root_lin_vel_w.torch
 
 
 def _all_root_pos(env, agent_ids: list[str]) -> torch.Tensor:
@@ -105,9 +96,9 @@ def _pad_features(
 def _rotate_world_to_body(quat_w: torch.Tensor, vectors_w: torch.Tensor) -> torch.Tensor:
     """Rotate world-frame vectors into the body frame."""
     if vectors_w.ndim == 2:
-        return quat_apply(_quat_conj(quat_w), vectors_w)
-    quat = _quat_conj(quat_w).unsqueeze(1).expand(-1, vectors_w.shape[1], -1)
-    rotated = quat_apply(quat.reshape(-1, 4), vectors_w.reshape(-1, 3))
+        return quat_apply_inverse(quat_w, vectors_w)
+    quat = quat_w.unsqueeze(1).expand(-1, vectors_w.shape[1], -1)
+    rotated = quat_apply_inverse(quat.reshape(-1, 4), vectors_w.reshape(-1, 3))
     return rotated.reshape_as(vectors_w)
 
 
@@ -118,12 +109,12 @@ def _rotate_world_to_body(quat_w: torch.Tensor, vectors_w: torch.Tensor) -> torc
 
 def root_pos(env, asset_cfg) -> torch.Tensor:
     """World position [m], shape (num_envs, 3)."""
-    return _as_torch(_asset(env, asset_cfg).data.root_pos_w)
+    return _asset(env, asset_cfg).data.root_pos_w.torch
 
 
 def root_quat(env, asset_cfg) -> torch.Tensor:
     """World quaternion, shape (num_envs, 4)."""
-    return _as_torch(_asset(env, asset_cfg).data.root_quat_w)
+    return _asset(env, asset_cfg).data.root_quat_w.torch
 
 
 def relative_target_position_b(env, asset_cfg, command_name: str) -> torch.Tensor:
@@ -135,8 +126,8 @@ def target_yaw_error(env, asset_cfg, command_name: str) -> torch.Tensor:
     """Yaw error to target [rad], wrapped to [-pi, pi], shape (num_envs, 1)."""
     command = env.command_manager.get_command(command_name)
     target_yaw = command[:, 5]
-    quat = _as_torch(_asset(env, asset_cfg).data.root_quat_w)[: command.shape[0]]
-    _, _, current_yaw = _quat_to_euler(quat)
+    quat = _asset(env, asset_cfg).data.root_quat_w.torch[: command.shape[0]]
+    _, _, current_yaw = euler_xyz_from_quat(quat)
     error = wrap_to_pi(target_yaw - current_yaw)
     return error.unsqueeze(-1)
 
@@ -144,7 +135,7 @@ def target_yaw_error(env, asset_cfg, command_name: str) -> torch.Tensor:
 def distance_to_goal(env, asset_cfg, command_name: str) -> torch.Tensor:
     """Euclidean distance to goal waypoint [m], shape (num_envs, 1)."""
     target_pos = env.command_manager.get_command(command_name)[:, :3]
-    current_pos = _as_torch(_asset(env, asset_cfg).data.root_pos_w)[: target_pos.shape[0]]
+    current_pos = _asset(env, asset_cfg).data.root_pos_w.torch[: target_pos.shape[0]]
     return torch.norm(target_pos - current_pos, dim=-1, keepdim=True)
 
 
@@ -154,12 +145,12 @@ def goal_reached_flag(
     """Binary flag: is the goal reached? Shape (num_envs, 1)."""
     target_pos = env.command_manager.get_command(command_name)[:, :3]
     n = target_pos.shape[0]
-    current_pos = _as_torch(_asset(env, asset_cfg).data.root_pos_w)[:n]
+    current_pos = _asset(env, asset_cfg).data.root_pos_w.torch[:n]
     dist = torch.norm(target_pos - current_pos, dim=-1)
 
     _, target_yaw, _ = command_decompose(env, command_name)
-    quat = _as_torch(_asset(env, asset_cfg).data.root_quat_w)[:n]
-    _, _, current_yaw = _quat_to_euler(quat)
+    quat = _asset(env, asset_cfg).data.root_quat_w.torch[:n]
+    _, _, current_yaw = euler_xyz_from_quat(quat)
     yaw_err = wrap_to_pi(target_yaw - current_yaw).abs()
     reached = (dist < distance_threshold) & (yaw_err < yaw_threshold)
     return reached.float().unsqueeze(-1)
@@ -174,9 +165,9 @@ def neighbor_state_b(
     reshape to (B, max_neighbors, 6) tokens.
     """
     asset = _asset(env, asset_cfg)
-    ego_pos = _as_torch(asset.data.root_pos_w)
-    ego_vel = _as_torch(asset.data.root_lin_vel_w)
-    ego_quat = _as_torch(asset.data.root_quat_w)
+    ego_pos = asset.data.root_pos_w.torch
+    ego_vel = asset.data.root_lin_vel_w.torch
+    ego_quat = asset.data.root_quat_w.torch
     mask = _active_mask(env, agent_ids, mask_key)
     current_index = agent_ids.index(asset_cfg.name)
 
@@ -201,8 +192,8 @@ def relative_neighbor_positions_b(
 ) -> torch.Tensor:
     """Relative positions of neighbors in body frame [m], shape (num_envs, max_neighbors * 3)."""
     asset = _asset(env, asset_cfg)
-    ego_pos = _as_torch(asset.data.root_pos_w)
-    ego_quat = _as_torch(asset.data.root_quat_w)
+    ego_pos = asset.data.root_pos_w.torch
+    ego_quat = asset.data.root_quat_w.torch
     mask = _active_mask(env, agent_ids, mask_key)
     current_index = agent_ids.index(asset_cfg.name)
     all_pos = _all_root_pos(env, agent_ids)
@@ -220,9 +211,9 @@ def relative_neighbor_velocities_b(
 ) -> torch.Tensor:
     """Relative velocities of neighbors in body frame [m/s], shape (num_envs, max_neighbors * 3)."""
     asset = _asset(env, asset_cfg)
-    ego_pos = _as_torch(asset.data.root_pos_w)
-    ego_vel = _as_torch(asset.data.root_lin_vel_w)
-    ego_quat = _as_torch(asset.data.root_quat_w)
+    ego_pos = asset.data.root_pos_w.torch
+    ego_vel = asset.data.root_lin_vel_w.torch
+    ego_quat = asset.data.root_quat_w.torch
     mask = _active_mask(env, agent_ids, mask_key)
     current_index = agent_ids.index(asset_cfg.name)
     all_pos = _all_root_pos(env, agent_ids)
@@ -248,7 +239,7 @@ def static_sdf(
     means the SDF is clamped to a large positive distance.
     """
     asset = _asset(env, asset_cfg)
-    drone_pos = _as_torch(asset.data.root_pos_w)
+    drone_pos = asset.data.root_pos_w.torch
 
     columns = getattr(_root_env(env), column_positions_key, None)
     if columns is None:
@@ -308,10 +299,10 @@ def swarm_global_state(
             root_states.append(
                 torch.cat(
                     [
-                        _as_torch(asset.root_pos_w),
-                        _as_torch(asset.root_quat_w),
-                        _as_torch(asset.root_lin_vel_w),
-                        _as_torch(asset.root_ang_vel_w),
+                        asset.root_pos_w.torch,
+                        asset.root_quat_w.torch,
+                        asset.root_lin_vel_w.torch,
+                        asset.root_ang_vel_w.torch,
                     ],
                     dim=-1,
                 )
@@ -346,6 +337,10 @@ def paper_swarm_global_state(
         task.
     """
     root = _root_env(env)
+    state_dim = len(agent_ids) + len(agent_ids) * 13 + len(agent_ids) * 7 + len(agent_ids) * len(agent_ids)
+    if not all(agent_id in getattr(root, "_agent_to_bundle", {}) for agent_id in agent_ids):
+        return torch.zeros(root.num_envs, state_dim, device=root.device)
+
     mask = _active_mask(root, agent_ids, mask_key).float()
     positions = _all_root_pos(root, agent_ids)
 
@@ -356,10 +351,10 @@ def paper_swarm_global_state(
         root_states.append(
             torch.cat(
                 [
-                    _as_torch(asset.root_pos_w),
-                    _as_torch(asset.root_quat_w),
-                    _as_torch(asset.root_lin_vel_w),
-                    _as_torch(asset.root_ang_vel_w),
+                    asset.root_pos_w.torch,
+                    asset.root_quat_w.torch,
+                    asset.root_lin_vel_w.torch,
+                    asset.root_ang_vel_w.torch,
                 ],
                 dim=-1,
             )
@@ -395,33 +390,9 @@ def paper_swarm_default_global_state(env) -> torch.Tensor:
 # -----------------------------------------------------------------------------
 
 
-def _quat_to_euler(quat: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Convert quaternion [w,x,y,z] to roll, pitch, yaw [rad]."""
-    w, x, y, z = quat[:, 0], quat[:, 1], quat[:, 2], quat[:, 3]
-    sinr_cosp = 2.0 * (w * x + y * z)
-    cosr_cosp = 1.0 - 2.0 * (x * x + y * y)
-    roll = torch.atan2(sinr_cosp, cosr_cosp)
-
-    sinp = 2.0 * (w * y - z * x)
-    pitch = torch.where(torch.abs(sinp) >= 1.0, torch.sign(sinp) * (torch.pi / 2.0), torch.asin(sinp))
-
-    siny_cosp = 2.0 * (w * z + x * y)
-    cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
-    yaw = torch.atan2(siny_cosp, cosy_cosp)
-
-    return roll, pitch, yaw
-
-
 def command_decompose(env, command_name: str) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Extract position, yaw, and sin/cos from a pose command."""
     cmd = env.command_manager.get_command(command_name)
     pos = cmd[:, :3]
     _, _, yaw = cmd[:, 3], cmd[:, 4], cmd[:, 5]
     return pos, yaw, torch.stack([torch.sin(cmd[:, 5]), torch.cos(cmd[:, 5])], dim=-1)
-
-
-def _quat_conj(q: torch.Tensor) -> torch.Tensor:
-    """Quaternion conjugate [w, -x, -y, -z], shape (..., 4)."""
-    qc = q.clone()
-    qc[..., 1:] *= -1
-    return qc

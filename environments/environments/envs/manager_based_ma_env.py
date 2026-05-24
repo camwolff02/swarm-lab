@@ -18,17 +18,17 @@ from isaaclab.envs import DirectMARLEnv
 from isaaclab.managers import ActionManager, CommandManager, ObservationManager, RecorderManager
 
 from .manager_based_ma_env_cfg import (
-    AgentSetRuntimeSpec,
+    AgentGroupRuntimeSpec,
     ManagerBasedMaEnvCfg,
     MultiAgentRuntimeSpec,
     compile_multi_agent_spec,
 )
 
 
-class _AgentSetEnvView:
-    """Stable env-like proxy passed to managers for one pooled agent set."""
+class _AgentGroupEnvView:
+    """Stable env-like proxy passed to managers for one execution group."""
 
-    def __init__(self, root_env: "ManagerBasedMaEnv", runtime: AgentSetRuntimeSpec):
+    def __init__(self, root_env: "ManagerBasedMaEnv", runtime: AgentGroupRuntimeSpec):
         object.__setattr__(self, "root", root_env)
         object.__setattr__(self, "runtime", runtime)
         object.__setattr__(self, "command_manager", None)
@@ -104,7 +104,7 @@ class _AgentSetEnvView:
 
     @property
     def metadata(self) -> dict[str, Any]:
-        return self.runtime.metadata
+        return {}
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.root, name)
@@ -112,10 +112,10 @@ class _AgentSetEnvView:
 
 @dataclass
 class _ManagerBundle:
-    """One pooled set of managers for one ``AgentSetRuntimeSpec``."""
+    """One pooled group of managers for one ``AgentGroupRuntimeSpec``."""
 
-    runtime: AgentSetRuntimeSpec
-    env_view: _AgentSetEnvView
+    runtime: AgentGroupRuntimeSpec
+    env_view: _AgentGroupEnvView
     command_manager: CommandManager | None
     action_manager: ActionManager
     observation_manager: ObservationManager
@@ -148,8 +148,8 @@ class ManagerBasedMaEnv(DirectMARLEnv):
         self._populate_direct_cfg_from_spec(cfg)
         self.possible_agents = list(self.ma_spec.possible_agents)
         self.agents = list(self.possible_agents)
-        self._obs_group_name = cfg.ma_options.observation_group
-        self._active_mask_key = cfg.ma_options.active_agent_mask_key
+        self._obs_group_name = cfg.observation_group
+        self._active_mask_key = cfg.active_agent_mask_key
         self._manager_bundles: dict[str, _ManagerBundle] = {}
         self._agent_to_bundle: dict[str, str] = {}
         self._agent_to_local_index: dict[str, int] = {}
@@ -230,7 +230,7 @@ class ManagerBasedMaEnv(DirectMARLEnv):
         }
 
     def _populate_direct_cfg_from_spec(self, cfg: ManagerBasedMaEnvCfg) -> None:
-        """Fill DirectMARLEnvCfg fields that are derived from profile/set config."""
+        """Fill DirectMARLEnvCfg fields that are derived from the compiled agents."""
 
         cfg.possible_agents = list(self.ma_spec.possible_agents)
         if getattr(cfg, "observation_spaces", None) is None:
@@ -240,20 +240,8 @@ class ManagerBasedMaEnv(DirectMARLEnv):
         if getattr(cfg, "state_space", None) is None:
             cfg.state_space = 0
 
-        obs_noise = {}
-        action_noise = {}
-        for agent_id, spec in self.ma_spec.agents.items():
-            if spec.profile.observation_noise_model is not None:
-                obs_noise[agent_id] = spec.profile.observation_noise_model
-            if spec.profile.action_noise_model is not None:
-                action_noise[agent_id] = spec.profile.action_noise_model
-        if obs_noise:
-            cfg.observation_noise_model = obs_noise
-        if action_noise:
-            cfg.action_noise_model = action_noise
-
     def _build_manager_bundles(self) -> None:
-        """Create one classical manager bundle per execution set."""
+        """Create one classical manager bundle per execution group."""
 
         if self._manager_bundles:
             return
@@ -261,14 +249,7 @@ class ManagerBasedMaEnv(DirectMARLEnv):
         if getattr(self.cfg, "recorders", None) is not None and not hasattr(self, "recorder_manager"):
             self.recorder_manager = RecorderManager(self.cfg.recorders, self)
 
-        grouping = self.cfg.ma_options.manager_grouping
-        if grouping not in ("set", "agent"):
-            raise ValueError(f"Unsupported manager_grouping: {grouping!r}")
-
-        if grouping == "set":
-            runtimes = list(self.ma_spec.execution_sets.values())
-        else:
-            runtimes = [self._make_single_agent_runtime(agent_id) for agent_id in self.possible_agents]
+        runtimes = list(self.ma_spec.execution_groups.values())
 
         for runtime in runtimes:
             bundle = self._create_classical_manager_bundle(runtime)
@@ -282,19 +263,19 @@ class ManagerBasedMaEnv(DirectMARLEnv):
         self.action_manager = first_bundle.action_manager
         self.observation_manager = first_bundle.observation_manager
 
-    def _create_classical_manager_bundle(self, runtime: AgentSetRuntimeSpec) -> _ManagerBundle:
-        """Create classical managers for a pooled execution set."""
+    def _create_classical_manager_bundle(self, runtime: AgentGroupRuntimeSpec) -> _ManagerBundle:
+        """Create classical managers for a pooled execution group."""
 
-        profile = runtime.profile
-        env_view = _AgentSetEnvView(self, runtime)
+        agent_cfg = runtime.cfg
+        env_view = _AgentGroupEnvView(self, runtime)
 
-        command_manager = CommandManager(profile.commands, env_view) if profile.commands is not None else None
+        command_manager = CommandManager(agent_cfg.commands, env_view) if agent_cfg.commands is not None else None
         env_view.command_manager = command_manager
 
-        action_manager = ActionManager(profile.actions, env_view)
+        action_manager = ActionManager(agent_cfg.actions, env_view)
         env_view.action_manager = action_manager
 
-        observation_manager = ObservationManager(profile.observations, env_view)
+        observation_manager = ObservationManager(agent_cfg.observations, env_view)
         env_view.observation_manager = observation_manager
 
         return _ManagerBundle(
@@ -391,31 +372,20 @@ class ManagerBasedMaEnv(DirectMARLEnv):
                 self.event_manager.apply(mode="reset", env_ids=env_ids, global_env_step_count=env_step_count)
             event_log = self.event_manager.reset(env_ids)
 
-        if getattr(self.cfg, "action_noise_model", None) and hasattr(self, "_action_noise_model"):
-            for noise_model in self._action_noise_model.values():
-                noise_model.reset(env_ids)
-        if getattr(self.cfg, "observation_noise_model", None) and hasattr(self, "_observation_noise_model"):
-            for noise_model in self._observation_noise_model.values():
-                noise_model.reset(env_ids)
-
         self.extras = {agent_id: {} for agent_id in self.possible_agents}
-        if self.cfg.ma_options.expose_agent_metadata_maps:
-            for agent_id in self.possible_agents:
-                self.extras[agent_id]["ma"] = self._ma_metadata_maps
-
-        set_logs: dict[str, dict[str, Any]] = {}
+        group_logs: dict[str, dict[str, Any]] = {}
         for name, bundle in self._manager_bundles.items():
             log: dict[str, Any] = {}
             log.update(bundle.observation_manager.reset(env_ids))
             log.update(bundle.action_manager.reset(env_ids))
             if bundle.command_manager is not None:
                 log.update(bundle.command_manager.reset(env_ids))
-            set_logs[name] = log
+            group_logs[name] = log
 
         recorder_log = self.recorder_manager.reset(env_ids) if hasattr(self, "recorder_manager") else {}
         for agent_id in self.possible_agents:
             bundle_name = self._agent_to_bundle[agent_id]
-            self.extras[agent_id]["log"] = set_logs.get(bundle_name, {})
+            self.extras[agent_id]["log"] = group_logs.get(bundle_name, {})
             self.extras[agent_id]["recorder"] = recorder_log
             self.extras[agent_id]["event"] = event_log
 
@@ -447,7 +417,7 @@ class ManagerBasedMaEnv(DirectMARLEnv):
         masked = self._apply_active_mask(buffer, runtime)
         return masked.reshape(self.num_envs, runtime.num_agents * action_dim)
 
-    def _apply_active_mask(self, tensor: torch.Tensor, runtime: AgentSetRuntimeSpec) -> torch.Tensor:
+    def _apply_active_mask(self, tensor: torch.Tensor, runtime: AgentGroupRuntimeSpec) -> torch.Tensor:
         if self._active_mask_key is None or not hasattr(self, self._active_mask_key):
             return tensor
         mask = getattr(self, self._active_mask_key)
@@ -459,7 +429,7 @@ class ManagerBasedMaEnv(DirectMARLEnv):
             set_mask = set_mask.unsqueeze(-1)
         return tensor * set_mask.to(dtype=tensor.dtype)
 
-    def _fanout_tensor(self, value: Any, runtime: AgentSetRuntimeSpec) -> dict[str, Any]:
+    def _fanout_tensor(self, value: Any, runtime: AgentGroupRuntimeSpec) -> dict[str, Any]:
         if isinstance(value, dict):
             per_leaf = {key: self._fanout_tensor(item, runtime) for key, item in value.items()}
             return {agent_id: {key: leaf[agent_id] for key, leaf in per_leaf.items()} for agent_id in runtime.agent_ids}
@@ -480,8 +450,9 @@ class ManagerBasedMaEnv(DirectMARLEnv):
             if n == 1:
                 return (total_dim,)
             raise ValueError(
-                f"Action dimension {total_dim} for set {bundle.runtime.name!r} is not divisible by {n} agents. "
-                "Use manager_grouping='agent' or make the action term set-aware with per-agent dimensions."
+                f"Action dimension {total_dim} for group {bundle.runtime.name!r} is not divisible by {n} agents. "
+                "ManagerBasedMaEnv builds one manager bundle per concrete agent, so multi-agent action terms must "
+                "expose per-agent dimensions."
             )
         return (total_dim // n,)
 
@@ -489,7 +460,7 @@ class ManagerBasedMaEnv(DirectMARLEnv):
         obs_dim = bundle.observation_manager.group_obs_dim[self._obs_group_name]
         if not isinstance(obs_dim, tuple):
             raise ValueError(
-                f"Observation group {self._obs_group_name!r} for set {bundle.runtime.name!r} must be concatenated."
+                f"Observation group {self._obs_group_name!r} for {bundle.runtime.name!r} must be concatenated."
             )
         if len(obs_dim) >= 2 and obs_dim[0] == bundle.runtime.num_agents:
             return tuple(obs_dim[1:])
@@ -497,31 +468,10 @@ class ManagerBasedMaEnv(DirectMARLEnv):
             return (obs_dim[0] // bundle.runtime.num_agents,)
         return tuple(obs_dim)
 
-    def _make_single_agent_runtime(self, agent_id: str) -> AgentSetRuntimeSpec:
-        spec = self.ma_spec.agents[agent_id]
-        return AgentSetRuntimeSpec(
-            name=agent_id,
-            profile_name=spec.profile_name,
-            agent_ids=(agent_id,),
-            agent_indices=(self._agent_to_global_index[agent_id],),
-            entity_names=(spec.entity_name,),
-            policy=spec.policy,
-            team=spec.team,
-            trainable=spec.trainable,
-            decision_period=spec.decision_period,
-            hold_action_between_decisions=spec.hold_action_between_decisions,
-            profile=spec.profile,
-            metadata=spec.metadata,
-        )
-
     def _build_agent_metadata_maps(self) -> dict[str, Any]:
         return {
-            "agent_to_policy": {agent: spec.policy for agent, spec in self.ma_spec.agents.items()},
-            "agent_to_team": {agent: spec.team for agent, spec in self.ma_spec.agents.items()},
-            "agent_to_set": {agent: spec.set_name for agent, spec in self.ma_spec.agents.items()},
-            "policy_to_agents": self.ma_spec.policies,
-            "team_to_agents": self.ma_spec.teams,
-            "sets": self.ma_spec.sets,
+            "agent_to_group": {agent: spec.group_name for agent, spec in self.ma_spec.agents.items()},
+            "groups": self.ma_spec.groups,
         }
 
     def close(self) -> None:

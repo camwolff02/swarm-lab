@@ -18,8 +18,8 @@ Curriculum:
        independent sampling.
 
 Training modes:
-    - IPPO: decentralized policy observations only, state.mode="none".
-    - MAPPO: policy observations plus centralized critic group state.
+    - IPPO: noisy actor observations plus decentralized, uncorrupted critic observations.
+    - MAPPO: noisy actor observations plus centralized critic observations.
 """
 
 from __future__ import annotations
@@ -48,14 +48,10 @@ from isaaclab.utils.configclass import configclass
 
 from isaaclab_tasks.manager_based.drone_arl.mdp.commands import DroneUniformPoseCommandCfg
 
-from environments.envs.manager_based_ma_env_cfg import (
-    AgentSetCfg,
-    MultiAgentOptionsCfg,
-)
+from environments.envs.manager_based_ma_env_cfg import AgentGroupCfg
 from environments.envs.manager_based_marl_env_cfg import (
-    AgentRlProfileCfg,
+    AgentRlCfg,
     ManagerBasedMarlEnvCfg,
-    MultiAgentStateCfg,
 )
 
 from . import mdp
@@ -175,7 +171,7 @@ class ActionsCfg:
 
 @configclass
 class ObservationsCfg:
-    """Actor policy observations and MAPPO centralized critic observations."""
+    """Actor policy observations and critic observations."""
 
     @configclass
     class PolicyCfg(ObsGroup):
@@ -244,15 +240,22 @@ class ObservationsCfg:
             self.concatenate_terms = True
 
     @configclass
-    class CriticCfg(ObsGroup):
+    class DecentralizedCriticCfg(PolicyCfg):
+        """Local per-agent critic observation without actor observation corruption."""
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    @configclass
+    class CentralizedCriticCfg(ObsGroup):
+        """Global critic observation for CTDE algorithms such as MAPPO."""
+
         swarm_state = ObsTerm(
-            func=mdp.swarm_global_state,
+            func=mdp.paper_swarm_global_state,
             params={
                 "agent_ids": DRONE_AGENT_IDS,
                 "command_name": "target_pose",
-                "include_root_state": True,
-                "include_target_pose": True,
-                "include_pairwise_distances": True,
                 "mask_key": ACTIVE_AGENT_MASK_KEY,
             },
         )
@@ -262,7 +265,14 @@ class ObservationsCfg:
             self.concatenate_terms = True
 
     policy: PolicyCfg = PolicyCfg()
-    critic: CriticCfg = CriticCfg()
+    critic: DecentralizedCriticCfg = DecentralizedCriticCfg()
+
+
+@configclass
+class MappoObservationsCfg(ObservationsCfg):
+    """MAPPO observations with a centralized critic group."""
+
+    critic: ObservationsCfg.CentralizedCriticCfg = ObservationsCfg.CentralizedCriticCfg()
 
 
 # -----------------------------------------------------------------------------
@@ -455,47 +465,26 @@ class PaperSwarmBaseMarlEnvCfg(ManagerBasedMarlEnvCfg):
     events = PaperSwarmEventsCfg()
 
     possible_agents = DRONE_AGENT_IDS
-    profiles = {
-        "drone": AgentRlProfileCfg(
-            observations=ObservationsCfg(),
-            actions=ActionsCfg(),
-            rewards=RewardsCfg(),
-            terminations=TerminationsCfg(),
-            commands=CommandsCfg(),
-            curriculum=CurriculumCfg(),
-            entity_name="{agent_id}",
-            metadata={
-                "embodiment": "ctbr_drone",
-                "task_role": "waypoint_follower",
-                "active_agent_mask_key": ACTIVE_AGENT_MASK_KEY,
-            },
-        )
-    }
-    sets = [
-        AgentSetCfg(
-            name="drones",
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
             count=NUM_DRONES,
             id_template="drone_{i}",
-            profile="drone",
-            policy="drone_policy",
-            team="swarm",
-            trainable=True,
-            metadata={"cooperative": True, "shared_policy": True},
+            agent_cfg=AgentRlCfg(
+                asset_name="{agent_id}",
+                observations=ObservationsCfg(),
+                actions=ActionsCfg(),
+                rewards=RewardsCfg(),
+                terminations=TerminationsCfg(),
+                commands=CommandsCfg(),
+                curriculum=CurriculumCfg(),
+            ),
         )
     ]
+    observation_group = "policy"
+    active_agent_mask_key = ACTIVE_AGENT_MASK_KEY
+    reset_on = "any"
 
-    ma_options = MultiAgentOptionsCfg(
-        observation_group="policy",
-        manager_grouping="agent",
-        reset_on="any_agent",
-        dynamic_agents=False,
-        validate_spaces=True,
-        validate_policy_space_sharing=True,
-        expose_agent_metadata_maps=True,
-        active_agent_mask_key=ACTIVE_AGENT_MASK_KEY,
-    )
-
-    state = MultiAgentStateCfg(mode="none", state_space=0)
     episode_length_s = 20.0
     is_finite_horizon = False
     decimation = 2
@@ -505,21 +494,29 @@ class PaperSwarmBaseMarlEnvCfg(ManagerBasedMarlEnvCfg):
 
 @configclass
 class PaperSwarmMappoEnvCfg(PaperSwarmBaseMarlEnvCfg):
-    """MAPPO variant with centralized critic state."""
+    """MAPPO variant with centralized critic observations."""
 
-    state = MultiAgentStateCfg(
-        mode="custom",
-        state_space=NUM_DRONES + NUM_DRONES * 13 + NUM_DRONES * 7 + NUM_DRONES * NUM_DRONES,
-        function=mdp.paper_swarm_default_global_state,
-        expose_as_dict=False,
-    )
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
+            count=NUM_DRONES,
+            id_template="drone_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="{agent_id}",
+                observations=MappoObservationsCfg(),
+                actions=ActionsCfg(),
+                rewards=RewardsCfg(),
+                terminations=TerminationsCfg(),
+                commands=CommandsCfg(),
+                curriculum=CurriculumCfg(),
+            ),
+        )
+    ]
 
 
 @configclass
 class PaperSwarmIppoEnvCfg(PaperSwarmBaseMarlEnvCfg):
-    """IPPO variant with decentralized observations only."""
-
-    state = MultiAgentStateCfg(mode="none", state_space=0, expose_as_dict=False)
+    """IPPO variant with decentralized critic observations."""
 
 
 PaperSwarmMAPPORunnerCfg = PaperSwarmMappoEnvCfg

@@ -5,10 +5,24 @@
 
 """Configuration classes for manager-based multi-agent environments.
 
-``ManagerBasedMaEnv`` is the classical/control layer. It is intentionally
-multi-agent and manager-backed, but it does not define RL-specific reward,
-termination, curriculum, or centralized-state configuration. The MARL extension
-adds those in ``manager_based_marl_env_cfg.py``.
+This module defines the classical multi-agent layer: observations, actions,
+commands, and the fixed PettingZoo/SKRL agent universe. It intentionally does
+not define rewards, terminations, or curriculum; those belong to
+:mod:`manager_based_marl_env_cfg`.
+
+The public authoring model is deliberately small:
+
+* :class:`AgentCfg` describes one concrete agent's manager terms.
+* :class:`AgentGroupCfg` declares multiple agents that share one
+  :class:`AgentCfg` and substitutes templates such as ``"{agent_id}"`` and
+  ``"{i}"``.
+* :class:`ManagerBasedMaEnvCfg` combines explicit agents and groups, then
+  :func:`compile_multi_agent_spec` expands the declaration into concrete runtime
+  metadata before managers are constructed.
+
+Groups expand into concrete agent configs before managers are built. Runtime
+APIs still expose the fixed ``possible_agents`` list expected by
+PettingZoo-compatible multi-agent trainers.
 """
 
 from __future__ import annotations
@@ -16,23 +30,14 @@ from __future__ import annotations
 import copy
 import dataclasses
 import math
-import re
-from collections import defaultdict
 from dataclasses import MISSING, dataclass, field
-from typing import Any, Literal
+from typing import Any
 
 from isaaclab.envs import DirectMARLEnvCfg
 from isaaclab.utils.configclass import configclass
 
 AgentID = str
-AgentSetName = str
-AgentProfileName = str
-PolicyName = str
-TeamName = str
-
-AgentSelectionMode = Literal["agents", "generated", "regex"]
-ManagerGrouping = Literal["set", "agent"]
-ResetMode = Literal["global", "any_agent", "all_agents"]
+AgentGroupName = str
 
 
 class _SafeFormatDict(dict):
@@ -43,131 +48,113 @@ class _SafeFormatDict(dict):
 
 
 @configclass
-class AgentProfileCfg:
-    """Reusable classical manager bundle for one embodiment or role.
+class AgentCfg:
+    """Manager configuration for one concrete PettingZoo agent.
 
-    A profile describes the observation, action, and optional command manager
-    configs used by an agent set. MARL-only terms are added by
-    :class:`AgentRlProfileCfg` in ``manager_based_marl_env_cfg.py``.
+    The contained manager configs should be ordinary IsaacLab manager
+    configuration objects. String fields inside the config are materialized with
+    the current agent context when the config is compiled. The most common
+    placeholder is ``"{agent_id}"`` for selecting the scene asset owned by that
+    agent.
+
+    Attributes:
+        asset_name: Scene asset name owned by the agent.
+        observations: Observation manager configuration.
+        actions: Action manager configuration.
+        commands: Optional command manager configuration.
     """
+
+    asset_name: str = "{agent_id}"
 
     observations: Any = MISSING
     actions: Any = MISSING
     commands: Any | None = None
 
-    observation_noise_model: Any | None = None
-    action_noise_model: Any | None = None
-
-    # Backward-compatible single-agent-style template. In grouped execution it
-    # is expanded once per concrete agent to produce AgentSetRuntimeSpec.entity_names.
-    entity_name: str = "{agent_id}"
-
-    metadata: dict[str, Any] = field(default_factory=dict)
-
 
 @configclass
-class AgentSetCfg:
-    """A homogeneous or role-homogeneous set of concrete PettingZoo agents."""
+class AgentGroupCfg:
+    """Convenience declaration for agents that share the same :class:`AgentCfg`.
 
-    name: AgentSetName = MISSING
+    Groups are a compact way to declare multiple agents with the same manager
+    config. Each group expands into concrete ``dict[agent_id, AgentCfg]``
+    entries before managers are built. Use a group when many agents only differ
+    by templated names such as asset ids.
 
-    # Exactly one membership mode must be used.
-    agents: list[AgentID] | None = None
+    Attributes:
+        name: Group name used for metadata and template substitution.
+        agent_cfg: Agent config template to copy for each concrete id.
+        agent_ids: Explicit concrete agent ids. Mutually exclusive with
+            :attr:`count`.
+        count: Number of agents to generate from :attr:`id_template`. Mutually
+            exclusive with :attr:`agent_ids`.
+        id_template: Template used when :attr:`count` is supplied.
+    """
+
+    name: AgentGroupName = MISSING
+    agent_cfg: AgentCfg = MISSING
+
+    agent_ids: list[AgentID] | None = None
     count: int | None = None
-    id_template: str | None = None
-    regex: str | None = None
+    id_template: str = "{name}_{i}"
 
-    profile: AgentProfileName = MISSING
+    def expand_agent_ids(self) -> list[AgentID]:
+        """Return the concrete agent ids described by the group."""
 
-    # Lightweight trainer/logger metadata. These do not affect classical
-    # stepping, but are useful for wrappers and MARL configs that inherit this.
-    policy: PolicyName | None = None
-    team: TeamName | None = None
-    trainable: bool = True
-
-    decision_period: int = 1
-    hold_action_between_decisions: bool = True
-
-    # Dotted-path overrides applied after deep-copying the profile for this set.
-    overrides: dict[str, Any] = field(default_factory=dict)
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    def selection_mode(self) -> AgentSelectionMode:
-        """Return the declared membership mode.
-
-        Raises:
-            ValueError: If zero or more than one membership mode is specified.
-        """
-
-        has_agents = self.agents is not None
-        has_generated = self.count is not None or self.id_template is not None
-        has_regex = self.regex is not None
-        selected = int(has_agents) + int(has_generated) + int(has_regex)
-        if selected != 1:
+        has_agent_ids = self.agent_ids is not None
+        has_count = self.count is not None
+        if has_agent_ids == has_count:
             raise ValueError(
-                f"AgentSetCfg(name={self.name!r}) must declare exactly one of agents, count/id_template, or regex."
+                f"AgentGroupCfg(name={self.name!r}) must specify exactly one of agent_ids or count."
             )
-        if has_agents:
-            return "agents"
-        if has_generated:
-            return "generated"
-        return "regex"
-
-
-@configclass
-class MultiAgentOptionsCfg:
-    """Runtime compatibility and pooling options."""
-
-    observation_group: str = "policy"
-
-    # ``set`` is the performant V2 default. ``agent`` is a compatibility escape
-    # hatch for manager terms that only support one entity at a time.
-    manager_grouping: ManagerGrouping = "set"
-
-    # Used by MARL reset aggregation; harmless for the classical base env whose
-    # done hooks are neutral placeholders.
-    reset_on: ResetMode = "global"
-
-    dynamic_agents: bool = False
-    validate_unique_agents: bool = True
-    validate_profile_references: bool = True
-    validate_spaces: bool = True
-    validate_policy_space_sharing: bool = True
-    expose_agent_metadata_maps: bool = True
-
-    # Optional bool tensor on the root env with shape
-    # ``(num_envs, len(possible_agents))``. Inactive agents remain part of the
-    # public ABI but their actions/rewards/terminations may be masked out.
-    active_agent_mask_key: str | None = None
+        if has_agent_ids:
+            return list(self.agent_ids or [])
+        if self.count is None or self.count < 0:
+            raise ValueError(f"AgentGroupCfg(name={self.name!r}) count must be >= 0.")
+        return [
+            self.id_template.format_map(_SafeFormatDict({"name": self.name, "group_name": self.name, "i": i}))
+            for i in range(self.count)
+        ]
 
 
 @configclass
 class ManagerBasedMaEnvCfg(DirectMARLEnvCfg):
-    """Configuration for the classical manager-based multi-agent env.
+    """Configuration for a manager-based classical multi-agent environment.
 
-    This class inherits ``DirectMARLEnvCfg`` so the runtime can reuse
-    DirectMARLEnv's PettingZoo-like multi-agent API. Observation/action spaces
-    are derived from pooled managers at runtime, so inherited DirectMARLEnvCfg
-    fields are neutralized here instead of left as ``MISSING``.
+    This config bridges IsaacLab manager terms to the public ABI inherited from
+    :class:`isaaclab.envs.DirectMARLEnv`. It keeps ``possible_agents`` fixed for
+    PettingZoo/SKRL compatibility and derives observation/action spaces from the
+    managers at runtime.
+
+    Attributes:
+        possible_agents: Fixed public agent universe. If omitted, it is derived
+            from explicit agents and groups in declaration order.
+        agents: Explicit per-agent configs.
+        agent_groups: Group declarations that expand to concrete agents.
+        observation_group: Observation manager group exposed as the policy
+            observation for each agent.
+        active_agent_mask_key: Optional environment attribute name containing a
+            ``[num_envs, num_agents]`` mask used to zero inactive-agent actions.
+        recorders: Optional recorder manager configuration.
     """
 
     possible_agents: list[AgentID] | None = None
 
-    # DirectMARLEnvCfg required fields. These are filled/overridden by the
-    # runtime after managers are created, but must be non-MISSING before
-    # cfg.validate() runs in DirectMARLEnv.__init__.
+    # DirectMARLEnvCfg required fields. These are derived from managers at runtime,
+    # but must be non-MISSING before DirectMARLEnvCfg validation runs.
     observation_spaces: dict[AgentID, Any] = field(default_factory=dict)
     action_spaces: dict[AgentID, Any] = field(default_factory=dict)
     state_space: Any = 0
     episode_length_s: float = math.inf
 
+    agents: dict[AgentID, AgentCfg] = field(default_factory=dict)
+    agent_groups: list[AgentGroupCfg] = field(default_factory=list)
+
+    observation_group: str = "policy"
+    active_agent_mask_key: str | None = None
+
     # Optional ManagerBasedEnv-style recorder config. DirectMARLEnvCfg does not
     # define this field, but the manager-based runtime can use it when supplied.
     recorders: Any | None = None
-
-    profiles: dict[AgentProfileName, AgentProfileCfg] = MISSING
-    sets: list[AgentSetCfg] = MISSING
-    ma_options: MultiAgentOptionsCfg = MultiAgentOptionsCfg()
 
 
 @dataclass(frozen=True)
@@ -175,40 +162,38 @@ class AgentRuntimeSpec:
     """Materialized metadata for one concrete PettingZoo agent."""
 
     agent_id: AgentID
-    profile_name: AgentProfileName
-    set_name: AgentSetName
-    policy: PolicyName | None
-    team: TeamName | None
-    trainable: bool
-    decision_period: int
-    hold_action_between_decisions: bool
-    entity_name: str
-    profile: AgentProfileCfg
-    metadata: dict[str, Any] = field(default_factory=dict)
+    agent_index: int
+    group_name: AgentGroupName | None
+    asset_name: str
+    cfg: AgentCfg
 
 
 @dataclass(frozen=True)
-class AgentSetRuntimeSpec:
-    """Pooled execution unit used by V2 manager creation."""
+class AgentGroupRuntimeSpec:
+    """Manager execution unit produced from the compiled agent declaration.
 
-    name: AgentSetName
-    profile_name: AgentProfileName
+    The runtime builds one manager bundle per concrete agent. The group metadata
+    is still preserved so tasks and loggers can recover how an agent was
+    declared.
+    """
+
+    name: AgentGroupName
     agent_ids: tuple[AgentID, ...]
     agent_indices: tuple[int, ...]
-    entity_names: tuple[str, ...]
-    policy: PolicyName | None
-    team: TeamName | None
-    trainable: bool
-    decision_period: int
-    hold_action_between_decisions: bool
-    profile: AgentProfileCfg
-    metadata: dict[str, Any] = field(default_factory=dict)
+    asset_names: tuple[str, ...]
+    cfg: AgentCfg
 
     @property
     def num_agents(self) -> int:
-        """Number of concrete agents in the execution set."""
+        """Number of concrete agents in the execution group."""
 
         return len(self.agent_ids)
+
+    @property
+    def entity_names(self) -> tuple[str, ...]:
+        """Backward-compatible alias for asset names."""
+
+        return self.asset_names
 
 
 @dataclass(frozen=True)
@@ -217,10 +202,8 @@ class MultiAgentRuntimeSpec:
 
     possible_agents: tuple[AgentID, ...]
     agents: dict[AgentID, AgentRuntimeSpec]
-    execution_sets: dict[AgentSetName, AgentSetRuntimeSpec]
-    sets: dict[AgentSetName, list[AgentID]]
-    policies: dict[PolicyName, list[AgentID]]
-    teams: dict[TeamName, list[AgentID]]
+    execution_groups: dict[AgentGroupName, AgentGroupRuntimeSpec]
+    groups: dict[AgentGroupName, list[AgentID]]
 
     @property
     def agent_ids(self) -> tuple[AgentID, ...]:
@@ -236,210 +219,94 @@ class MultiAgentRuntimeSpec:
 
 
 def compile_multi_agent_spec(cfg: ManagerBasedMaEnvCfg) -> MultiAgentRuntimeSpec:
-    """Compile the flattened public config into agent and set runtime specs.
+    """Resolve explicit agents and agent groups into runtime metadata.
 
     Args:
-        cfg: Manager-based multi-agent environment config.
+        cfg: Multi-agent environment config to compile.
 
     Returns:
-        A normalized runtime spec with both per-agent metadata and pooled
-        execution-set metadata.
+        Concrete runtime metadata with one :class:`AgentRuntimeSpec` per public
+        agent and one :class:`AgentGroupRuntimeSpec` execution group per agent.
 
     Raises:
-        ValueError: If profiles, sets, generated IDs, regex assignment, or
-        uniqueness constraints are invalid.
+        ValueError: If the declaration is empty, has duplicate ids, or the fixed
+            ``possible_agents`` universe does not match the configured agents.
     """
 
-    if not cfg.profiles:
-        raise ValueError("ManagerBasedMaEnvCfg.profiles must not be empty.")
-    if not cfg.sets:
-        raise ValueError("ManagerBasedMaEnvCfg.sets must not be empty.")
-
-    canonical_agents = list(cfg.possible_agents or [])
+    resolved_agents: dict[str, AgentCfg] = {}
+    agent_to_group: dict[str, str | None] = {}
     derived_agents: list[str] = []
 
-    for set_cfg in cfg.sets:
-        mode = set_cfg.selection_mode()
-        if mode == "regex":
-            if not canonical_agents:
-                raise ValueError(
-                    f"AgentSetCfg(name={set_cfg.name!r}) uses regex but cfg.possible_agents is not provided."
-                )
-            continue
-        derived_agents.extend(_expand_non_regex_set(set_cfg))
+    for agent_id, agent_cfg in cfg.agents.items():
+        resolved_agents[agent_id] = _materialize_agent_cfg(agent_cfg, agent_id=agent_id, group_name=None, index=0)
+        agent_to_group[agent_id] = None
+        derived_agents.append(agent_id)
 
-    possible_agents = canonical_agents if canonical_agents else _unique_preserving_order(derived_agents)
+    groups: dict[str, list[str]] = {}
+    for group in cfg.agent_groups:
+        agent_ids = group.expand_agent_ids()
+        groups[group.name] = agent_ids
+        for index, agent_id in enumerate(agent_ids):
+            if agent_id in resolved_agents:
+                raise ValueError(f"Agent {agent_id!r} is configured more than once.")
+            resolved_agents[agent_id] = _materialize_agent_cfg(
+                group.agent_cfg, agent_id=agent_id, group_name=group.name, index=index
+            )
+            agent_to_group[agent_id] = group.name
+            derived_agents.append(agent_id)
+
+    possible_agents = list(cfg.possible_agents or _unique_preserving_order(derived_agents))
+    if not possible_agents:
+        raise ValueError("ManagerBasedMaEnvCfg requires possible_agents or at least one configured agent/group.")
     if len(possible_agents) != len(set(possible_agents)):
         raise ValueError(f"cfg.possible_agents contains duplicates: {possible_agents!r}")
 
-    possible_agent_set = set(possible_agents)
-    agent_to_set: dict[str, AgentSetCfg] = {}
-    set_to_agents: dict[str, list[str]] = {}
-
-    for set_cfg in cfg.sets:
-        if cfg.ma_options.validate_profile_references and set_cfg.profile not in cfg.profiles:
-            raise ValueError(f"AgentSetCfg(name={set_cfg.name!r}) references unknown profile {set_cfg.profile!r}.")
-
-        if set_cfg.selection_mode() == "regex":
-            regex = re.compile(set_cfg.regex or "")
-            agent_ids = [agent_id for agent_id in possible_agents if regex.fullmatch(agent_id)]
-        else:
-            agent_ids = _expand_non_regex_set(set_cfg)
-
-        if not agent_ids:
-            raise ValueError(f"AgentSetCfg(name={set_cfg.name!r}) did not match/generate any agents.")
-
-        unknown = sorted(set(agent_ids) - possible_agent_set)
-        if unknown:
-            raise ValueError(f"AgentSetCfg(name={set_cfg.name!r}) assigns agents not in possible_agents: {unknown!r}.")
-
-        set_to_agents[set_cfg.name] = list(agent_ids)
-        for agent_id in agent_ids:
-            if agent_id in agent_to_set and cfg.ma_options.validate_unique_agents:
-                old_set = agent_to_set[agent_id].name
-                raise ValueError(f"Agent {agent_id!r} is assigned by multiple sets: {old_set!r} and {set_cfg.name!r}.")
-            agent_to_set[agent_id] = set_cfg
-
-    missing = [agent_id for agent_id in possible_agents if agent_id not in agent_to_set]
+    missing = [agent_id for agent_id in possible_agents if agent_id not in resolved_agents]
     if missing:
-        raise ValueError(f"The following possible_agents are not assigned to any set: {missing!r}")
+        raise ValueError(f"The following possible_agents are missing AgentCfg entries: {missing!r}")
+    extras = sorted(set(resolved_agents) - set(possible_agents))
+    if extras:
+        raise ValueError(f"AgentCfg entries are not present in possible_agents: {extras!r}")
 
-    runtime_agents: dict[str, AgentRuntimeSpec] = {}
-    execution_sets: dict[str, AgentSetRuntimeSpec] = {}
-    policies: dict[str, list[str]] = defaultdict(list)
-    teams: dict[str, list[str]] = defaultdict(list)
-
-    for set_cfg in cfg.sets:
-        if set_cfg.name not in set_to_agents:
-            continue
-        profile_name = set_cfg.profile
-        profile_template = cfg.profiles[profile_name]
-        agent_ids = tuple(set_to_agents[set_cfg.name])
-        agent_indices = tuple(possible_agents.index(agent_id) for agent_id in agent_ids)
-
-        entity_names = tuple(
-            _format_template(
-                profile_template.entity_name,
-                _context(
-                    agent_id=agent_id,
-                    set_cfg=set_cfg,
-                    profile_name=profile_name,
-                    entity_name="",
-                    entity_names=(),
-                ),
-            )
-            for agent_id in agent_ids
+    runtime_agents = {
+        agent_id: AgentRuntimeSpec(
+            agent_id=agent_id,
+            agent_index=index,
+            group_name=agent_to_group[agent_id],
+            asset_name=resolved_agents[agent_id].asset_name,
+            cfg=resolved_agents[agent_id],
         )
+        for index, agent_id in enumerate(possible_agents)
+    }
 
-        set_context = _context(
-            agent_id=None,
-            set_cfg=set_cfg,
-            profile_name=profile_name,
-            entity_name="",
-            entity_names=entity_names,
+    execution_groups = {
+        agent_id: AgentGroupRuntimeSpec(
+            name=agent_id,
+            agent_ids=(agent_id,),
+            agent_indices=(runtime_agents[agent_id].agent_index,),
+            asset_names=(runtime_agents[agent_id].asset_name,),
+            cfg=runtime_agents[agent_id].cfg,
         )
-        set_profile = copy.deepcopy(profile_template)
-        set_profile = _materialize_value(set_profile, set_context)
-        _apply_overrides(set_profile, set_cfg.overrides, set_context)
-
-        set_metadata = {}
-        set_metadata.update(copy.deepcopy(getattr(profile_template, "metadata", {}) or {}))
-        set_metadata.update(copy.deepcopy(getattr(set_cfg, "metadata", {}) or {}))
-        set_metadata = _materialize_value(set_metadata, set_context)
-
-        execution_sets[set_cfg.name] = AgentSetRuntimeSpec(
-            name=set_cfg.name,
-            profile_name=profile_name,
-            agent_ids=agent_ids,
-            agent_indices=agent_indices,
-            entity_names=entity_names,
-            policy=set_cfg.policy,
-            team=set_cfg.team,
-            trainable=set_cfg.trainable,
-            decision_period=set_cfg.decision_period,
-            hold_action_between_decisions=set_cfg.hold_action_between_decisions,
-            profile=set_profile,
-            metadata=set_metadata,
-        )
-
-        for agent_id, entity_name in zip(agent_ids, entity_names):
-            agent_context = _context(
-                agent_id=agent_id,
-                set_cfg=set_cfg,
-                profile_name=profile_name,
-                entity_name=entity_name,
-                entity_names=entity_names,
-            )
-            agent_profile = copy.deepcopy(profile_template)
-            agent_profile = _materialize_value(agent_profile, agent_context)
-            _apply_overrides(agent_profile, set_cfg.overrides, agent_context)
-
-            agent_metadata = {}
-            agent_metadata.update(copy.deepcopy(getattr(profile_template, "metadata", {}) or {}))
-            agent_metadata.update(copy.deepcopy(getattr(set_cfg, "metadata", {}) or {}))
-            agent_metadata = _materialize_value(agent_metadata, agent_context)
-
-            runtime_agents[agent_id] = AgentRuntimeSpec(
-                agent_id=agent_id,
-                profile_name=profile_name,
-                set_name=set_cfg.name,
-                policy=set_cfg.policy,
-                team=set_cfg.team,
-                trainable=set_cfg.trainable,
-                decision_period=set_cfg.decision_period,
-                hold_action_between_decisions=set_cfg.hold_action_between_decisions,
-                entity_name=entity_name,
-                profile=agent_profile,
-                metadata=agent_metadata,
-            )
-            if set_cfg.policy:
-                policies[set_cfg.policy].append(agent_id)
-            if set_cfg.team:
-                teams[set_cfg.team].append(agent_id)
+        for agent_id in possible_agents
+    }
 
     return MultiAgentRuntimeSpec(
         possible_agents=tuple(possible_agents),
         agents=runtime_agents,
-        execution_sets=execution_sets,
-        sets={name: list(agent_ids) for name, agent_ids in set_to_agents.items()},
-        policies={name: list(agent_ids) for name, agent_ids in policies.items()},
-        teams={name: list(agent_ids) for name, agent_ids in teams.items()},
+        execution_groups=execution_groups,
+        groups=groups,
     )
 
 
-def _context(
-    *,
-    agent_id: str | None,
-    set_cfg: AgentSetCfg,
-    profile_name: str,
-    entity_name: str,
-    entity_names: tuple[str, ...],
-) -> dict[str, Any]:
+def _materialize_agent_cfg(agent_cfg: AgentCfg, *, agent_id: str, group_name: str | None, index: int) -> AgentCfg:
     context = {
-        "set_name": set_cfg.name,
-        "profile": profile_name,
-        "policy": set_cfg.policy or "",
-        "team": set_cfg.team or "",
-        "entity_name": entity_name,
-        "entity_names": entity_names,
-        "num_agents": len(entity_names),
+        "agent_id": agent_id,
+        "entity_name": agent_id,
+        "group_name": group_name or "",
+        "name": group_name or agent_id,
+        "i": index,
     }
-    if agent_id is not None:
-        context["agent_id"] = agent_id
-    return context
-
-
-def _expand_non_regex_set(set_cfg: AgentSetCfg) -> list[str]:
-    mode = set_cfg.selection_mode()
-    if mode == "agents":
-        return list(set_cfg.agents or [])
-    if mode == "generated":
-        if set_cfg.count is None or set_cfg.id_template is None:
-            raise ValueError(f"AgentSetCfg(name={set_cfg.name!r}) generated mode requires count and id_template.")
-        if set_cfg.count < 0:
-            raise ValueError(f"AgentSetCfg(name={set_cfg.name!r}) count must be >= 0.")
-        return [set_cfg.id_template.format(i=i) for i in range(set_cfg.count)]
-    raise ValueError(f"_expand_non_regex_set called for regex set {set_cfg.name!r}.")
+    return _materialize_value(copy.deepcopy(agent_cfg), context)
 
 
 def _unique_preserving_order(items: list[str]) -> list[str]:
@@ -475,11 +342,10 @@ def _materialize_value(value: Any, context: dict[str, Any]) -> Any:
             try:
                 setattr(value, field_info.name, _materialize_value(current, context))
             except Exception:
-                # Some config fields may be read-only descriptors. Leave them unchanged.
                 pass
         return value
     if hasattr(value, "__dict__") and value.__class__.__module__.startswith(
-        ("isaaclab", "isaaclab_tasks", "environments")
+        ("isaaclab", "isaaclab_tasks", "environments", "cpsquare_lab")
     ):
         for key, current in list(vars(value).items()):
             try:
@@ -488,19 +354,3 @@ def _materialize_value(value: Any, context: dict[str, Any]) -> Any:
                 pass
         return value
     return value
-
-
-def _apply_overrides(target: Any, overrides: dict[str, Any], context: dict[str, Any]) -> None:
-    """Apply dotted-path overrides into a profile object or dictionary."""
-
-    for path, raw_value in (overrides or {}).items():
-        value = _materialize_value(copy.deepcopy(raw_value), context)
-        parts = path.split(".")
-        obj = target
-        for part in parts[:-1]:
-            obj = obj[part] if isinstance(obj, dict) else getattr(obj, part)
-        last = parts[-1]
-        if isinstance(obj, dict):
-            obj[last] = value
-        else:
-            setattr(obj, last, value)

@@ -56,14 +56,14 @@ def reset_drone_root_state_uniform(
         root_pose = asset.data.default_root_pose.torch[env_ids].clone()
         root_velocity = asset.data.default_root_vel.torch[env_ids].clone()
         root_pose[:, :3] = env.scene.env_origins[env_ids] + torch.tensor((0.0, 0.0, -10.0), device=env.device)
-        root_pose[:, 3:7] = torch.tensor([1.0, 0.0, 0.0, 0.0], device=env.device)
+        root_pose[:, 3:7] = torch.tensor([0.0, 0.0, 0.0, 1.0], device=env.device)
         root_velocity[:, :] = 0.0
 
         if n_active > 0:
             positions = _sample_separated_positions(
                 n_active, xy_bounds, z_bounds, min_separation, env.device
             )
-            quat = torch.tensor([1.0, 0.0, 0.0, 0.0], device=env.device).repeat(n_active, 1)
+            quat = torch.tensor([0.0, 0.0, 0.0, 1.0], device=env.device).repeat(n_active, 1)
             lin_vel = sample_uniform(
                 lin_vel_range[0], lin_vel_range[1], (n_active, 3), device=env.device
             )

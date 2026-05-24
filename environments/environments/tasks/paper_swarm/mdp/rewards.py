@@ -17,6 +17,7 @@ from __future__ import annotations
 import torch
 
 from isaaclab.envs.mdp import action_rate_l2  # noqa: F401
+from isaaclab.utils.math import euler_xyz_from_quat, wrap_to_pi
 
 
 def waypoint_tracking_reward(
@@ -30,10 +31,8 @@ def waypoint_tracking_reward(
     Returns:
         Reward [dimensionless], shape (num_envs,).
     """
-    from .observations import _as_torch
-
     target_pos = env.command_manager.get_command(command_name)[:, :3]
-    current_pos = _as_torch(env.scene[asset_cfg.name].data.root_pos_w)[: target_pos.shape[0]]
+    current_pos = env.scene[asset_cfg.name].data.root_pos_w.torch[: target_pos.shape[0]]
     pos_error = target_pos - current_pos
     reward = torch.exp(-torch.sum(pos_error**2, dim=-1) / (std**2))
     mask = _get_active_mask(env, agent_id, mask_key)
@@ -51,14 +50,10 @@ def heading_tracking_reward(
     Returns:
         Reward [dimensionless], shape (num_envs,).
     """
-    from .observations import _as_torch, _asset, _quat_to_euler
-
-    from isaaclab.utils.math import wrap_to_pi
-
     command = env.command_manager.get_command(command_name)
     target_yaw = command[:, 5]
-    quat = _as_torch(_asset(env, asset_cfg).data.root_quat_w)[: command.shape[0]]
-    _, _, current_yaw = _quat_to_euler(quat)
+    quat = _asset(env, asset_cfg).data.root_quat_w.torch[: command.shape[0]]
+    _, _, current_yaw = euler_xyz_from_quat(quat)
     yaw_error = wrap_to_pi(target_yaw - current_yaw)
     reward = torch.exp(-(yaw_error**2) / (std**2))
     mask = _get_active_mask(env, agent_id, mask_key)
@@ -77,18 +72,14 @@ def reached_target_pose(
     Returns:
         Bonus [dimensionless], shape (num_envs,).
     """
-    from .observations import _as_torch, _asset, _quat_to_euler
-
-    from isaaclab.utils.math import wrap_to_pi
-
     target_pos = env.command_manager.get_command(command_name)[:, :3]
     n = target_pos.shape[0]
-    current_pos = _as_torch(_asset(env, asset_cfg).data.root_pos_w)[:n]
+    current_pos = _asset(env, asset_cfg).data.root_pos_w.torch[:n]
     dist = torch.norm(target_pos - current_pos, dim=-1)
 
     _, target_yaw, _ = _decomposed_target(env, command_name)
-    quat = _as_torch(_asset(env, asset_cfg).data.root_quat_w)[:n]
-    _, _, current_yaw = _quat_to_euler(quat)
+    quat = _asset(env, asset_cfg).data.root_quat_w.torch[:n]
+    _, _, current_yaw = euler_xyz_from_quat(quat)
     yaw_err = wrap_to_pi(target_yaw - current_yaw).abs()
 
     reached = (dist < distance_threshold) & (yaw_err < yaw_threshold)
@@ -108,9 +99,9 @@ def collision_avoidance_reward(
     Returns:
         Reward [dimensionless], shape (num_envs,). Clipped to [-1, 0].
     """
-    from .observations import _all_root_pos, _as_torch
+    from .observations import _all_root_pos
 
-    ego_pos = _as_torch(_asset(env, asset_cfg).data.root_pos_w)
+    ego_pos = _asset(env, asset_cfg).data.root_pos_w.torch
     mask = _get_active_mask(env, agent_id, mask_key)
     current_index = agent_ids.index(asset_cfg.name)
     all_pos = _all_root_pos(env, agent_ids)
@@ -135,10 +126,8 @@ def obstacle_avoidance_reward(
     Returns:
         Reward [dimensionless], shape (num_envs,). Clipped to [-1, 0].
     """
-    from .observations import _as_torch
-
     asset = _asset(env, asset_cfg)
-    drone_pos = _as_torch(asset.data.root_pos_w)
+    drone_pos = asset.data.root_pos_w.torch
 
     columns = getattr(_root_env(env), column_positions_key, None)
     if columns is None or columns.shape[1] == 0:
@@ -153,9 +142,7 @@ def obstacle_avoidance_reward(
 
 def body_rate_l2(env, asset_cfg, agent_id: str, mask_key: str) -> torch.Tensor:
     """L2 penalty on body angular velocity [rad/s]^2, shape (num_envs,)."""
-    from .observations import _as_torch
-
-    ang_vel = _as_torch(_asset(env, asset_cfg).data.root_ang_vel_b)
+    ang_vel = _asset(env, asset_cfg).data.root_ang_vel_b.torch
     mask = _get_active_mask(env, agent_id, mask_key)
     return torch.sum(ang_vel**2, dim=-1) * mask
 

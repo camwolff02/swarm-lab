@@ -24,10 +24,8 @@ def drone_out_of_bounds(
     Returns:
         Bool tensor, shape (num_envs,). True if out of bounds.
     """
-    from .observations import _as_torch
-
     asset = env.scene[asset_cfg.name]
-    pos = _as_torch(asset.data.root_pos_w)
+    pos = asset.data.root_pos_w.torch
     out_of_xy = (torch.abs(pos[:, 0]) > xy_bounds[1]) | (torch.abs(pos[:, 1]) > xy_bounds[1])
     out_of_z = (pos[:, 2] < z_bounds[0]) | (pos[:, 2] > z_bounds[1])
     mask = _get_active_mask(env, agent_id, mask_key)
@@ -45,9 +43,9 @@ def drone_pairwise_collision(
     Returns:
         Bool tensor, shape (num_envs,).
     """
-    from .observations import _all_root_pos, _as_torch
+    from .observations import _all_root_pos
 
-    ego_pos = _as_torch(env.scene[asset_cfg.name].data.root_pos_w)
+    ego_pos = env.scene[asset_cfg.name].data.root_pos_w.torch
     mask = _get_active_mask(env, agent_id, mask_key)
     if mask.sum() == 0:
         return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)

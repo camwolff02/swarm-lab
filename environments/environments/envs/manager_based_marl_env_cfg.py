@@ -3,24 +3,39 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Configuration classes for manager-based multi-agent RL environments."""
+"""Configuration classes for manager-based multi-agent RL environments.
+
+This module adds the reinforcement-learning layer on top of
+:mod:`manager_based_ma_env_cfg`. The split is intentional: the classical
+multi-agent config owns observations, actions, and commands, while this module
+owns rewards, terminations, curriculum, and reset aggregation. Critic inputs are
+ordinary observation manager groups named ``"critic"``.
+"""
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import MISSING
+from dataclasses import MISSING, field
 from typing import Any, Literal
 
 from isaaclab.utils.configclass import configclass
 
-from .manager_based_ma_env_cfg import AgentProfileCfg, ManagerBasedMaEnvCfg
+from .manager_based_ma_env_cfg import AgentCfg, AgentGroupCfg, AgentID, ManagerBasedMaEnvCfg
 
-StateMode = Literal["none", "concat_policy", "observation_group", "custom"]
+ResetMode = Literal["any", "all"]
 
 
 @configclass
-class AgentRlProfileCfg(AgentProfileCfg):
-    """Reusable MARL manager bundle for one embodiment or role."""
+class AgentRlCfg(AgentCfg):
+    """Manager configuration for one concrete RL agent.
+
+    This extends :class:`AgentCfg` with the manager terms required by RL
+    algorithms.
+
+    Attributes:
+        rewards: Reward manager configuration.
+        terminations: Termination manager configuration.
+        curriculum: Optional curriculum manager configuration.
+    """
 
     rewards: Any = MISSING
     terminations: Any = MISSING
@@ -28,41 +43,24 @@ class AgentRlProfileCfg(AgentProfileCfg):
 
 
 @configclass
-class MultiAgentStateCfg:
-    """Optional centralized state / critic observation configuration."""
-
-    mode: StateMode = "none"
-
-    # DirectMARLEnvCfg-style semantics:
-    #   0  -> no centralized state
-    #  -1  -> infer by concatenation / manager output
-    #  >0  -> explicit flat state dimension
-    # Gym spaces or nested spaces may also be supplied by advanced users.
-    state_space: Any = 0
-
-    # Used when ``mode == "observation_group"``.
-    group_name: str = "critic"
-
-    # Used when ``mode == "custom"``. The function should accept the env and
-    # return either a tensor-like global state or dict[agent_id, state].
-    function: Callable[[Any], Any] | None = None
-
-    # SKRL's multi-agent abstractions commonly expose state spaces per agent.
-    # If True, runtime adapters may duplicate a global state into a dict keyed
-    # by agent. If False, runtime adapters may expose a single global state.
-    expose_as_dict: bool = False
-
-
-@configclass
 class ManagerBasedMarlEnvCfg(ManagerBasedMaEnvCfg):
-    """Configuration for a manager-based multi-agent RL environment."""
+    """Configuration for a manager-based multi-agent RL environment.
 
-    profiles: dict[str, AgentRlProfileCfg] = MISSING
+    Attributes:
+        agents: Explicit per-agent RL configs.
+        agent_groups: Group declarations that expand one :class:`AgentRlCfg` to
+            multiple concrete agents.
+        reset_on: Environment-level reset aggregation. ``"any"`` resets all
+            agents when any agent terminates/truncates; ``"all"`` waits for all
+            agents in the aggregation.
+        episode_length_s: Episode duration [s].
+        is_finite_horizon: Whether time limits are part of the MDP.
+    """
 
-    # Optional centralized/global state config. It is harmless for IPPO and
-    # becomes important for CTDE algorithms such as MAPPO.
-    state: MultiAgentStateCfg = MultiAgentStateCfg()
+    agents: dict[AgentID, AgentRlCfg] = field(default_factory=dict)
+    agent_groups: list[AgentGroupCfg] = field(default_factory=list)
 
-    # Same semantics as ManagerBasedRLEnvCfg / DirectMARLEnvCfg.
+    reset_on: ResetMode = "any"
+
     episode_length_s: float = MISSING
     is_finite_horizon: bool = False

@@ -35,10 +35,10 @@ class DroneStateRecorder(RecorderTerm):
 
         for i, agent_id in enumerate(possible_agents):
             asset = root_env.scene[agent_id].data
-            positions[:, i, :] = asset.root_pos_w
-            quaternions[:, i, :] = asset.root_quat_w
-            velocities[:, i, :] = asset.root_lin_vel_w
-            ang_velocities[:, i, :] = asset.root_ang_vel_w
+            positions[:, i, :] = asset.root_pos_w.torch
+            quaternions[:, i, :] = asset.root_quat_w.torch
+            velocities[:, i, :] = asset.root_lin_vel_w.torch
+            ang_velocities[:, i, :] = asset.root_ang_vel_w.torch
 
         return None, {
             "positions": positions,
@@ -68,7 +68,7 @@ class GoalDistanceRecorder(RecorderTerm):
             cmd = command_manager.get_command("target_pose")
             for i, agent_id in enumerate(possible_agents):
                 goal_positions[:, i, :] = cmd[:, :3]
-                pos = root_env.scene[agent_id].data.root_pos_w
+                pos = root_env.scene[agent_id].data.root_pos_w.torch
                 goal_distances[:, i] = torch.norm(cmd[:, :3] - pos, dim=-1)
 
         return None, {

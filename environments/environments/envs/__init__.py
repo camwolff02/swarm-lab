@@ -15,34 +15,31 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .manager_based_ma_env_cfg import (
-    AgentProfileCfg,
+    AgentCfg,
+    AgentGroupCfg,
+    AgentGroupRuntimeSpec,
     AgentRuntimeSpec,
-    AgentSetCfg,
-    AgentSetRuntimeSpec,
     ManagerBasedMaEnvCfg,
-    MultiAgentOptionsCfg,
     MultiAgentRuntimeSpec,
     compile_multi_agent_spec,
 )
-from .manager_based_marl_env_cfg import AgentRlProfileCfg, ManagerBasedMarlEnvCfg, MultiAgentStateCfg
+from .manager_based_marl_env_cfg import AgentRlCfg, ManagerBasedMarlEnvCfg
 
 if TYPE_CHECKING:
     from .manager_based_ma_env import ManagerBasedMaEnv
     from .manager_based_marl_env import ManagerBasedMarlEnv
 
 __all__ = [
-    "AgentProfileCfg",
-    "AgentRlProfileCfg",
+    "AgentCfg",
+    "AgentGroupCfg",
+    "AgentGroupRuntimeSpec",
+    "AgentRlCfg",
     "AgentRuntimeSpec",
-    "AgentSetCfg",
-    "AgentSetRuntimeSpec",
     "ManagerBasedMaEnv",
     "ManagerBasedMaEnvCfg",
     "ManagerBasedMarlEnv",
     "ManagerBasedMarlEnvCfg",
-    "MultiAgentOptionsCfg",
     "MultiAgentRuntimeSpec",
-    "MultiAgentStateCfg",
     "compile_multi_agent_spec",
 ]
 

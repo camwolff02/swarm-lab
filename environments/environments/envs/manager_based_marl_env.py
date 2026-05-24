@@ -22,15 +22,15 @@ from .manager_based_marl_env_cfg import ManagerBasedMarlEnvCfg
 class ManagerBasedMarlEnv(ManagerBasedMaEnv):
     """Manager-based multi-agent RL environment.
 
-    This class adds reward, termination, curriculum, and centralized-state
-    managers on top of the classical pooled manager workflow. It still relies on
-    DirectMARLEnv's inherited step loop through ``ManagerBasedMaEnv``.
+    This class adds reward, termination, and curriculum managers on top of the
+    classical manager workflow. Critic inputs are regular observation manager
+    groups named ``"critic"`` and are exposed through :meth:`state`.
     """
 
+    critic_observation_group = "critic"
     cfg: ManagerBasedMarlEnvCfg
 
     def __init__(self, cfg: ManagerBasedMarlEnvCfg, render_mode: str | None = None, **kwargs):
-        cfg.state_space = cfg.state.state_space
         super().__init__(cfg=cfg, render_mode=render_mode, **kwargs)
 
     def step(self, actions):
@@ -43,12 +43,12 @@ class ManagerBasedMarlEnv(ManagerBasedMaEnv):
 
     def _create_classical_manager_bundle(self, runtime) -> _ManagerBundle:
         bundle = super()._create_classical_manager_bundle(runtime)
-        profile = runtime.profile
+        agent_cfg = runtime.cfg
 
-        bundle.reward_manager = RewardManager(profile.rewards, bundle.env_view)
-        bundle.termination_manager = TerminationManager(profile.terminations, bundle.env_view)
+        bundle.reward_manager = RewardManager(agent_cfg.rewards, bundle.env_view)
+        bundle.termination_manager = TerminationManager(agent_cfg.terminations, bundle.env_view)
         bundle.curriculum_manager = (
-            CurriculumManager(profile.curriculum, bundle.env_view) if profile.curriculum is not None else None
+            CurriculumManager(agent_cfg.curriculum, bundle.env_view) if agent_cfg.curriculum is not None else None
         )
 
         bundle.env_view.reward_manager = bundle.reward_manager
@@ -56,32 +56,34 @@ class ManagerBasedMarlEnv(ManagerBasedMaEnv):
         bundle.env_view.curriculum_manager = bundle.curriculum_manager
         return bundle
 
+    def _configure_multi_agent_spaces(self) -> None:
+        super()._configure_multi_agent_spaces()
+        critic_spaces = self._make_critic_state_spaces()
+        if not critic_spaces:
+            return
+        self.state_spaces.update(critic_spaces)
+        self.state_space = next(iter(critic_spaces.values()))
+        self.cfg.state_space = self.state_space
+
     def _make_state_space(self) -> gym.Space | None:
-        state_cfg = self.cfg.state
-        if state_cfg.mode == "none" or not state_cfg.state_space:
-            return None
-        if isinstance(state_cfg.state_space, gym.Space):
-            return state_cfg.state_space
-        if isinstance(state_cfg.state_space, int) and state_cfg.state_space > 0:
-            return gym.spaces.Box(low=-np.inf, high=np.inf, shape=(state_cfg.state_space,), dtype=np.float32)
-        if state_cfg.mode == "concat_policy":
-            dim = sum(int(np.prod(space.shape)) for space in self.observation_spaces.values())
-            return gym.spaces.Box(low=-np.inf, high=np.inf, shape=(dim,), dtype=np.float32)
-        if state_cfg.mode == "observation_group":
-            dim = 0
-            for bundle in self._manager_bundles.values():
-                obs_dim = bundle.observation_manager.group_obs_dim[state_cfg.group_name]
-                if not isinstance(obs_dim, tuple):
-                    raise ValueError(f"State observation group {state_cfg.group_name!r} must be concatenated.")
-                dim += int(np.prod(obs_dim))
-            return gym.spaces.Box(low=-np.inf, high=np.inf, shape=(dim,), dtype=np.float32)
-        if state_cfg.mode == "custom":
-            if isinstance(state_cfg.state_space, gym.Space):
-                return state_cfg.state_space
-            if isinstance(state_cfg.state_space, int) and state_cfg.state_space > 0:
-                return gym.spaces.Box(low=-np.inf, high=np.inf, shape=(state_cfg.state_space,), dtype=np.float32)
-            return None
-        raise ValueError(f"Unsupported multi-agent state mode: {state_cfg.mode!r}")
+        return None
+
+    def _make_critic_state_spaces(self) -> dict[str, gym.Space]:
+        critic_spaces: dict[str, gym.Space] = {}
+        for bundle in self._manager_bundles.values():
+            group_dims = bundle.observation_manager.group_obs_dim
+            if self.critic_observation_group not in group_dims:
+                continue
+            obs_dim = group_dims[self.critic_observation_group]
+            if not isinstance(obs_dim, tuple):
+                raise ValueError(
+                    f"Observation group {self.critic_observation_group!r} for {bundle.runtime.name!r} must be "
+                    "concatenated to be exposed as critic state."
+                )
+            space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=obs_dim, dtype=np.float32)
+            for agent_id in bundle.runtime.agent_ids:
+                critic_spaces[agent_id] = space
+        return critic_spaces
 
     def _reset_idx(self, env_ids: Sequence[int] | torch.Tensor | None) -> None:
         self._compute_curriculum(env_ids)
@@ -104,15 +106,15 @@ class ManagerBasedMarlEnv(ManagerBasedMaEnv):
         return rewards
 
     def _get_dones(self) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
-        reset_mode = self.cfg.ma_options.reset_on
-        if reset_mode not in ("global", "any_agent", "all_agents"):
+        reset_mode = self.cfg.reset_on
+        if reset_mode not in ("any", "all"):
             raise ValueError(
                 f"Unsupported multi-agent reset mode: {reset_mode!r}. "
                 "V2 only supports env-level reset aggregation, not per-agent reset."
             )
 
-        raw_terminated_by_set: list[torch.Tensor] = []
-        raw_truncated_by_set: list[torch.Tensor] = []
+        raw_terminated_by_group: list[torch.Tensor] = []
+        raw_truncated_by_group: list[torch.Tensor] = []
         per_agent_terminated: dict[str, torch.Tensor] = {}
         per_agent_truncated: dict[str, torch.Tensor] = {}
 
@@ -120,23 +122,23 @@ class ManagerBasedMarlEnv(ManagerBasedMaEnv):
             bundle.termination_manager.compute()
             raw_terminated = bundle.termination_manager.terminated
             raw_truncated = bundle.termination_manager.time_outs
-            if reset_mode in ("global", "any_agent"):
-                raw_terminated_by_set.append(self._reduce_set_done_tensor(raw_terminated, bundle.runtime, op="any"))
-                raw_truncated_by_set.append(self._reduce_set_done_tensor(raw_truncated, bundle.runtime, op="any"))
-            elif reset_mode == "all_agents":
-                raw_terminated_by_set.append(self._reduce_set_done_tensor(raw_terminated, bundle.runtime, op="all"))
-                raw_truncated_by_set.append(self._reduce_set_done_tensor(raw_truncated, bundle.runtime, op="all"))
+            if reset_mode == "any":
+                raw_terminated_by_group.append(self._reduce_group_done_tensor(raw_terminated, bundle.runtime, op="any"))
+                raw_truncated_by_group.append(self._reduce_group_done_tensor(raw_truncated, bundle.runtime, op="any"))
+            elif reset_mode == "all":
+                raw_terminated_by_group.append(self._reduce_group_done_tensor(raw_terminated, bundle.runtime, op="all"))
+                raw_truncated_by_group.append(self._reduce_group_done_tensor(raw_truncated, bundle.runtime, op="all"))
             per_agent_terminated.update(self._fanout_reward_or_done(raw_terminated, bundle.runtime, dtype=torch.bool))
             per_agent_truncated.update(self._fanout_reward_or_done(raw_truncated, bundle.runtime, dtype=torch.bool))
 
-        if reset_mode in ("global", "any_agent"):
-            global_terminated = self._reduce_tensor_list(raw_terminated_by_set, op="any")
-            global_truncated = self._reduce_tensor_list(raw_truncated_by_set, op="any")
+        if reset_mode == "any":
+            global_terminated = self._reduce_tensor_list(raw_terminated_by_group, op="any")
+            global_truncated = self._reduce_tensor_list(raw_truncated_by_group, op="any")
             terminated = {agent_id: global_terminated for agent_id in self.possible_agents}
             truncated = {agent_id: global_truncated for agent_id in self.possible_agents}
-        elif reset_mode == "all_agents":
-            global_terminated = self._reduce_tensor_list(raw_terminated_by_set, op="all")
-            global_truncated = self._reduce_tensor_list(raw_truncated_by_set, op="all")
+        elif reset_mode == "all":
+            global_terminated = self._reduce_tensor_list(raw_terminated_by_group, op="all")
+            global_truncated = self._reduce_tensor_list(raw_truncated_by_group, op="all")
             terminated = {agent_id: global_terminated for agent_id in self.possible_agents}
             truncated = {agent_id: global_truncated for agent_id in self.possible_agents}
         else:
@@ -152,46 +154,26 @@ class ManagerBasedMarlEnv(ManagerBasedMaEnv):
         return self.state()
 
     def state(self) -> Any:
-        """Compute the optional centralized training state.
+        """Compute critic observations for the training state channel.
 
         Returns:
-            ``None`` for decentralized algorithms, a tensor for shared global
-            state, or a dict keyed by agent id when ``expose_as_dict`` is true.
+            ``None`` when no ``critic`` observation group is configured, or a
+            dict keyed by agent id containing each agent's critic observation.
         """
 
-        state_cfg = self.cfg.state
-        if state_cfg.mode == "none":
+        if not any(
+            self.critic_observation_group in bundle.observation_manager.group_obs_dim
+            for bundle in self._manager_bundles.values()
+        ):
             return None
-        if state_cfg.mode == "custom":
-            if state_cfg.function is None:
-                raise RuntimeError("cfg.state.mode='custom' requires cfg.state.function")
-            self.state_buf = state_cfg.function(self)
-            return self.state_buf
-        if state_cfg.mode == "concat_policy":
-            if not self.obs_dict:
-                self.obs_dict = self._get_observations()
-            state = torch.cat(
-                [self.obs_dict[agent_id].reshape(self.num_envs, -1) for agent_id in self.possible_agents], dim=-1
+        states: dict[str, Any] = {}
+        for bundle in self._manager_bundles.values():
+            critic_obs = bundle.observation_manager.compute_group(
+                self.critic_observation_group, update_history=False
             )
-            self.state_buf = state
-            return self._format_state(state)
-        if state_cfg.mode == "observation_group":
-            state_parts = []
-            for bundle in self._manager_bundles.values():
-                if hasattr(bundle.observation_manager, "compute_group"):
-                    obs = bundle.observation_manager.compute_group(state_cfg.group_name, update_history=False)
-                else:
-                    obs = bundle.observation_manager.compute(update_history=False)[state_cfg.group_name]
-                state_parts.append(obs.reshape(self.num_envs, -1))
-            state = torch.cat(state_parts, dim=-1) if len(state_parts) > 1 else state_parts[0]
-            self.state_buf = state
-            return self._format_state(state)
-        raise ValueError(f"Unsupported multi-agent state mode: {state_cfg.mode!r}")
-
-    def _format_state(self, state: torch.Tensor) -> torch.Tensor | dict[str, torch.Tensor]:
-        if self.cfg.state.expose_as_dict:
-            return {agent_id: state for agent_id in self.possible_agents}
-        return state
+            states.update(self._fanout_tensor(critic_obs, bundle.runtime))
+        self.state_buf = states
+        return states
 
     def _fanout_reward_or_done(self, value: torch.Tensor, runtime, dtype) -> dict[str, torch.Tensor]:
         if dtype is not None and value.dtype != dtype:
@@ -209,7 +191,7 @@ class ManagerBasedMarlEnv(ManagerBasedMaEnv):
             return {agent_id: reshaped[:, i] for i, agent_id in enumerate(runtime.agent_ids)}
         return {agent_id: value.reshape(self.num_envs, -1).squeeze(-1) for agent_id in runtime.agent_ids}
 
-    def _reduce_set_done_tensor(self, value: torch.Tensor, runtime, *, op: str) -> torch.Tensor:
+    def _reduce_group_done_tensor(self, value: torch.Tensor, runtime, *, op: str) -> torch.Tensor:
         if value.dtype != torch.bool:
             value = value.to(dtype=torch.bool)
         if value.ndim == 1:
