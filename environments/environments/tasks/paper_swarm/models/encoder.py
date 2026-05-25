@@ -30,7 +30,7 @@ class PaperAttentionEncoderCfg:
 
     num_drones: int = 8
     max_neighbors: int = 7
-    self_obs_dim: int = 21
+    self_obs_dim: int = 34
     other_obs_dim: int = 6
     static_sdf_dim: int = 9
     goal_obs_dim: int = 6

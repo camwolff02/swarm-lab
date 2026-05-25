@@ -24,8 +24,9 @@ def drone_out_of_bounds(
     Returns:
         Bool tensor, shape (num_envs,). True if out of bounds.
     """
+    root = env.root if hasattr(env, "root") else env
     asset = env.scene[asset_cfg.name]
-    pos = asset.data.root_pos_w.torch
+    pos = asset.data.root_pos_w.torch - root.scene.env_origins
     out_of_xy = (torch.abs(pos[:, 0]) > xy_bounds[1]) | (torch.abs(pos[:, 1]) > xy_bounds[1])
     out_of_z = (pos[:, 2] < z_bounds[0]) | (pos[:, 2] > z_bounds[1])
     mask = _get_active_mask(env, agent_id, mask_key)
@@ -45,7 +46,8 @@ def drone_pairwise_collision(
     """
     from .observations import _all_root_pos
 
-    ego_pos = env.scene[asset_cfg.name].data.root_pos_w.torch
+    root = env.root if hasattr(env, "root") else env
+    ego_pos = env.scene[asset_cfg.name].data.root_pos_w.torch - root.scene.env_origins
     mask = _get_active_mask(env, agent_id, mask_key)
     if mask.sum() == 0:
         return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
@@ -58,6 +60,37 @@ def drone_pairwise_collision(
     collision = (dist < collision_distance).any(dim=-1)
 
     return collision & (mask > 0)
+
+
+def drone_column_collision(
+    env, asset_cfg, agent_id: str, column_positions_key: str, column_radius: float, mask_key: str
+) -> torch.Tensor:
+    """True if drone is within column_radius of any static column.
+
+    Args:
+        column_positions_key: Attribute name for column positions on root env.
+        column_radius: Column radius [m].
+
+    Returns:
+        Bool tensor, shape (num_envs,). True if colliding.
+    """
+    from .observations import _root_env as _obs_root_env
+
+    asset = env.scene[asset_cfg.name]
+    root = _obs_root_env(env)
+    pos = asset.data.root_pos_w.torch - root.scene.env_origins
+    columns = getattr(root, column_positions_key, None)
+    if columns is None or columns.shape[1] == 0:
+        return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+
+    n = pos.shape[0]
+    min_dist = 20.0 * torch.ones(n, device=env.device)
+    for c in range(columns.shape[1]):
+        col_xy = columns[:, c, :2]
+        dist_xy = torch.norm(pos[:, :2] - col_xy, dim=-1)
+        min_dist = torch.min(min_dist, dist_xy)
+    mask = _get_active_mask(env, agent_id, mask_key)
+    return (min_dist < column_radius) & (mask > 0)
 
 
 def _get_active_mask(env, agent_id: str, mask_key: str) -> torch.Tensor:

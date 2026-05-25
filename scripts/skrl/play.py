@@ -16,7 +16,6 @@ import random
 import sys
 import time
 
-import environments.tasks  # noqa: F401
 import gymnasium as gym
 import skrl
 import torch
@@ -83,6 +82,10 @@ if args_cli.video:
     args_cli.enable_cameras = True
 
 sys.argv = [sys.argv[0]] + hydra_args
+
+from environments import tasks as local_tasks
+
+local_tasks.register_tasks_for(args_cli.task)
 
 # -- check skrl version ------------------------------------------------------
 if version.parse(skrl.__version__) < version.parse(SKRL_VERSION):
@@ -209,7 +212,8 @@ def main():
             env = gym.wrappers.RecordVideo(env, **video_kwargs)
 
         # wrap around environment for skrl
-        env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)
+        skrl_wrapper = "isaaclab-multi-agent" if hasattr(env.unwrapped, "possible_agents") else "isaaclab"
+        env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework, wrapper=skrl_wrapper)
 
         # configure and instantiate the skrl runner
         experiment_cfg["trainer"]["close_environment_at_exit"] = False
@@ -219,10 +223,14 @@ def main():
 
         print(f"[INFO] Loading model checkpoint from: {resume_path}")
         runner.agent.load(resume_path)
-        runner.agent.set_running_mode("eval")
+        if hasattr(runner.agent, "enable_training_mode"):
+            runner.agent.enable_training_mode(False, apply_to_models=True)
+        elif hasattr(runner.agent, "set_running_mode"):
+            runner.agent.set_running_mode("eval")
 
         # reset environment
         obs, _ = env.reset()
+        states = env.state()
         timestep = 0
         # simulate environment
         try:
@@ -230,12 +238,13 @@ def main():
                 start_time = time.time()
 
                 with torch.inference_mode():
-                    outputs = runner.agent.act(obs, timestep=0, timesteps=0)
+                    outputs = runner.agent.act(obs, states, timestep=0, timesteps=0)
                     if hasattr(env, "possible_agents"):
                         actions = {a: outputs[-1][a].get("mean_actions", outputs[0][a]) for a in env.possible_agents}
                     else:
                         actions = outputs[-1].get("mean_actions", outputs[0])
                     obs, _, _, _, _ = env.step(actions)
+                    states = env.state()
                 if args_cli.video:
                     timestep += 1
                     if timestep == args_cli.video_length:

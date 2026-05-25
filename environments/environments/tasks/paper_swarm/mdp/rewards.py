@@ -17,6 +17,8 @@ from __future__ import annotations
 import torch
 
 from isaaclab.envs.mdp import action_rate_l2  # noqa: F401
+
+from .observations import _asset, _root_env, command_decompose as _decomposed_target
 from isaaclab.utils.math import euler_xyz_from_quat, wrap_to_pi
 
 
@@ -31,7 +33,7 @@ def waypoint_tracking_reward(
     Returns:
         Reward [dimensionless], shape (num_envs,).
     """
-    target_pos = env.command_manager.get_command(command_name)[:, :3]
+    target_pos = env.command_manager.get_command(command_name)[:, :3] + _root_env(env).scene.env_origins
     current_pos = env.scene[asset_cfg.name].data.root_pos_w.torch[: target_pos.shape[0]]
     pos_error = target_pos - current_pos
     reward = torch.exp(-torch.sum(pos_error**2, dim=-1) / (std**2))
@@ -51,7 +53,7 @@ def heading_tracking_reward(
         Reward [dimensionless], shape (num_envs,).
     """
     command = env.command_manager.get_command(command_name)
-    target_yaw = command[:, 5]
+    _, _, target_yaw = euler_xyz_from_quat(command[:, 3:7])
     quat = _asset(env, asset_cfg).data.root_quat_w.torch[: command.shape[0]]
     _, _, current_yaw = euler_xyz_from_quat(quat)
     yaw_error = wrap_to_pi(target_yaw - current_yaw)
@@ -72,7 +74,7 @@ def reached_target_pose(
     Returns:
         Bonus [dimensionless], shape (num_envs,).
     """
-    target_pos = env.command_manager.get_command(command_name)[:, :3]
+    target_pos = env.command_manager.get_command(command_name)[:, :3] + _root_env(env).scene.env_origins
     n = target_pos.shape[0]
     current_pos = _asset(env, asset_cfg).data.root_pos_w.torch[:n]
     dist = torch.norm(target_pos - current_pos, dim=-1)
@@ -101,7 +103,8 @@ def collision_avoidance_reward(
     """
     from .observations import _all_root_pos
 
-    ego_pos = _asset(env, asset_cfg).data.root_pos_w.torch
+    root = _root_env(env)
+    ego_pos = _asset(env, asset_cfg).data.root_pos_w.torch - root.scene.env_origins
     mask = _get_active_mask(env, agent_id, mask_key)
     current_index = agent_ids.index(asset_cfg.name)
     all_pos = _all_root_pos(env, agent_ids)
@@ -115,7 +118,13 @@ def collision_avoidance_reward(
 
 
 def obstacle_avoidance_reward(
-    env, asset_cfg, column_positions_key: str, column_radius: float, safe_distance: float
+    env,
+    asset_cfg,
+    agent_id: str,
+    column_positions_key: str,
+    column_radius: float,
+    safe_distance: float,
+    mask_key: str,
 ) -> torch.Tensor:
     """Linear penalty for proximity to static obstacles [dimensionless].
 
@@ -127,9 +136,10 @@ def obstacle_avoidance_reward(
         Reward [dimensionless], shape (num_envs,). Clipped to [-1, 0].
     """
     asset = _asset(env, asset_cfg)
-    drone_pos = asset.data.root_pos_w.torch
+    root = _root_env(env)
+    drone_pos = asset.data.root_pos_w.torch - root.scene.env_origins
 
-    columns = getattr(_root_env(env), column_positions_key, None)
+    columns = getattr(root, column_positions_key, None)
     if columns is None or columns.shape[1] == 0:
         return torch.zeros(env.num_envs, device=env.device)
 
@@ -137,7 +147,8 @@ def obstacle_avoidance_reward(
     min_dist = dist_xy.min(dim=-1).values
 
     penalty = torch.clamp((safe_distance - (min_dist - column_radius)) / (safe_distance - column_radius), 0.0, 1.0)
-    return -penalty
+    mask = _get_active_mask(env, agent_id, mask_key)
+    return -penalty * mask
 
 
 def body_rate_l2(env, asset_cfg, agent_id: str, mask_key: str) -> torch.Tensor:
@@ -164,23 +175,3 @@ def _get_active_mask(env, agent_id: str, mask_key: str) -> torch.Tensor:
     except ValueError:
         return torch.ones(env.num_envs, device=env.device)
     return mask[:, index].float()
-
-
-def _decomposed_target(env, command_name: str) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Extract position, yaw, and sin/cos from a pose command."""
-    cmd = env.command_manager.get_command(command_name)
-    pos = cmd[:, :3]
-    _, _, yaw = cmd[:, 3], cmd[:, 4], cmd[:, 5]
-    return pos, yaw, torch.stack([torch.sin(cmd[:, 5]), torch.cos(cmd[:, 5])], dim=-1)
-
-
-def _root_env(env) -> object:
-    """Return the root env when the active view is a scoped proxy."""
-    if hasattr(env, "root"):
-        return env.root
-    return env
-
-
-def _asset(env, asset_cfg) -> object:
-    """Look up an articulation asset from a SceneEntityCfg."""
-    return _root_env(env).scene[asset_cfg.name]

@@ -66,14 +66,95 @@ class GoalDistanceRecorder(RecorderTerm):
         command_manager = getattr(env_view, "command_manager", None)
         if command_manager is not None:
             cmd = command_manager.get_command("target_pose")
+            n = cmd.shape[0]
             for i, agent_id in enumerate(possible_agents):
-                goal_positions[:, i, :] = cmd[:, :3]
+                goal_positions[:n, i, :] = cmd[:n, :3]
                 pos = root_env.scene[agent_id].data.root_pos_w.torch
-                goal_distances[:, i] = torch.norm(cmd[:, :3] - pos, dim=-1)
+                goal_distances[:, i] = torch.norm(cmd[:n, :3] - pos[:n], dim=-1)
 
         return None, {
             "goal_positions": goal_positions,
             "goal_distances": goal_distances,
+        }
+
+
+class InitialStateCheckRecorder(RecorderTerm):
+    """One-shot validation of initial drone states on first step after reset.
+
+    Checks recorded into HDF5 as scalar flags per environment:
+    - ``all_upright``: all active drone quaternions have |w| ≈ 1
+    - ``all_in_bounds``: all active drones within configured XY/Z workspace
+    - ``all_separated``: pairwise separation >= configured minimum
+    - ``inactive_parked``: inactive drones are at z ≈ -10
+
+    Configuration is read from ``self._env`` attributes set by the
+    :class:`PaperSwarmEvalEnvCfg`.
+    """
+
+    def __init__(self, cfg: RecorderTermCfg, env):
+        super().__init__(cfg, env)
+        self._first_step = True
+
+    def record_pre_step(self):
+        """Run state check only on the very first call."""
+        if not self._first_step:
+            return None, None
+        self._first_step = False
+
+        env_view = self._env
+        root_env = env_view.root if hasattr(env_view, "root") else env_view
+        env_origins = root_env.scene.env_origins
+        possible_agents = root_env.possible_agents
+        num_envs = root_env.num_envs
+        device = root_env.device
+
+        # Read bounds from env config (set by PaperSwarmEvalEnvCfg)
+        xy_bound = float(getattr(root_env, "eval_xy_bound", 1.5))
+        z_min = float(getattr(root_env, "eval_z_min", 1.0))
+        z_max = float(getattr(root_env, "eval_z_max", 1.5))
+        min_sep = float(getattr(root_env, "eval_min_separation", 2.0))
+
+        all_upright = torch.ones(num_envs, dtype=torch.bool, device=device)
+        all_in_bounds = torch.ones(num_envs, dtype=torch.bool, device=device)
+        all_separated = torch.ones(num_envs, dtype=torch.bool, device=device)
+        inactive_parked = torch.ones(num_envs, dtype=torch.bool, device=device)
+
+        for e in range(num_envs):
+            pos_local = {}
+            for agent_id in possible_agents:
+                asset = root_env.scene[agent_id].data
+                pos_w = asset.root_pos_w.torch[e]
+                quat = asset.root_quat_w.torch[e]
+                pos = pos_w - env_origins[e]
+
+                is_active = pos[2] > -9.0
+                if is_active:
+                    # Check quaternion magnitude
+                    if abs(quat.norm() - 1.0) > 0.01:
+                        all_upright[e] = False
+                    # Check within workspace
+                    if abs(pos[0]) > xy_bound or abs(pos[1]) > xy_bound:
+                        all_in_bounds[e] = False
+                    if pos[2] < z_min or pos[2] > z_max:
+                        all_in_bounds[e] = False
+                    pos_local[agent_id] = pos[:2]
+                else:
+                    if abs(pos[2] - (-10.0)) > 1.0:
+                        inactive_parked[e] = False
+
+            # Pairwise separation
+            agents = list(pos_local.keys())
+            for j in range(len(agents)):
+                for k in range(j + 1, len(agents)):
+                    if torch.norm(pos_local[agents[j]] - pos_local[agents[k]]) < min_sep * 0.5:
+                        all_separated[e] = False
+                        break
+
+        return None, {
+            "all_upright": all_upright.float(),
+            "all_in_bounds": all_in_bounds.float(),
+            "all_separated": all_separated.float(),
+            "inactive_parked": inactive_parked.float(),
         }
 
 
@@ -88,6 +169,11 @@ class GoalDistanceRecorderCfg(RecorderTermCfg):
 
 
 @configclass
+class InitialStateCheckRecorderCfg(RecorderTermCfg):
+    class_type: type = InitialStateCheckRecorder
+
+
+@configclass
 class PaperSwarmRecorderManagerCfg(RecorderManagerBaseCfg):
     """Recorder manager config for paper_swarm debugging."""
 
@@ -95,3 +181,4 @@ class PaperSwarmRecorderManagerCfg(RecorderManagerBaseCfg):
 
     record_drone_state = DroneStateRecorderCfg()
     record_goal_distance = GoalDistanceRecorderCfg()
+    check_initial_state = InitialStateCheckRecorderCfg()

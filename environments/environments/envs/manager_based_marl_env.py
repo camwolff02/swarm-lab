@@ -39,7 +39,17 @@ class ManagerBasedMarlEnv(ManagerBasedMaEnv):
         observations, rewards, terminated, truncated, extras = super().step(actions)
         if hasattr(self, "recorder_manager"):
             self.recorder_manager.record_post_step()
+        self._track_done_causes(extras)
         return observations, rewards, terminated, truncated, extras
+
+    def _track_done_causes(self, extras: dict[str, torch.Tensor]) -> None:
+        """Write per-term done-cause counts into extras for TensorBoard."""
+        for bundle in self._manager_bundles.values():
+            tm = bundle.termination_manager
+            for term_name in tm.active_terms:
+                done = tm.get_term(term_name)
+                key = f"done/{term_name}"
+                extras[key] = done.float().mean().unsqueeze(0)
 
     def _create_classical_manager_bundle(self, runtime) -> _ManagerBundle:
         bundle = super()._create_classical_manager_bundle(runtime)

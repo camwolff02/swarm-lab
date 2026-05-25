@@ -22,7 +22,7 @@ from isaaclab.envs.mdp import (
     last_action,  # noqa: F401
     projected_gravity as projected_gravity_b,  # noqa: F401
 )
-from isaaclab.utils.math import euler_xyz_from_quat, quat_apply_inverse, wrap_to_pi
+from isaaclab.utils.math import euler_xyz_from_quat, matrix_from_quat, quat_apply_inverse, wrap_to_pi
 
 
 def _root_env(env) -> object:
@@ -39,7 +39,8 @@ def _asset(env, asset_cfg) -> object:
 
 def _root_pos(env, agent_id: str) -> torch.Tensor:
     """World position of an articulation relative to the env origin [m], shape (num_envs, 3)."""
-    return _root_env(env).scene[agent_id].data.root_pos_w.torch
+    root = _root_env(env)
+    return root.scene[agent_id].data.root_pos_w.torch - root.scene.env_origins
 
 
 def _root_quat(env, agent_id: str) -> torch.Tensor:
@@ -93,6 +94,38 @@ def _pad_features(
     return out
 
 
+def _nearest_neighbor_features(
+    features: torch.Tensor,
+    distances: torch.Tensor,
+    valid: torch.Tensor,
+    max_neighbors: int,
+) -> torch.Tensor:
+    """Select nearest valid neighbor features and pad to a fixed flat shape.
+
+    Args:
+        features: Candidate neighbor features, shape ``(num_envs, num_candidates, feat_dim)``.
+        distances: Candidate XY/XYZ distances [m], shape ``(num_envs, num_candidates)``.
+        valid: Candidate validity mask, shape ``(num_envs, num_candidates)``.
+        max_neighbors: Number of output neighbor slots.
+
+    Returns:
+        Flattened nearest-neighbor features, shape ``(num_envs, max_neighbors * feat_dim)``.
+    """
+    num_envs, num_candidates, feat_dim = features.shape
+    if num_candidates == 0 or max_neighbors == 0:
+        return torch.zeros(num_envs, max_neighbors * feat_dim, device=features.device, dtype=features.dtype)
+
+    masked_distances = distances.masked_fill(~valid, torch.inf)
+    order = torch.argsort(masked_distances, dim=1)
+    sorted_features = torch.gather(features, 1, order.unsqueeze(-1).expand(-1, -1, feat_dim))
+    sorted_valid = torch.gather(valid, 1, order)
+
+    slots = min(num_candidates, max_neighbors)
+    out = torch.zeros(num_envs, max_neighbors, feat_dim, device=features.device, dtype=features.dtype)
+    out[:, :slots, :] = sorted_features[:, :slots, :] * sorted_valid[:, :slots].unsqueeze(-1).to(features.dtype)
+    return out.reshape(num_envs, max_neighbors * feat_dim)
+
+
 def _rotate_world_to_body(quat_w: torch.Tensor, vectors_w: torch.Tensor) -> torch.Tensor:
     """Rotate world-frame vectors into the body frame."""
     if vectors_w.ndim == 2:
@@ -108,24 +141,33 @@ def _rotate_world_to_body(quat_w: torch.Tensor, vectors_w: torch.Tensor) -> torc
 
 
 def root_pos(env, asset_cfg) -> torch.Tensor:
-    """World position [m], shape (num_envs, 3)."""
-    return _asset(env, asset_cfg).data.root_pos_w.torch
+    """Position relative to the environment origin [m], shape (num_envs, 3)."""
+    root = _root_env(env)
+    return _asset(env, asset_cfg).data.root_pos_w.torch - root.scene.env_origins
 
 
-def root_quat(env, asset_cfg) -> torch.Tensor:
-    """World quaternion, shape (num_envs, 4)."""
-    return _asset(env, asset_cfg).data.root_quat_w.torch
+def root_rotation_matrix(env, asset_cfg) -> torch.Tensor:
+    """Flattened world-frame rotation matrix (3x3), shape (num_envs, 9).
+
+    Converted from the root quaternion [x, y, z, w] so the policy sees a
+    linear orientation representation instead of a quaternion.
+    """
+    q = _asset(env, asset_cfg).data.root_quat_w.torch
+    return matrix_from_quat(q).reshape(q.shape[0], 9)
 
 
 def relative_target_position_b(env, asset_cfg, command_name: str) -> torch.Tensor:
     """Target waypoint position relative to drone, in body frame [m], shape (num_envs, 3)."""
-    return env.command_manager.get_command(command_name)[:, :3]
+    target_pos_w = env.command_manager.get_command(command_name)[:, :3] + _root_env(env).scene.env_origins
+    current_pos_w = _asset(env, asset_cfg).data.root_pos_w.torch[: target_pos_w.shape[0]]
+    quat_w = _asset(env, asset_cfg).data.root_quat_w.torch[: target_pos_w.shape[0]]
+    return _rotate_world_to_body(quat_w, target_pos_w - current_pos_w)
 
 
 def target_yaw_error(env, asset_cfg, command_name: str) -> torch.Tensor:
     """Yaw error to target [rad], wrapped to [-pi, pi], shape (num_envs, 1)."""
     command = env.command_manager.get_command(command_name)
-    target_yaw = command[:, 5]
+    _, _, target_yaw = euler_xyz_from_quat(command[:, 3:7])
     quat = _asset(env, asset_cfg).data.root_quat_w.torch[: command.shape[0]]
     _, _, current_yaw = euler_xyz_from_quat(quat)
     error = wrap_to_pi(target_yaw - current_yaw)
@@ -134,7 +176,7 @@ def target_yaw_error(env, asset_cfg, command_name: str) -> torch.Tensor:
 
 def distance_to_goal(env, asset_cfg, command_name: str) -> torch.Tensor:
     """Euclidean distance to goal waypoint [m], shape (num_envs, 1)."""
-    target_pos = env.command_manager.get_command(command_name)[:, :3]
+    target_pos = env.command_manager.get_command(command_name)[:, :3] + _root_env(env).scene.env_origins
     current_pos = _asset(env, asset_cfg).data.root_pos_w.torch[: target_pos.shape[0]]
     return torch.norm(target_pos - current_pos, dim=-1, keepdim=True)
 
@@ -143,7 +185,7 @@ def goal_reached_flag(
     env, asset_cfg, command_name: str, distance_threshold: float, yaw_threshold: float
 ) -> torch.Tensor:
     """Binary flag: is the goal reached? Shape (num_envs, 1)."""
-    target_pos = env.command_manager.get_command(command_name)[:, :3]
+    target_pos = env.command_manager.get_command(command_name)[:, :3] + _root_env(env).scene.env_origins
     n = target_pos.shape[0]
     current_pos = _asset(env, asset_cfg).data.root_pos_w.torch[:n]
     dist = torch.norm(target_pos - current_pos, dim=-1)
@@ -165,7 +207,7 @@ def neighbor_state_b(
     reshape to (B, max_neighbors, 6) tokens.
     """
     asset = _asset(env, asset_cfg)
-    ego_pos = asset.data.root_pos_w.torch
+    ego_pos = _root_pos(env, asset_cfg.name)
     ego_vel = asset.data.root_lin_vel_w.torch
     ego_quat = asset.data.root_quat_w.torch
     mask = _active_mask(env, agent_ids, mask_key)
@@ -178,13 +220,14 @@ def neighbor_state_b(
     rel_pos_b = _rotate_world_to_body(ego_quat, rel_pos_w)
     rel_vel_b = _rotate_world_to_body(ego_quat, rel_vel_w)
 
-    valid = (torch.norm(rel_pos_w, dim=-1) < radius) & mask.bool()
+    distances = torch.norm(rel_pos_w, dim=-1)
+    valid = (distances < radius) & mask.bool()
     valid[:, current_index] = False
     keep = torch.ones(len(agent_ids), dtype=torch.bool, device=ego_pos.device)
     keep[current_index] = False
 
     features = torch.cat([rel_pos_b[:, keep, :], rel_vel_b[:, keep, :]], dim=-1)
-    return _pad_features(features, max_neighbors, mask=valid[:, keep])
+    return _nearest_neighbor_features(features, distances[:, keep], valid[:, keep], max_neighbors)
 
 
 def relative_neighbor_positions_b(
@@ -192,18 +235,19 @@ def relative_neighbor_positions_b(
 ) -> torch.Tensor:
     """Relative positions of neighbors in body frame [m], shape (num_envs, max_neighbors * 3)."""
     asset = _asset(env, asset_cfg)
-    ego_pos = asset.data.root_pos_w.torch
+    ego_pos = _root_pos(env, asset_cfg.name)
     ego_quat = asset.data.root_quat_w.torch
     mask = _active_mask(env, agent_ids, mask_key)
     current_index = agent_ids.index(asset_cfg.name)
     all_pos = _all_root_pos(env, agent_ids)
     rel_pos_w = all_pos - ego_pos.unsqueeze(1)
     rel_pos_b = _rotate_world_to_body(ego_quat, rel_pos_w)
-    valid = (torch.norm(rel_pos_w, dim=-1) < radius) & mask.bool()
+    distances = torch.norm(rel_pos_w, dim=-1)
+    valid = (distances < radius) & mask.bool()
     valid[:, current_index] = False
     keep = torch.ones(len(agent_ids), dtype=torch.bool, device=ego_pos.device)
     keep[current_index] = False
-    return _pad_features(rel_pos_b[:, keep, :], max_neighbors, mask=valid[:, keep])
+    return _nearest_neighbor_features(rel_pos_b[:, keep, :], distances[:, keep], valid[:, keep], max_neighbors)
 
 
 def relative_neighbor_velocities_b(
@@ -211,7 +255,7 @@ def relative_neighbor_velocities_b(
 ) -> torch.Tensor:
     """Relative velocities of neighbors in body frame [m/s], shape (num_envs, max_neighbors * 3)."""
     asset = _asset(env, asset_cfg)
-    ego_pos = asset.data.root_pos_w.torch
+    ego_pos = _root_pos(env, asset_cfg.name)
     ego_vel = asset.data.root_lin_vel_w.torch
     ego_quat = asset.data.root_quat_w.torch
     mask = _active_mask(env, agent_ids, mask_key)
@@ -221,27 +265,34 @@ def relative_neighbor_velocities_b(
     rel_pos_w = all_pos - ego_pos.unsqueeze(1)
     rel_vel_w = all_vel - ego_vel.unsqueeze(1)
     rel_vel_b = _rotate_world_to_body(ego_quat, rel_vel_w)
-    valid = (torch.norm(rel_pos_w, dim=-1) < radius) & mask.bool()
+    distances = torch.norm(rel_pos_w, dim=-1)
+    valid = (distances < radius) & mask.bool()
     valid[:, current_index] = False
     keep = torch.ones(len(agent_ids), dtype=torch.bool, device=ego_pos.device)
     keep[current_index] = False
-    return _pad_features(rel_vel_b[:, keep, :], max_neighbors, mask=valid[:, keep])
+    return _nearest_neighbor_features(rel_vel_b[:, keep, :], distances[:, keep], valid[:, keep], max_neighbors)
 
 
 # TODO(cpsquare) - this is a copy of what is in the cameron_swarm observations.py
 # we should refactor out a shared version and put in mdp/common/
 def static_sdf(
-    env, asset_cfg, column_positions_key: str = "column_positions", grid_size: int = 3, grid_resolution: float = 0.1
+    env,
+    asset_cfg,
+    column_positions_key: str = "column_positions",
+    grid_size: int = 3,
+    grid_resolution: float = 0.1,
+    column_radius: float = 0.0,
 ) -> torch.Tensor:
     """3x3 signed distance grid from drone position to nearest static obstacles [m], shape (num_envs, 9).
 
-    The SDF is sampled at grid points around the drone's XY position. No obstacles
-    means the SDF is clamped to a large positive distance.
+    SDF = distance_to_obstacle_surface = distance_to_center - column_radius.
+    No obstacles means the SDF is clamped to a large positive distance.
     """
     asset = _asset(env, asset_cfg)
-    drone_pos = asset.data.root_pos_w.torch
+    root = _root_env(env)
+    drone_pos = asset.data.root_pos_w.torch - root.scene.env_origins
 
-    columns = getattr(_root_env(env), column_positions_key, None)
+    columns = getattr(root, column_positions_key, None)
     if columns is None:
         return 20.0 * torch.ones(drone_pos.shape[0], grid_size * grid_size, device=env.device)
 
@@ -261,8 +312,14 @@ def static_sdf(
         dtype=drone_pos.dtype,
     )
     sample_xy = drone_pos[:, None, :2] + offsets[None, :, :]
-    dist = torch.linalg.norm(sample_xy[:, :, None, :] - columns[:, None, :, :2], dim=-1)
+    dist = torch.linalg.norm(sample_xy[:, :, None, :] - columns[:, None, :, :2], dim=-1) - column_radius
     return torch.clamp(dist.min(dim=-1).values, max=max_dist)
+
+
+def drone_identity(env, agent_ids: list[str], agent_id: str) -> torch.Tensor:
+    """One-hot drone identity, shape (num_envs, len(agent_ids))."""
+    identity = torch.eye(len(agent_ids), device=env.device)[agent_ids.index(agent_id)]
+    return identity.unsqueeze(0).expand(env.num_envs, -1)
 
 
 def agent_active_flag(env, agent_ids: list[str], agent_id: str, mask_key: str) -> torch.Tensor:
@@ -299,7 +356,7 @@ def swarm_global_state(
             root_states.append(
                 torch.cat(
                     [
-                        asset.root_pos_w.torch,
+                        asset.root_pos_w.torch - _root_env(env).scene.env_origins,
                         asset.root_quat_w.torch,
                         asset.root_lin_vel_w.torch,
                         asset.root_ang_vel_w.torch,
@@ -351,7 +408,7 @@ def paper_swarm_global_state(
         root_states.append(
             torch.cat(
                 [
-                    asset.root_pos_w.torch,
+                    asset.root_pos_w.torch - root.scene.env_origins,
                     asset.root_quat_w.torch,
                     asset.root_lin_vel_w.torch,
                     asset.root_ang_vel_w.torch,
@@ -394,5 +451,5 @@ def command_decompose(env, command_name: str) -> tuple[torch.Tensor, torch.Tenso
     """Extract position, yaw, and sin/cos from a pose command."""
     cmd = env.command_manager.get_command(command_name)
     pos = cmd[:, :3]
-    _, _, yaw = cmd[:, 3], cmd[:, 4], cmd[:, 5]
-    return pos, yaw, torch.stack([torch.sin(cmd[:, 5]), torch.cos(cmd[:, 5])], dim=-1)
+    _, _, yaw = euler_xyz_from_quat(cmd[:, 3:7])
+    return pos, yaw, torch.stack([torch.sin(yaw), torch.cos(yaw)], dim=-1)

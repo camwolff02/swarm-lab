@@ -43,15 +43,36 @@ def reset_drone_root_state_uniform(
         dict mapping agent_id to root_state tensor (num_envs, 13).
     """
     from .observations import _active_mask
+    from .commands import _sample_positions
 
     env_ids = torch.as_tensor(env_ids, device=env.device, dtype=torch.long)
     mask = _active_mask(env, agent_ids, mask_key)
     resets = {}
+    root = env.root if hasattr(env, "root") else env
+    spawn_safe_prob = getattr(root, "_paper_swarm_spawn_safe_sampling_prob", 1.0)
+    spawn_min_separation = getattr(root, "_paper_swarm_spawn_min_separation", min_separation)
+    column_radius = getattr(root, "_paper_swarm_column_radius", 0.15)
+    column_safe_distance = getattr(root, "_paper_swarm_column_safe_distance", 0.6)
+    columns = getattr(root, "column_positions", None)
+
+    sampled_positions = torch.zeros(len(env_ids), len(agent_ids), 3, device=env.device)
+    for local_env_index, env_id in enumerate(env_ids):
+        active_indices = torch.nonzero(mask[env_id], as_tuple=False).flatten()
+        safe = bool(torch.rand((), device=env.device) < spawn_safe_prob)
+        env_columns = None if columns is None else columns[env_id]
+        sampled_positions[local_env_index, active_indices] = _sample_positions(
+            count=len(active_indices),
+            xy_bounds=xy_bounds,
+            z_bounds=z_bounds,
+            min_separation=spawn_min_separation if safe else 0.0,
+            columns=env_columns if safe else None,
+            column_radius=column_radius,
+            column_safe_distance=column_safe_distance,
+            device=env.device,
+        )
 
     for i, agent_id in enumerate(agent_ids):
         is_active = mask[env_ids, i]
-        n_active = int(is_active.sum().item())
-
         asset = env.scene[agent_id]
         root_pose = asset.data.default_root_pose.torch[env_ids].clone()
         root_velocity = asset.data.default_root_vel.torch[env_ids].clone()
@@ -59,19 +80,17 @@ def reset_drone_root_state_uniform(
         root_pose[:, 3:7] = torch.tensor([0.0, 0.0, 0.0, 1.0], device=env.device)
         root_velocity[:, :] = 0.0
 
-        if n_active > 0:
-            positions = _sample_separated_positions(
-                n_active, xy_bounds, z_bounds, min_separation, env.device
-            )
-            quat = torch.tensor([0.0, 0.0, 0.0, 1.0], device=env.device).repeat(n_active, 1)
+        if is_active.any():
+            active_count = int(is_active.sum().item())
+            quat = torch.tensor([0.0, 0.0, 0.0, 1.0], device=env.device).repeat(active_count, 1)
             lin_vel = sample_uniform(
-                lin_vel_range[0], lin_vel_range[1], (n_active, 3), device=env.device
+                lin_vel_range[0], lin_vel_range[1], (active_count, 3), device=env.device
             )
             ang_vel = sample_uniform(
-                ang_vel_range[0], ang_vel_range[1], (n_active, 3), device=env.device
+                ang_vel_range[0], ang_vel_range[1], (active_count, 3), device=env.device
             )
 
-            root_pose[is_active, :3] = positions + env.scene.env_origins[env_ids[is_active]]
+            root_pose[is_active, :3] = sampled_positions[is_active, i] + env.scene.env_origins[env_ids[is_active]]
             root_pose[is_active, 3:7] = quat
             root_velocity[is_active, :3] = lin_vel
             root_velocity[is_active, 3:6] = ang_vel
@@ -112,6 +131,10 @@ def sample_static_columns(
     num_envs = len(env_ids)
     device = env.device
 
+    root = env.root if hasattr(env, "root") else env
+    current_columns = int(getattr(root, "_paper_swarm_num_static_columns", num_columns))
+    current_columns = max(0, min(num_columns, current_columns))
+
     rows = int(2 * grid_border / grid_size)
     cols = int(2 * grid_border / grid_size) if num_columns > 0 else 0
     total_cells = rows * cols
@@ -134,13 +157,18 @@ def sample_static_columns(
     if all_positions is None or all_positions.shape != (env.num_envs, num_columns, 3):
         all_positions = torch.zeros(env.num_envs, num_columns, 3, device=device)
     positions = torch.zeros(num_envs, num_columns, 3, device=device)
+    positions[:, :, 0] = 1000.0
+    positions[:, :, 1] = 1000.0
     for e in range(num_envs):
-        perm = torch.randperm(total_cells, device=device)[:num_columns]
-        positions[e, :, :2] = cell_centers[perm]
-        positions[e, :, 2] = 0.0
+        if current_columns == 0:
+            continue
+        perm = torch.randperm(total_cells, device=device)[:current_columns]
+        positions[e, :current_columns, :2] = cell_centers[perm]
+        positions[e, :current_columns, 2] = 0.0
 
     all_positions[env_ids] = positions
     setattr(env, column_positions_key, all_positions)
+    root.extras["static_column_count"] = current_columns
 
 
 # -----------------------------------------------------------------------------

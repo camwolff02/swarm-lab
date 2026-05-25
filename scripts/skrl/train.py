@@ -18,7 +18,6 @@ import sys
 import time
 from datetime import datetime
 
-import environments.tasks  # noqa: F401
 import gymnasium as gym
 import skrl
 from packaging import version
@@ -94,6 +93,10 @@ if args_cli.video:
     args_cli.enable_cameras = True
 
 sys.argv = [sys.argv[0]] + hydra_args
+
+from environments import tasks as local_tasks
+
+local_tasks.register_tasks_for(args_cli.task)
 
 # -- check skrl version ------------------------------------------------------
 if version.parse(skrl.__version__) < version.parse(SKRL_VERSION):
@@ -238,7 +241,8 @@ def main():
         start_time = time.time()
 
         # wrap around environment for skrl
-        env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)
+        skrl_wrapper = "isaaclab-multi-agent" if hasattr(env.unwrapped, "possible_agents") else "isaaclab"
+        env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework, wrapper=skrl_wrapper)
 
         # configure and instantiate the skrl runner
         runner = Runner(env, agent_cfg)

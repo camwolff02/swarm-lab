@@ -1,4 +1,5 @@
 # Paper Swarm MAPPO training configuration
+# Hyperparams aligned with formation-swarm paper (γ=0.995, epochs=4, mini_batches=16)
 models:
   factory: paper_swarm_attention
   separate: true
@@ -14,24 +15,25 @@ agent:
   experiment:
     directory: paper_swarm/mappo
     experiment_name: ""
-  # number of environment steps to collect before updating
   rollouts: 64
-  # number of times to reuse the collected experience
-  learning_epochs: 2
+  # PPO update epochs per rollout batch
+  learning_epochs: 4
   # number of minibatches to split the data for learning
-  mini_batches: 8
-  # discount factor
-  discount_factor: 0.99
+  mini_batches: 16
+  # discount factor (formation-swarm paper: 0.995)
+  discount_factor: 0.995
   # lambda for Generalized Advantage Estimation
   gae_lambda: 0.95
   # KL divergence threshold for adaptive learning rate
   kl_threshold: 0.01
   # optimizer learning rate
   learning_rate: 0.0005
-  # learning rate scheduler
+  # learning rate scheduler (capped to stay near intended learning_rate)
   learning_rate_scheduler: KLAdaptiveLR
   learning_rate_scheduler_kwargs:
     kl_threshold: 0.01
+    max_lr: 0.0005
+    min_lr: 0.00005
   # gradient norm clipping threshold
   grad_norm_clip: 10.0
   # clipping ratio for PPO
@@ -52,8 +54,8 @@ memory:
 
 trainer:
   class: SequentialTrainer
-  # SKRL counts vectorized environment steps here. With 32 envs and 8 agents,
-  # this is about 23M agent-env transitions, targeted to fit a sub-30h workstation run.
-  timesteps: 90000
+  # SKRL counts env steps here (not agent steps). With 32 envs and 8 agents per step,
+  # 300000 env steps ≈ 77M agent transitions. Scale up as training stabilizes.
+  timesteps: 300000
   close_environment_at_exit: false
 seed: 42

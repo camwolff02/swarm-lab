@@ -3,11 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Curriculum functions for the paper_swarm waypoint-navigation task.
-
-1. Active agent count ramp: 1 -> N over configurable steps.
-2. Waypoint randomization: anneals collision-safe sampling.
-"""
+"""Curriculum functions for the paper_swarm waypoint-navigation task."""
 
 from __future__ import annotations
 
@@ -66,40 +62,62 @@ def active_agent_count_curriculum(
     root.extras["active_agent_count"] = target_count
 
 
-def waypoint_randomization_curriculum(
+def paper_swarm_task_curriculum(
     env,
     env_ids: torch.Tensor,
-    command_name: str,
-    agent_ids: list[str],
     workspace_xy: tuple[float, float],
     workspace_z: tuple[float, float],
-    start_step: int,
-    ramp_steps: int,
+    max_static_columns: int,
+    obstacle_start_step: int,
+    obstacle_ramp_steps: int,
+    randomization_start_step: int,
+    randomization_ramp_steps: int,
     start_safe_sampling_prob: float,
     end_safe_sampling_prob: float,
     start_min_separation: float,
     end_min_separation: float,
-    mask_key: str,
+    column_radius: float,
+    column_safe_distance: float,
 ) -> None:
-    """Anneals waypoint sampling from safe (separated) to stochastic (random).
+    """Stage the task from easy safe flight to cluttered random flight.
 
-    Before start_step: full safe sampling (start_safe_sampling_prob, start_min_separation).
-    During ramp: linear interpolation between start and end values.
-    After ramp: fully stochastic (end_safe_sampling_prob, end_min_separation).
+    The schedule follows the structure used by the formation paper: first learn
+    obstacle-free flight, then add static obstacles, then train on a harder
+    randomized setting. The collision paper's obstacle curriculum is reflected
+    by gradually increasing obstacle density while keeping SDF observations
+    fixed-size.
 
-    Stores current values on env for use by the command sampler.
+    Early stages force spawn and target positions to be separated from each
+    other and from obstacles. The final stage anneals toward raw random samples,
+    allowing intersecting starts and targets to appear during training.
     """
     root = _root_env(env)
     step = root.common_step_counter
-    if step < start_step:
-        progress = 0.0
-    else:
-        progress = min((step - start_step) / max(1, ramp_steps), 1.0)
 
-    safe_prob = start_safe_sampling_prob + progress * (end_safe_sampling_prob - start_safe_sampling_prob)
-    min_sep = start_min_separation + progress * (end_min_separation - start_min_separation)
+    obstacle_progress = 0.0
+    if step >= obstacle_start_step:
+        obstacle_progress = min((step - obstacle_start_step) / max(1, obstacle_ramp_steps), 1.0)
+    num_static_columns = round(obstacle_progress * max_static_columns)
 
-    setattr(root, "_waypoint_safe_sampling_prob", safe_prob)
-    setattr(root, "_waypoint_min_separation", min_sep)
-    root.extras["waypoint_safe_sampling_prob"] = safe_prob
-    root.extras["waypoint_min_separation"] = min_sep
+    randomization_progress = 0.0
+    if step >= randomization_start_step:
+        randomization_progress = min((step - randomization_start_step) / max(1, randomization_ramp_steps), 1.0)
+
+    safe_prob = start_safe_sampling_prob + randomization_progress * (
+        end_safe_sampling_prob - start_safe_sampling_prob
+    )
+    min_sep = start_min_separation + randomization_progress * (end_min_separation - start_min_separation)
+
+    root._paper_swarm_workspace_xy = workspace_xy
+    root._paper_swarm_workspace_z = workspace_z
+    root._paper_swarm_num_static_columns = num_static_columns
+    root._paper_swarm_spawn_safe_sampling_prob = safe_prob
+    root._paper_swarm_target_safe_sampling_prob = safe_prob
+    root._paper_swarm_spawn_min_separation = min_sep
+    root._paper_swarm_target_min_separation = min_sep
+    root._paper_swarm_column_radius = column_radius
+    root._paper_swarm_column_safe_distance = column_safe_distance
+
+    root.extras["static_column_count"] = num_static_columns
+    root.extras["safe_sampling_prob"] = safe_prob
+    root.extras["spawn_target_min_separation"] = min_sep

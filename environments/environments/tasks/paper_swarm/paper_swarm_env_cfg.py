@@ -55,15 +55,18 @@ from environments.envs.manager_based_marl_env_cfg import (
 )
 
 from . import mdp
+from .paper_swarm_recorders import PaperSwarmRecorderManagerCfg
 # -----------------------------------------------------------------------------
 # Global task defaults
 # -----------------------------------------------------------------------------
 
 NUM_DRONES = 8
 INITIAL_ACTIVE_DRONES = 1
-ACTIVE_AGENT_RAMP_STEPS = 500_000
-WAYPOINT_RANDOMIZATION_START_STEP = ACTIVE_AGENT_RAMP_STEPS
-WAYPOINT_RANDOMIZATION_RAMP_STEPS = 300_000
+ACTIVE_AGENT_RAMP_STEPS = 200_000
+OBSTACLE_CURRICULUM_START_STEP = ACTIVE_AGENT_RAMP_STEPS
+OBSTACLE_CURRICULUM_RAMP_STEPS = 100_000
+SPAWN_TARGET_RANDOMIZATION_START_STEP = OBSTACLE_CURRICULUM_START_STEP + OBSTACLE_CURRICULUM_RAMP_STEPS
+SPAWN_TARGET_RANDOMIZATION_RAMP_STEPS = 200_000
 
 NUM_ENVS = 32
 ENV_SPACING = 8.0
@@ -135,6 +138,7 @@ class CommandsCfg:
     """Per-agent target pose command."""
 
     target_pose = DroneUniformPoseCommandCfg(
+        class_type="environments.tasks.paper_swarm.mdp.commands:PaperSwarmPoseCommand",
         asset_name="{entity_name}",
         body_name="base_link",
         resampling_time_range=COMMAND_RESAMPLE_TIME,
@@ -175,17 +179,23 @@ class ObservationsCfg:
 
     @configclass
     class PolicyCfg(ObsGroup):
-        # -- self block (21 dims) --
+        # -- self block (34 dims) --
         root_lin_vel_b = ObsTerm(func=mdp.root_lin_vel_b, params={"asset_cfg": SceneEntityCfg("{entity_name}")})
         root_ang_vel_b = ObsTerm(func=mdp.root_ang_vel_b, params={"asset_cfg": SceneEntityCfg("{entity_name}")})
         projected_gravity_b = ObsTerm(
             func=mdp.projected_gravity_b, params={"asset_cfg": SceneEntityCfg("{entity_name}")}
         )
         root_pos = ObsTerm(func=mdp.root_pos, params={"asset_cfg": SceneEntityCfg("{entity_name}")})
-        root_quat = ObsTerm(func=mdp.root_quat, params={"asset_cfg": SceneEntityCfg("{entity_name}")})
+        root_rotation_matrix = ObsTerm(
+            func=mdp.root_rotation_matrix, params={"asset_cfg": SceneEntityCfg("{entity_name}")}
+        )
         active_flag = ObsTerm(
             func=mdp.agent_active_flag,
             params={"agent_ids": DRONE_AGENT_IDS, "agent_id": "{agent_id}", "mask_key": ACTIVE_AGENT_MASK_KEY},
+        )
+        drone_identity = ObsTerm(
+            func=mdp.drone_identity,
+            params={"agent_ids": DRONE_AGENT_IDS, "agent_id": "{agent_id}"},
         )
         last_action = ObsTerm(func=mdp.last_action, params={"action_name": "ctbr"})
 
@@ -209,6 +219,7 @@ class ObservationsCfg:
                 "column_positions_key": COLUMN_POSITIONS_KEY,
                 "grid_size": 3,
                 "grid_resolution": 0.1,
+                "column_radius": COLUMN_RADIUS,
             },
         )
 
@@ -333,9 +344,11 @@ class RewardsCfg:
         weight=1.0,
         params={
             "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
             "column_positions_key": COLUMN_POSITIONS_KEY,
             "column_radius": COLUMN_RADIUS,
             "safe_distance": COLUMN_SAFE_DISTANCE,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
         },
     )
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.05)
@@ -373,23 +386,20 @@ class TerminationsCfg:
             "mask_key": ACTIVE_AGENT_MASK_KEY,
         },
     )
+    column_collision = DoneTerm(
+        func=mdp.drone_column_collision,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "column_positions_key": COLUMN_POSITIONS_KEY,
+            "column_radius": COLUMN_RADIUS,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
 
 
 @configclass
 class PaperSwarmEventsCfg:
-    reset_drone_root_state = EventTerm(
-        func=mdp.reset_drone_root_state_uniform,
-        mode="reset",
-        params={
-            "agent_ids": DRONE_AGENT_IDS,
-            "xy_bounds": (-1.5, 1.5),
-            "z_bounds": (1.0, 1.5),
-            "min_separation": SAFE_WAYPOINT_SEPARATION,
-            "lin_vel_range": (-0.05, 0.05),
-            "ang_vel_range": (-0.05, 0.05),
-            "mask_key": ACTIVE_AGENT_MASK_KEY,
-        },
-    )
     sample_static_columns = EventTerm(
         func=mdp.sample_static_columns,
         mode="reset",
@@ -401,6 +411,19 @@ class PaperSwarmEventsCfg:
             "height": COLUMN_HEIGHT,
             "column_radius": COLUMN_RADIUS,
             "column_positions_key": COLUMN_POSITIONS_KEY,
+        },
+    )
+    reset_drone_root_state = EventTerm(
+        func=mdp.reset_drone_root_state_uniform,
+        mode="reset",
+        params={
+            "agent_ids": DRONE_AGENT_IDS,
+            "xy_bounds": (-1.5, 1.5),
+            "z_bounds": (1.0, 1.5),
+            "min_separation": SAFE_WAYPOINT_SEPARATION,
+            "lin_vel_range": (-0.05, 0.05),
+            "ang_vel_range": (-0.05, 0.05),
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
         },
     )
 
@@ -418,20 +441,22 @@ class CurriculumCfg:
             "selection": "prefix",
         },
     )
-    waypoint_randomization = CurrTerm(
-        func=mdp.waypoint_randomization_curriculum,
+    paper_swarm_task = CurrTerm(
+        func=mdp.paper_swarm_task_curriculum,
         params={
-            "command_name": "target_pose",
-            "agent_ids": DRONE_AGENT_IDS,
             "workspace_xy": WORKSPACE_XY,
             "workspace_z": WORKSPACE_Z,
-            "start_step": WAYPOINT_RANDOMIZATION_START_STEP,
-            "ramp_steps": WAYPOINT_RANDOMIZATION_RAMP_STEPS,
+            "max_static_columns": STATIC_COLUMNS,
+            "obstacle_start_step": OBSTACLE_CURRICULUM_START_STEP,
+            "obstacle_ramp_steps": OBSTACLE_CURRICULUM_RAMP_STEPS,
+            "randomization_start_step": SPAWN_TARGET_RANDOMIZATION_START_STEP,
+            "randomization_ramp_steps": SPAWN_TARGET_RANDOMIZATION_RAMP_STEPS,
             "start_safe_sampling_prob": 1.0,
             "end_safe_sampling_prob": 0.0,
             "start_min_separation": SAFE_WAYPOINT_SEPARATION,
             "end_min_separation": 0.0,
-            "mask_key": ACTIVE_AGENT_MASK_KEY,
+            "column_radius": COLUMN_RADIUS,
+            "column_safe_distance": COLUMN_SAFE_DISTANCE,
         },
     )
 
@@ -517,6 +542,72 @@ class PaperSwarmMappoEnvCfg(PaperSwarmBaseMarlEnvCfg):
 @configclass
 class PaperSwarmIppoEnvCfg(PaperSwarmBaseMarlEnvCfg):
     """IPPO variant with decentralized critic observations."""
+
+
+@configclass
+class PaperSwarmEvalEnvCfg(PaperSwarmBaseMarlEnvCfg):
+    """Evaluation variant for play.py -- few envs, short episodes, recorder enabled.
+
+    Uses 4 parallel environments with 8 drones each. Episodes are shortened
+    to help the RecorderManager flush HDF5 data more frequently.
+
+    Usage with play.py::
+
+        uv run scripts/skrl/play.py --task Isaac-Paper-Swarm-Waypoint-Eval-v0 \\
+            --algorithm IPPO --checkpoint <path>
+
+    After the run, recorder data is in ``/tmp/isaaclab/logs/paper_swarm_dataset.hdf5``.
+    """
+
+    scene = PaperSwarmSceneCfg(num_envs=4, env_spacing=ENV_SPACING)
+    episode_length_s = 10.0  # shorter than train (20s)
+    recorders = PaperSwarmRecorderManagerCfg()
+
+    # Workspace bounds used by InitialStateCheckRecorder
+    eval_xy_bound: float = 1.5
+    eval_z_min: float = 1.0
+    eval_z_max: float = 1.5
+    eval_min_separation: float = SAFE_WAYPOINT_SEPARATION
+
+    # All drones active during eval (no curriculum)
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
+            count=NUM_DRONES,
+            id_template="drone_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="{agent_id}",
+                observations=ObservationsCfg(),
+                actions=ActionsCfg(),
+                rewards=RewardsCfg(),
+                terminations=TerminationsCfg(),
+                commands=CommandsCfg(),
+                curriculum=None,
+            ),
+        )
+    ]
+
+
+@configclass
+class PaperSwarmMappoEvalEnvCfg(PaperSwarmEvalEnvCfg):
+    """Evaluation variant for MAPPO checkpoints with centralized critic observations."""
+
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
+            count=NUM_DRONES,
+            id_template="drone_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="{agent_id}",
+                observations=MappoObservationsCfg(),
+                actions=ActionsCfg(),
+                rewards=RewardsCfg(),
+                terminations=TerminationsCfg(),
+                commands=CommandsCfg(),
+                curriculum=None,
+            ),
+        )
+    ]
 
 
 PaperSwarmMAPPORunnerCfg = PaperSwarmMappoEnvCfg

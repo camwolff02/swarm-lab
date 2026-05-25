@@ -19,23 +19,13 @@ def _space_size(space: gym.Space) -> int:
 
 
 def _states(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
-    """States."""
-    states = inputs.get("states")
-    if states is None:
-        states = inputs.get("observations")
-    if states is None:
-        raise RuntimeError("Paper swarm model inputs must contain 'states' or 'observations'.")
-    return states
+    """Policy observation — prefers 'observations' (86-dim policy) over 'states' (232-dim critic)."""
+    return inputs.get("observations", inputs.get("states"))
 
 
-def _observations(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
-    """Policy observations."""
-    observations = inputs.get("observations")
-    if observations is None:
-        observations = inputs.get("states")
-    if observations is None:
-        raise RuntimeError("Paper swarm policy inputs must contain 'observations' or 'states'.")
-    return observations
+def _critic_states(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
+    """Critic state — prefers 'states' (232-dim centralized) over 'observations' (86-dim policy)."""
+    return inputs.get("states", inputs.get("observations"))
 
 
 class PaperGaussianPolicy(GaussianMixin, Model):
@@ -64,9 +54,9 @@ class PaperGaussianPolicy(GaussianMixin, Model):
     def compute(
         self, inputs: dict[str, torch.Tensor], role: str = ""
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
-        """Compute the value for the current inputs."""
+        """Compute the policy distribution."""
         del role
-        mean = self.mean_head(self.encoder(_observations(inputs)))
+        mean = self.mean_head(self.encoder(_states(inputs)))
         return mean, {"log_std": self.log_std_parameter.expand_as(mean)}
 
 
@@ -94,4 +84,4 @@ class PaperDeterministicValue(DeterministicMixin, Model):
     def compute(self, inputs: dict[str, torch.Tensor], role: str = "") -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Compute the value for the current inputs."""
         del role
-        return self.net(_states(inputs)), {}
+        return self.net(_critic_states(inputs)), {}
