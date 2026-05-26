@@ -39,6 +39,22 @@ def _root_env(env) -> object:
     return env
 
 
+_step_cache: dict[int, dict[str, torch.Tensor]] = {}
+
+
+def _get_cached(env, key: str, factory, *args) -> torch.Tensor:
+    """Return a per-step cached tensor, computing lazily once per step."""
+    root = _root_env(env)
+    step = int(root.common_step_counter)
+    if step not in _step_cache:
+        _step_cache.clear()
+        _step_cache[step] = {}
+    cache = _step_cache[step]
+    if key not in cache:
+        cache[key] = factory(*args)
+    return cache[key]
+
+
 def _asset(env, asset_cfg) -> object:
     """Look up an articulation asset from a SceneEntityCfg."""
     return _root_env(env).scene[asset_cfg.name]
@@ -62,11 +78,19 @@ def _root_lin_vel(env, agent_id: str) -> torch.Tensor:
 
 def _all_root_pos(env, agent_ids: list[str]) -> torch.Tensor:
     """Stack all agent root positions [m], shape (num_envs, num_agents, 3)."""
+    return _get_cached(env, "all_pos", _all_root_pos_uncached, env, agent_ids)
+
+
+def _all_root_pos_uncached(env, agent_ids: list[str]) -> torch.Tensor:
     return torch.stack([_root_pos(env, agent_id) for agent_id in agent_ids], dim=1)
 
 
 def _all_root_lin_vel(env, agent_ids: list[str]) -> torch.Tensor:
     """Stack all agent root velocities [m/s], shape (num_envs, num_agents, 3)."""
+    return _get_cached(env, "all_vel", _all_root_lin_vel_uncached, env, agent_ids)
+
+
+def _all_root_lin_vel_uncached(env, agent_ids: list[str]) -> torch.Tensor:
     return torch.stack([_root_lin_vel(env, agent_id) for agent_id in agent_ids], dim=1)
 
 

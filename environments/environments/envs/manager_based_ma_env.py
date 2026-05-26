@@ -336,8 +336,7 @@ class ManagerBasedMaEnv(DirectMARLEnv):
         self._compute_commands(dt=self.step_dt)
         observations: dict[str, Any] = {}
         for bundle in self._manager_bundles.values():
-            manager_out = bundle.observation_manager.compute(update_history=True)
-            group_obs = manager_out[self._obs_group_name]
+            group_obs = bundle.observation_manager.compute_group(self._obs_group_name, update_history=True)
             observations.update(self._fanout_tensor(group_obs, bundle.runtime))
         self.obs_dict = observations
         return observations
