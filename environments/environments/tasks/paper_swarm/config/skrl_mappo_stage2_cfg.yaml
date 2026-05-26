@@ -1,4 +1,4 @@
-# Paper Swarm MAPPO training configuration
+# Paper Swarm MAPPO Stage 2 training configuration
 # Hyperparams aligned with formation-swarm paper (γ=0.995, epochs=4, mini_batches=16)
 models:
   factory: paper_swarm_attention
@@ -13,13 +13,13 @@ models:
 agent:
   class: MAPPO
   experiment:
-    directory: paper_swarm/mappo
+    directory: paper_swarm/mappo_stage2
     experiment_name: ""
   rollouts: 64
   # PPO update epochs per rollout batch
   learning_epochs: 4
   # number of minibatches to split the data for learning
-  mini_batches: 16
+  mini_batches: 32
   # discount factor (formation-swarm paper: 0.995)
   discount_factor: 0.995
   # lambda for Generalized Advantage Estimation
@@ -55,7 +55,7 @@ memory:
 trainer:
   class: SequentialTrainer
   # SKRL counts env steps here (not agent steps). With 32 envs and 8 agents per step,
-  # 300000 env steps ≈ 77M agent transitions. Scale up as training stabilizes.
+  # 300000 env steps trains obstacle-free hard crossing assignments.
   timesteps: 300000
   close_environment_at_exit: false
 seed: 42

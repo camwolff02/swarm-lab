@@ -16,10 +16,17 @@ Observations blend the structure from both papers:
 from __future__ import annotations
 
 import torch
+
 from isaaclab.envs.mdp import (
     base_ang_vel as root_ang_vel_b,  # noqa: F401
+)
+from isaaclab.envs.mdp import (
     base_lin_vel as root_lin_vel_b,  # noqa: F401
+)
+from isaaclab.envs.mdp import (
     last_action,  # noqa: F401
+)
+from isaaclab.envs.mdp import (
     projected_gravity as projected_gravity_b,  # noqa: F401
 )
 from isaaclab.utils.math import euler_xyz_from_quat, matrix_from_quat, quat_apply_inverse, wrap_to_pi
@@ -65,9 +72,10 @@ def _all_root_lin_vel(env, agent_ids: list[str]) -> torch.Tensor:
 
 def _active_mask(env, agent_ids: list[str], mask_key: str) -> torch.Tensor:
     """Bool tensor (num_envs, len(agent_ids)) indicating active agents."""
-    if mask_key is None or not hasattr(env, mask_key):
-        return torch.ones((env.num_envs, len(agent_ids)), dtype=torch.bool, device=env.device)
-    return getattr(env, mask_key)
+    root = _root_env(env)
+    if mask_key is None or not hasattr(root, mask_key):
+        return torch.ones((root.num_envs, len(agent_ids)), dtype=torch.bool, device=root.device)
+    return getattr(root, mask_key)
 
 
 def _pad_features(
@@ -385,16 +393,24 @@ def paper_swarm_global_state(
     agent_ids: list[str],
     command_name: str,
     mask_key: str,
+    column_positions_key: str,
+    max_static_columns: int,
 ) -> torch.Tensor:
     """Centralized MAPPO state computed once for the whole swarm.
 
     Returns:
-        Tensor containing active mask, root state, target pose commands, and
-        pairwise distances, shape ``(num_envs, 232)`` for the default 8-drone
-        task.
+        Tensor containing active mask, root state, target pose commands,
+        pairwise distances, obstacle positions, and obstacle mask.
     """
     root = _root_env(env)
-    state_dim = len(agent_ids) + len(agent_ids) * 13 + len(agent_ids) * 7 + len(agent_ids) * len(agent_ids)
+    state_dim = (
+        len(agent_ids)
+        + len(agent_ids) * 13
+        + len(agent_ids) * 7
+        + len(agent_ids) * len(agent_ids)
+        + max_static_columns * 3
+        + max_static_columns
+    )
     if not all(agent_id in getattr(root, "_agent_to_bundle", {}) for agent_id in agent_ids):
         return torch.zeros(root.num_envs, state_dim, device=root.device)
 
@@ -421,12 +437,28 @@ def paper_swarm_global_state(
 
     active_pair_mask = mask.unsqueeze(-1) * mask.unsqueeze(-2)
     pairwise_distances = torch.cdist(positions, positions) * active_pair_mask
+    columns = getattr(root, column_positions_key, None)
+    if columns is None or columns.shape[1] == 0:
+        column_positions = torch.zeros(root.num_envs, max_static_columns, 3, device=root.device)
+        column_mask = torch.zeros(root.num_envs, max_static_columns, device=root.device)
+    else:
+        column_positions = torch.zeros(root.num_envs, max_static_columns, 3, device=root.device)
+        column_mask = torch.zeros(root.num_envs, max_static_columns, device=root.device)
+        count = min(max_static_columns, columns.shape[1])
+        active_columns = torch.linalg.norm(columns[:, :count, :2], dim=-1) < 100.0
+        column_positions[:, :count] = columns[:, :count]
+        column_positions[:, :count] = torch.where(
+            active_columns.unsqueeze(-1), column_positions[:, :count], torch.zeros_like(column_positions[:, :count])
+        )
+        column_mask[:, :count] = active_columns.float()
     return torch.cat(
         [
             mask,
             torch.stack(root_states, dim=1).reshape(root.num_envs, -1),
             torch.stack(commands, dim=1).reshape(root.num_envs, -1),
             pairwise_distances.reshape(root.num_envs, -1),
+            column_positions.reshape(root.num_envs, -1),
+            column_mask,
         ],
         dim=-1,
     )
@@ -439,6 +471,8 @@ def paper_swarm_default_global_state(env) -> torch.Tensor:
         agent_ids=[f"drone_{index}" for index in range(8)],
         command_name="target_pose",
         mask_key="active_drones",
+        column_positions_key="column_positions",
+        max_static_columns=10,
     )
 
 

@@ -12,10 +12,12 @@ Task:
     and formation-swarm papers.
 
 Curriculum:
-    1. Start with one active drone while possible_agents remains fixed.
-    2. Ramp active drone count to NUM_DRONES.
-    3. Ramp waypoint sampling from collision-safe assignments to stochastic
-       independent sampling.
+    1. Learn baseline waypoint control without obstacles and with safe
+       start/target assignments.
+    2. Train all drones without obstacles using independent random
+       start/target assignments.
+    3. Add static obstacles with a density ramp while keeping hard
+       start/target assignments.
 
 Training modes:
     - IPPO: noisy actor observations plus decentralized, uncorrupted critic observations.
@@ -29,9 +31,10 @@ from dataclasses import MISSING
 
 from cpsquare_lab.embodiments.multirotor.cf2x.sim.robot import CRAZYFLIE_CFG, CRAZYFLIE_CTBR_CONTROLLER_CFG
 from cpsquare_lab.embodiments.multirotor.common.actions import ActionType, CtbrActionCfg, HandleOutOfRangeAction
+from cpsquare_lab.embodiments.multirotor.common.ctbr import hover_collective_thrust_from_multirotor_cfg
+from isaaclab_physx.physics import PhysxCfg
 
 import isaaclab.sim as sim_utils
-from isaaclab_physx.physics import PhysxCfg
 from isaaclab.assets import AssetBaseCfg
 from isaaclab.envs import ViewerCfg
 from isaaclab.managers import CurriculumTermCfg as CurrTerm
@@ -56,17 +59,22 @@ from environments.envs.manager_based_marl_env_cfg import (
 
 from . import mdp
 from .paper_swarm_recorders import PaperSwarmRecorderManagerCfg
+
 # -----------------------------------------------------------------------------
 # Global task defaults
 # -----------------------------------------------------------------------------
 
 NUM_DRONES = 8
+VISIBLE_NEIGHBORS = 2
 INITIAL_ACTIVE_DRONES = 1
 ACTIVE_AGENT_RAMP_STEPS = 200_000
 OBSTACLE_CURRICULUM_START_STEP = ACTIVE_AGENT_RAMP_STEPS
 OBSTACLE_CURRICULUM_RAMP_STEPS = 100_000
 SPAWN_TARGET_RANDOMIZATION_START_STEP = OBSTACLE_CURRICULUM_START_STEP + OBSTACLE_CURRICULUM_RAMP_STEPS
 SPAWN_TARGET_RANDOMIZATION_RAMP_STEPS = 200_000
+STAGE1_TIMESTEPS = 75_000
+STAGE2_TIMESTEPS = 300_000
+STAGE3_TIMESTEPS = 300_000
 
 NUM_ENVS = 32
 ENV_SPACING = 8.0
@@ -76,9 +84,12 @@ ACTIVE_AGENT_MASK_KEY = "active_drones"
 
 WORKSPACE_XY = (-4.0, 4.0)
 WORKSPACE_Z = (1.0, 3.0)
+START_Z = (1.0, 1.5)
 SAFE_WAYPOINT_SEPARATION = 2.0
-COLLISION_DISTANCE = 0.45
-TARGET_REACHED_DISTANCE = 0.25
+ROBOT_PROXIMITY_DISTANCE = 0.5
+COLLISION_DISTANCE = 0.12
+OBSTACLE_COLLISION_DISTANCE = 0.2
+TARGET_REACHED_DISTANCE = 0.35
 TARGET_REACHED_YAW = 0.35
 COMMAND_RESAMPLE_TIME = (3.0, 6.0)
 
@@ -205,7 +216,7 @@ class ObservationsCfg:
             params={
                 "asset_cfg": SceneEntityCfg("{entity_name}"),
                 "agent_ids": DRONE_AGENT_IDS,
-                "max_neighbors": NUM_DRONES - 1,
+                "max_neighbors": VISIBLE_NEIGHBORS,
                 "radius": 6.0,
                 "mask_key": ACTIVE_AGENT_MASK_KEY,
             },
@@ -268,6 +279,8 @@ class ObservationsCfg:
                 "agent_ids": DRONE_AGENT_IDS,
                 "command_name": "target_pose",
                 "mask_key": ACTIVE_AGENT_MASK_KEY,
+                "column_positions_key": COLUMN_POSITIONS_KEY,
+                "max_static_columns": STATIC_COLUMNS,
             },
         )
 
@@ -293,9 +306,19 @@ class MappoObservationsCfg(ObservationsCfg):
 
 @configclass
 class RewardsCfg:
+    goal_distance = RewTerm(
+        func=mdp.goal_distance_reward,
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "command_name": "target_pose",
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
     waypoint_tracking = RewTerm(
         func=mdp.waypoint_tracking_reward,
-        weight=3.0,
+        weight=1.0,
         params={
             "asset_cfg": SceneEntityCfg("{entity_name}"),
             "agent_id": "{agent_id}",
@@ -306,7 +329,7 @@ class RewardsCfg:
     )
     heading_tracking = RewTerm(
         func=mdp.heading_tracking_reward,
-        weight=0.5,
+        weight=0.2,
         params={
             "asset_cfg": SceneEntityCfg("{entity_name}"),
             "agent_id": "{agent_id}",
@@ -317,7 +340,7 @@ class RewardsCfg:
     )
     reached_target_bonus = RewTerm(
         func=mdp.reached_target_pose,
-        weight=1.0,
+        weight=2.0,
         params={
             "asset_cfg": SceneEntityCfg("{entity_name}"),
             "agent_id": "{agent_id}",
@@ -334,7 +357,7 @@ class RewardsCfg:
             "asset_cfg": SceneEntityCfg("{entity_name}"),
             "agent_id": "{agent_id}",
             "agent_ids": DRONE_AGENT_IDS,
-            "safe_distance": SAFE_WAYPOINT_SEPARATION,
+            "safe_distance": ROBOT_PROXIMITY_DISTANCE,
             "collision_distance": COLLISION_DISTANCE,
             "mask_key": ACTIVE_AGENT_MASK_KEY,
         },
@@ -360,6 +383,25 @@ class RewardsCfg:
             "agent_id": "{agent_id}",
             "mask_key": ACTIVE_AGENT_MASK_KEY,
         },
+    )
+    upright = RewTerm(
+        func=mdp.upright_reward,
+        weight=0.2,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+    robot_collision_event = RewTerm(
+        func=mdp.robot_collision_event_penalty,
+        weight=-5.0,
+        params={"agent_id": "{agent_id}", "mask_key": ACTIVE_AGENT_MASK_KEY},
+    )
+    obstacle_collision_event = RewTerm(
+        func=mdp.obstacle_collision_event_penalty,
+        weight=-5.0,
+        params={"agent_id": "{agent_id}", "mask_key": ACTIVE_AGENT_MASK_KEY},
     )
 
 
@@ -392,7 +434,24 @@ class TerminationsCfg:
             "asset_cfg": SceneEntityCfg("{entity_name}"),
             "agent_id": "{agent_id}",
             "column_positions_key": COLUMN_POSITIONS_KEY,
-            "column_radius": COLUMN_RADIUS,
+            "column_radius": OBSTACLE_COLLISION_DISTANCE,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+
+
+@configclass
+class ReplayTrainingTerminationsCfg:
+    """Training terminations that leave collisions as replay events."""
+
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    out_of_bounds = DoneTerm(
+        func=mdp.drone_out_of_bounds,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "xy_bounds": (-6.0, 6.0),
+            "z_bounds": (0.2, 5.0),
             "mask_key": ACTIVE_AGENT_MASK_KEY,
         },
     )
@@ -418,12 +477,20 @@ class PaperSwarmEventsCfg:
         mode="reset",
         params={
             "agent_ids": DRONE_AGENT_IDS,
-            "xy_bounds": (-1.5, 1.5),
-            "z_bounds": (1.0, 1.5),
+            "xy_bounds": WORKSPACE_XY,
+            "z_bounds": START_Z,
             "min_separation": SAFE_WAYPOINT_SEPARATION,
             "lin_vel_range": (-0.05, 0.05),
             "ang_vel_range": (-0.05, 0.05),
             "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+    reset_hover_thrust = EventTerm(
+        func=mdp.reset_drone_hover_thrust,
+        mode="reset",
+        params={
+            "agent_ids": DRONE_AGENT_IDS,
+            "collective_hover_thrust": hover_collective_thrust_from_multirotor_cfg(CRAZYFLIE_CFG),
         },
     )
 
@@ -454,6 +521,111 @@ class CurriculumCfg:
             "start_safe_sampling_prob": 1.0,
             "end_safe_sampling_prob": 0.0,
             "start_min_separation": SAFE_WAYPOINT_SEPARATION,
+            "end_min_separation": 0.0,
+            "column_radius": COLUMN_RADIUS,
+            "column_safe_distance": COLUMN_SAFE_DISTANCE,
+        },
+    )
+
+
+@configclass
+class Stage1CurriculumCfg:
+    """Single-drone waypoint control baseline -- all agents share one policy."""
+
+    active_agent_count = CurrTerm(
+        func=mdp.active_agent_count_curriculum,
+        params={
+            "agent_ids": DRONE_AGENT_IDS,
+            "min_agents": INITIAL_ACTIVE_DRONES,
+            "max_agents": NUM_DRONES,
+            "ramp_steps": 10_000_000,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+            "selection": "prefix",
+        },
+    )
+    paper_swarm_task = CurrTerm(
+        func=mdp.paper_swarm_task_curriculum,
+        params={
+            "workspace_xy": WORKSPACE_XY,
+            "workspace_z": WORKSPACE_Z,
+            "max_static_columns": 0,
+            "obstacle_start_step": 1_000_000_000,
+            "obstacle_ramp_steps": 1,
+            "randomization_start_step": 1_000_000_000,
+            "randomization_ramp_steps": 1,
+            "start_safe_sampling_prob": 1.0,
+            "end_safe_sampling_prob": 1.0,
+            "start_min_separation": SAFE_WAYPOINT_SEPARATION,
+            "end_min_separation": SAFE_WAYPOINT_SEPARATION,
+            "column_radius": COLUMN_RADIUS,
+            "column_safe_distance": COLUMN_SAFE_DISTANCE,
+        },
+    )
+
+
+@configclass
+class Stage2CurriculumCfg:
+    """Paper period 1: all drones, no obstacles, random intersecting assignments."""
+
+    active_agent_count = CurrTerm(
+        func=mdp.active_agent_count_curriculum,
+        params={
+            "agent_ids": DRONE_AGENT_IDS,
+            "min_agents": NUM_DRONES,
+            "max_agents": NUM_DRONES,
+            "ramp_steps": 1,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+            "selection": "prefix",
+        },
+    )
+    paper_swarm_task = CurrTerm(
+        func=mdp.paper_swarm_task_curriculum,
+        params={
+            "workspace_xy": WORKSPACE_XY,
+            "workspace_z": WORKSPACE_Z,
+            "max_static_columns": 0,
+            "obstacle_start_step": 1_000_000_000,
+            "obstacle_ramp_steps": 1,
+            "randomization_start_step": 0,
+            "randomization_ramp_steps": 1,
+            "start_safe_sampling_prob": 0.0,
+            "end_safe_sampling_prob": 0.0,
+            "start_min_separation": 0.0,
+            "end_min_separation": 0.0,
+            "column_radius": COLUMN_RADIUS,
+            "column_safe_distance": COLUMN_SAFE_DISTANCE,
+        },
+    )
+
+
+@configclass
+class Stage3CurriculumCfg:
+    """Paper period 2: random assignments with an increasing static-obstacle field."""
+
+    active_agent_count = CurrTerm(
+        func=mdp.active_agent_count_curriculum,
+        params={
+            "agent_ids": DRONE_AGENT_IDS,
+            "min_agents": NUM_DRONES,
+            "max_agents": NUM_DRONES,
+            "ramp_steps": 1,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+            "selection": "prefix",
+        },
+    )
+    paper_swarm_task = CurrTerm(
+        func=mdp.paper_swarm_task_curriculum,
+        params={
+            "workspace_xy": WORKSPACE_XY,
+            "workspace_z": WORKSPACE_Z,
+            "max_static_columns": STATIC_COLUMNS,
+            "obstacle_start_step": 0,
+            "obstacle_ramp_steps": STAGE3_TIMESTEPS,
+            "randomization_start_step": 0,
+            "randomization_ramp_steps": 1,
+            "start_safe_sampling_prob": 0.0,
+            "end_safe_sampling_prob": 0.0,
+            "start_min_separation": 0.0,
             "end_min_separation": 0.0,
             "column_radius": COLUMN_RADIUS,
             "column_safe_distance": COLUMN_SAFE_DISTANCE,
@@ -500,7 +672,7 @@ class PaperSwarmBaseMarlEnvCfg(ManagerBasedMarlEnvCfg):
                 observations=ObservationsCfg(),
                 actions=ActionsCfg(),
                 rewards=RewardsCfg(),
-                terminations=TerminationsCfg(),
+                terminations=ReplayTrainingTerminationsCfg(),
                 commands=CommandsCfg(),
                 curriculum=CurriculumCfg(),
             ),
@@ -513,6 +685,14 @@ class PaperSwarmBaseMarlEnvCfg(ManagerBasedMarlEnvCfg):
     episode_length_s = 20.0
     is_finite_horizon = False
     decimation = 2
+    replay_enabled = True
+    replay_probability = 0.75
+    replay_lag_s = 1.5
+    replay_capacity = 1024
+    replay_max_uses = 4
+    collision_grace_period_s = 1.5
+    collision_distance = COLLISION_DISTANCE
+    obstacle_collision_distance = OBSTACLE_COLLISION_DISTANCE
 
     recorders = None
 
@@ -531,7 +711,7 @@ class PaperSwarmMappoEnvCfg(PaperSwarmBaseMarlEnvCfg):
                 observations=MappoObservationsCfg(),
                 actions=ActionsCfg(),
                 rewards=RewardsCfg(),
-                terminations=TerminationsCfg(),
+                terminations=ReplayTrainingTerminationsCfg(),
                 commands=CommandsCfg(),
                 curriculum=CurriculumCfg(),
             ),
@@ -542,6 +722,189 @@ class PaperSwarmMappoEnvCfg(PaperSwarmBaseMarlEnvCfg):
 @configclass
 class PaperSwarmIppoEnvCfg(PaperSwarmBaseMarlEnvCfg):
     """IPPO variant with decentralized critic observations."""
+
+
+@configclass
+class Stage1CommandsCfg:
+    """Tight target ranges for initial hover-adjacent flight (lab_5 pattern)."""
+
+    target_pose = DroneUniformPoseCommandCfg(
+        asset_name="{entity_name}",
+        body_name="base_link",
+        resampling_time_range=(1.0e6, 1.0e6),
+        debug_vis=False,
+        ranges=DroneUniformPoseCommandCfg.Ranges(
+            pos_x=(-0.25, 0.25),
+            pos_y=(-0.25, 0.25),
+            pos_z=(0.9, 1.1),
+            roll=(0.0, 0.0),
+            pitch=(0.0, 0.0),
+            yaw=(0.0, 0.0),
+        ),
+    )
+
+
+@configclass
+class Stage1ActionsCfg:
+    """Stage 1 uses CLIP (hard boundary) like lab_5 hover, not TANH."""
+
+    ctbr = CtbrActionCfg(
+        asset_name="{entity_name}",
+        controller_cfg=CRAZYFLIE_CTBR_CONTROLLER_CFG,
+        max_roll_pitch_rate=3.0,
+        max_yaw_rate=2.0,
+        action_type=ActionType.NORM_NEG_1_TO_1,
+        handle_out_of_range=HandleOutOfRangeAction.CLIP,
+    )
+
+
+@configclass
+class Stage1RewardsCfg:
+    waypoint_tracking = RewTerm(
+        func=mdp.waypoint_tracking_reward,
+        weight=3.0,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "command_name": "target_pose",
+            "std": 0.8,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+    heading_tracking = RewTerm(
+        func=mdp.heading_tracking_reward,
+        weight=0.5,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "command_name": "target_pose",
+            "std": 0.7,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+    reached_target_bonus = RewTerm(
+        func=mdp.reached_target_pose,
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "command_name": "target_pose",
+            "distance_threshold": TARGET_REACHED_DISTANCE,
+            "yaw_threshold": TARGET_REACHED_YAW,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+    crash_penalty = RewTerm(
+        func=mdp.crash_penalty,
+        weight=-10.0,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "minimum_height": 0.2,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.05)
+    body_rate_l2 = RewTerm(
+        func=mdp.body_rate_l2,
+        weight=-0.01,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+
+
+@configclass
+class Stage1TerminationsCfg:
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    out_of_bounds = DoneTerm(
+        func=mdp.drone_out_of_bounds,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "xy_bounds": (-6.0, 6.0),
+            "z_bounds": (0.2, 5.0),
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+    too_far_from_command = DoneTerm(
+        func=mdp.pose_command_error_above,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "command_name": "target_pose",
+            "max_position_error": 4.0,
+        },
+    )
+
+
+@configclass
+class PaperSwarmMappoStage1EnvCfg(PaperSwarmBaseMarlEnvCfg):
+    """MAPPO stage 1: single-drone waypoint control baseline, tight workspace, hover init."""
+
+    scene = PaperSwarmSceneCfg(num_envs=256, env_spacing=ENV_SPACING)
+
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
+            count=NUM_DRONES,
+            id_template="drone_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="{agent_id}",
+                observations=MappoObservationsCfg(),
+                actions=Stage1ActionsCfg(),
+                rewards=Stage1RewardsCfg(),
+                terminations=Stage1TerminationsCfg(),
+                commands=Stage1CommandsCfg(),
+                curriculum=Stage1CurriculumCfg(),
+            ),
+        )
+    ]
+
+
+@configclass
+class PaperSwarmMappoStage2EnvCfg(PaperSwarmBaseMarlEnvCfg):
+    """MAPPO stage 2: hard obstacle-free multi-drone crossing task."""
+
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
+            count=NUM_DRONES,
+            id_template="drone_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="{agent_id}",
+                observations=MappoObservationsCfg(),
+                actions=ActionsCfg(),
+                rewards=RewardsCfg(),
+                terminations=ReplayTrainingTerminationsCfg(),
+                commands=CommandsCfg(),
+                curriculum=Stage2CurriculumCfg(),
+            ),
+        )
+    ]
+
+
+@configclass
+class PaperSwarmMappoStage3EnvCfg(PaperSwarmBaseMarlEnvCfg):
+    """MAPPO stage 3: hard multi-drone task with a static-obstacle density ramp."""
+
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
+            count=NUM_DRONES,
+            id_template="drone_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="{agent_id}",
+                observations=MappoObservationsCfg(),
+                actions=ActionsCfg(),
+                rewards=RewardsCfg(),
+                terminations=ReplayTrainingTerminationsCfg(),
+                commands=CommandsCfg(),
+                curriculum=Stage3CurriculumCfg(),
+            ),
+        )
+    ]
 
 
 @configclass
@@ -564,9 +927,9 @@ class PaperSwarmEvalEnvCfg(PaperSwarmBaseMarlEnvCfg):
     recorders = PaperSwarmRecorderManagerCfg()
 
     # Workspace bounds used by InitialStateCheckRecorder
-    eval_xy_bound: float = 1.5
-    eval_z_min: float = 1.0
-    eval_z_max: float = 1.5
+    eval_xy_bound: float = abs(WORKSPACE_XY[1])
+    eval_z_min: float = START_Z[0]
+    eval_z_max: float = START_Z[1]
     eval_min_separation: float = SAFE_WAYPOINT_SEPARATION
 
     # All drones active during eval (no curriculum)

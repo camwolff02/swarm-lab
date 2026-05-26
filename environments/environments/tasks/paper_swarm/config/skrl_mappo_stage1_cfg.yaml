@@ -1,5 +1,5 @@
-# Paper Swarm MAPPO training configuration
-# Hyperparams aligned with formation-swarm paper (γ=0.995, epochs=4, mini_batches=16)
+# Paper Swarm MAPPO Stage 1 training configuration
+# Hyperparams aligned with proven lab_5_simple_hover pattern
 models:
   factory: paper_swarm_attention
   separate: true
@@ -8,45 +8,51 @@ models:
   attention_dim: 32
   attention_heads: 1
   hidden_units: [256, 256, 256]
-  initial_log_std: 0.0
+  initial_log_std: -1.5
 
 agent:
   class: MAPPO
   experiment:
-    directory: paper_swarm/mappo
+    directory: paper_swarm/mappo_stage1
     experiment_name: ""
   rollouts: 64
   # PPO update epochs per rollout batch
   learning_epochs: 4
   # number of minibatches to split the data for learning
-  mini_batches: 16
+  mini_batches: 32
   # discount factor (formation-swarm paper: 0.995)
   discount_factor: 0.995
   # lambda for Generalized Advantage Estimation
   gae_lambda: 0.95
   # KL divergence threshold for adaptive learning rate
-  kl_threshold: 0.01
-  # optimizer learning rate
-  learning_rate: 0.0005
-  # learning rate scheduler (capped to stay near intended learning_rate)
-  learning_rate_scheduler: KLAdaptiveLR
+  kl_threshold: 0.0
+  # optimizer learning rate (fixed, matching lab_5 hover)
+  learning_rate: 0.0003
+  # fixed LR — no scheduler for stable initial training
+  learning_rate_scheduler: null
   learning_rate_scheduler_kwargs:
     kl_threshold: 0.01
-    max_lr: 0.0005
-    min_lr: 0.00005
   # gradient norm clipping threshold
-  grad_norm_clip: 10.0
+  grad_norm_clip: 1.0
   # clipping ratio for PPO
   ratio_clip: 0.1
   # value function clipping
-  value_clip: 0.1
+  value_clip: 0.2
+  # clip predicted values
+  clip_predicted_values: true
   # entropy loss scaling factor
-  entropy_loss_scale: 0.001
+  entropy_loss_scale: 0.0005
   # value function loss scaling factor
   value_loss_scale: 1.0
   observation_preprocessor: RunningStandardScaler
+  observation_preprocessor_kwargs:
+    size: null
   state_preprocessor: RunningStandardScaler
+  state_preprocessor_kwargs:
+    size: null
   value_preprocessor: RunningStandardScaler
+  value_preprocessor_kwargs:
+    size: null
 
 memory:
   class: RandomMemory
@@ -54,8 +60,8 @@ memory:
 
 trainer:
   class: SequentialTrainer
-  # SKRL counts env steps here (not agent steps). With 32 envs and 8 agents per step,
-  # 300000 env steps ≈ 77M agent transitions. Scale up as training stabilizes.
-  timesteps: 300000
+  # SKRL counts env steps here (not agent steps). With 256 envs and 8 agents per step,
+  # 75000 env steps gives ~10.8M agent transitions.
+  timesteps: 75000
   close_environment_at_exit: false
 seed: 42

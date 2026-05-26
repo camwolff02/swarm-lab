@@ -12,6 +12,7 @@ into HDF5 datasets for offline analysis.
 from __future__ import annotations
 
 import torch
+
 from isaaclab.managers import RecorderManagerBaseCfg, RecorderTerm, RecorderTermCfg
 from isaaclab.utils.configclass import configclass
 
@@ -40,7 +41,7 @@ class DroneStateRecorder(RecorderTerm):
             velocities[:, i, :] = asset.root_lin_vel_w.torch
             ang_velocities[:, i, :] = asset.root_ang_vel_w.torch
 
-        return None, {
+        return "drone_state", {
             "positions": positions,
             "quaternions": quaternions,
             "velocities": velocities,
@@ -63,16 +64,20 @@ class GoalDistanceRecorder(RecorderTerm):
         goal_positions = torch.zeros(num_envs, num_drones, 3, device=device)
         goal_distances = torch.zeros(num_envs, num_drones, device=device)
 
-        command_manager = getattr(env_view, "command_manager", None)
-        if command_manager is not None:
+        for i, agent_id in enumerate(possible_agents):
+            bundle_name = root_env._agent_to_bundle.get(agent_id)
+            if bundle_name is None:
+                continue
+            command_manager = root_env._manager_bundles[bundle_name].command_manager
+            if command_manager is None:
+                continue
             cmd = command_manager.get_command("target_pose")
-            n = cmd.shape[0]
-            for i, agent_id in enumerate(possible_agents):
-                goal_positions[:n, i, :] = cmd[:n, :3]
-                pos = root_env.scene[agent_id].data.root_pos_w.torch
-                goal_distances[:, i] = torch.norm(cmd[:n, :3] - pos[:n], dim=-1)
+            goal_w = cmd[:, :3] + root_env.scene.env_origins
+            goal_positions[:, i, :] = goal_w
+            pos = root_env.scene[agent_id].data.root_pos_w.torch
+            goal_distances[:, i] = torch.norm(goal_w - pos, dim=-1)
 
-        return None, {
+        return "goal", {
             "goal_positions": goal_positions,
             "goal_distances": goal_distances,
         }
@@ -127,7 +132,7 @@ class InitialStateCheckRecorder(RecorderTerm):
                 quat = asset.root_quat_w.torch[e]
                 pos = pos_w - env_origins[e]
 
-                is_active = pos[2] > -9.0
+                is_active = pos[2] > 0.0
                 if is_active:
                     # Check quaternion magnitude
                     if abs(quat.norm() - 1.0) > 0.01:
@@ -146,11 +151,11 @@ class InitialStateCheckRecorder(RecorderTerm):
             agents = list(pos_local.keys())
             for j in range(len(agents)):
                 for k in range(j + 1, len(agents)):
-                    if torch.norm(pos_local[agents[j]] - pos_local[agents[k]]) < min_sep * 0.5:
+                    if torch.norm(pos_local[agents[j]] - pos_local[agents[k]]) < min_sep:
                         all_separated[e] = False
                         break
 
-        return None, {
+        return "initial_state", {
             "all_upright": all_upright.float(),
             "all_in_bounds": all_in_bounds.float(),
             "all_separated": all_separated.float(),
@@ -178,6 +183,7 @@ class PaperSwarmRecorderManagerCfg(RecorderManagerBaseCfg):
     """Recorder manager config for paper_swarm debugging."""
 
     dataset_filename: str = "paper_swarm_dataset"
+    export_in_close: bool = True
 
     record_drone_state = DroneStateRecorderCfg()
     record_goal_distance = GoalDistanceRecorderCfg()

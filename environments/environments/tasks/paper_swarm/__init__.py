@@ -19,7 +19,7 @@ _install_runner_patch()
 
 gym.register(
     id="Isaac-Paper-Swarm-Waypoint-IPPO-v0",
-    entry_point="environments.envs:ManagerBasedMarlEnv",
+    entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": "environments.tasks.paper_swarm.paper_swarm_env_cfg:PaperSwarmIppoEnvCfg",
@@ -30,7 +30,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Paper-Swarm-Waypoint-MAPPO-v0",
-    entry_point="environments.envs:ManagerBasedMarlEnv",
+    entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": "environments.tasks.paper_swarm.paper_swarm_env_cfg:PaperSwarmMappoEnvCfg",
@@ -40,8 +40,41 @@ gym.register(
 )
 
 gym.register(
+    id="Isaac-Paper-Swarm-Waypoint-MAPPO-Stage1-v0",
+    entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": "environments.tasks.paper_swarm.paper_swarm_env_cfg:PaperSwarmMappoStage1EnvCfg",
+        "skrl_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_mappo_stage1_cfg.yaml",
+        "skrl_mappo_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_mappo_stage1_cfg.yaml",
+    },
+)
+
+gym.register(
+    id="Isaac-Paper-Swarm-Waypoint-MAPPO-Stage2-v0",
+    entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": "environments.tasks.paper_swarm.paper_swarm_env_cfg:PaperSwarmMappoStage2EnvCfg",
+        "skrl_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_mappo_stage2_cfg.yaml",
+        "skrl_mappo_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_mappo_stage2_cfg.yaml",
+    },
+)
+
+gym.register(
+    id="Isaac-Paper-Swarm-Waypoint-MAPPO-Stage3-v0",
+    entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": "environments.tasks.paper_swarm.paper_swarm_env_cfg:PaperSwarmMappoStage3EnvCfg",
+        "skrl_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_mappo_stage3_cfg.yaml",
+        "skrl_mappo_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_mappo_stage3_cfg.yaml",
+    },
+)
+
+gym.register(
     id="Isaac-Paper-Swarm-Waypoint-Eval-v0",
-    entry_point="environments.envs:ManagerBasedMarlEnv",
+    entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": "environments.tasks.paper_swarm.paper_swarm_env_cfg:PaperSwarmEvalEnvCfg",
@@ -52,7 +85,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Paper-Swarm-Waypoint-MAPPO-Eval-v0",
-    entry_point="environments.envs:ManagerBasedMarlEnv",
+    entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": "environments.tasks.paper_swarm.paper_swarm_env_cfg:PaperSwarmMappoEvalEnvCfg",

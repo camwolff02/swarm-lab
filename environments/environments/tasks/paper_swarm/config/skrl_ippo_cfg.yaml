@@ -3,7 +3,7 @@ models:
   factory: paper_swarm_attention
   separate: true
   num_drones: 8
-  max_neighbors: 7
+  max_neighbors: 2
   attention_dim: 32
   attention_heads: 1
   hidden_units: [256, 256, 256]

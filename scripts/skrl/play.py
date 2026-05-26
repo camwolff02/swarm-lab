@@ -75,6 +75,8 @@ parser.add_argument(
     help="The RL algorithm used for training the skrl agent.",
 )
 parser.add_argument("--real-time", action="store_true", default=False, help="Run in real-time, if possible.")
+parser.add_argument("--num_steps", type=int, default=None, help="Number of environment steps to play before exiting.")
+parser.add_argument("--eval_metrics", action="store_true", default=False, help="Print basic rollout metrics on exit.")
 add_launcher_args(parser)
 args_cli, hydra_args = parser.parse_known_args()
 
@@ -129,6 +131,21 @@ def _append_render_carb_settings_to_kit_args(env_cfg, launcher_args) -> None:
             additions.append(arg)
     if additions:
         launcher_args.kit_args = " ".join([kit_args, *additions]).strip()
+
+
+def _mean_scalar(value) -> float:
+    """Return the mean scalar value for a tensor or nested tensor dictionary."""
+    if isinstance(value, dict):
+        values = [_mean_scalar(item) for item in value.values()]
+        return sum(values) / len(values) if values else 0.0
+    return float(value.float().mean().item())
+
+
+def _true_count(value) -> int:
+    """Return the number of true values for a tensor or nested tensor dictionary."""
+    if isinstance(value, dict):
+        return sum(_true_count(item) for item in value.values())
+    return int(value.bool().sum().item())
 
 
 def main():
@@ -232,6 +249,9 @@ def main():
         obs, _ = env.reset()
         states = env.state()
         timestep = 0
+        reward_sum = 0.0
+        terminated_count = 0
+        truncated_count = 0
         # simulate environment
         try:
             while True:
@@ -243,16 +263,28 @@ def main():
                         actions = {a: outputs[-1][a].get("mean_actions", outputs[0][a]) for a in env.possible_agents}
                     else:
                         actions = outputs[-1].get("mean_actions", outputs[0])
-                    obs, _, _, _, _ = env.step(actions)
+                    obs, rewards, terminated, truncated, _ = env.step(actions)
                     states = env.state()
-                if args_cli.video:
+                    if args_cli.eval_metrics:
+                        reward_sum += _mean_scalar(rewards)
+                        terminated_count += _true_count(terminated)
+                        truncated_count += _true_count(truncated)
                     timestep += 1
+                if args_cli.video:
                     if timestep == args_cli.video_length:
                         break
+                if args_cli.num_steps is not None and timestep >= args_cli.num_steps:
+                    break
 
                 sleep_time = dt - (time.time() - start_time)
                 if args_cli.real_time and sleep_time > 0:
                     time.sleep(sleep_time)
+
+            if args_cli.eval_metrics and timestep > 0:
+                print(f"[INFO] Eval steps: {timestep}")
+                print(f"[INFO] Eval mean reward per step: {reward_sum / timestep:.6f}")
+                print(f"[INFO] Eval terminated count: {terminated_count}")
+                print(f"[INFO] Eval truncated count: {truncated_count}")
 
             # close the simulator
             env.close()

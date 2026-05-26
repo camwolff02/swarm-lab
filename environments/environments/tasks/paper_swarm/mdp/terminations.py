@@ -77,9 +77,8 @@ def drone_column_collision(
     from .observations import _root_env as _obs_root_env
 
     asset = env.scene[asset_cfg.name]
-    root = _obs_root_env(env)
-    pos = asset.data.root_pos_w.torch - root.scene.env_origins
-    columns = getattr(root, column_positions_key, None)
+    pos = asset.data.root_pos_w.torch
+    columns = getattr(_obs_root_env(env), column_positions_key, None)
     if columns is None or columns.shape[1] == 0:
         return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
 
@@ -91,6 +90,26 @@ def drone_column_collision(
         min_dist = torch.min(min_dist, dist_xy)
     mask = _get_active_mask(env, agent_id, mask_key)
     return (min_dist < column_radius) & (mask > 0)
+
+
+def pose_command_error_above(
+    env, asset_cfg, command_name: str, max_position_error: float
+) -> torch.Tensor:
+    """True if drone is more than max_position_error from the commanded pose.
+
+    Args:
+        asset_cfg: Scene entity config for the drone.
+        command_name: Name of the command term.
+        max_position_error: Maximum allowed position error [m].
+
+    Returns:
+        Bool tensor, shape (num_envs,). True if too far.
+    """
+    asset = env.scene[asset_cfg.name]
+    cmd = env.command_manager.get_command(command_name)[:, :3]
+    pos = asset.data.root_pos_w.torch
+    dist = torch.linalg.norm(cmd - pos, dim=-1)
+    return dist > max_position_error
 
 
 def _get_active_mask(env, agent_id: str, mask_key: str) -> torch.Tensor:

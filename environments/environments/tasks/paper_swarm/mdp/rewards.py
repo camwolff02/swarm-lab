@@ -17,9 +17,18 @@ from __future__ import annotations
 import torch
 
 from isaaclab.envs.mdp import action_rate_l2  # noqa: F401
+from isaaclab.utils.math import euler_xyz_from_quat, matrix_from_quat, wrap_to_pi
 
-from .observations import _asset, _root_env, command_decompose as _decomposed_target
-from isaaclab.utils.math import euler_xyz_from_quat, wrap_to_pi
+from .observations import _asset, _root_env
+from .observations import command_decompose as _decomposed_target
+
+
+def goal_distance_reward(env, asset_cfg, agent_id: str, command_name: str, mask_key: str) -> torch.Tensor:
+    """Negative distance-to-goal reward [m], shape (num_envs,)."""
+    target_pos = env.command_manager.get_command(command_name)[:, :3] + _root_env(env).scene.env_origins
+    current_pos = _asset(env, asset_cfg).data.root_pos_w.torch[: target_pos.shape[0]]
+    mask = _get_active_mask(env, agent_id, mask_key)
+    return -torch.linalg.norm(target_pos - current_pos, dim=-1) * mask
 
 
 def waypoint_tracking_reward(
@@ -156,6 +165,54 @@ def body_rate_l2(env, asset_cfg, agent_id: str, mask_key: str) -> torch.Tensor:
     ang_vel = _asset(env, asset_cfg).data.root_ang_vel_b.torch
     mask = _get_active_mask(env, agent_id, mask_key)
     return torch.sum(ang_vel**2, dim=-1) * mask
+
+
+def crash_penalty(
+    env, asset_cfg, agent_id: str, minimum_height: float, mask_key: str
+) -> torch.Tensor:
+    """Binary penalty when drone is below minimum_height [dimensionless]."""
+    asset = _asset(env, asset_cfg)
+    root_height = asset.data.root_pos_w.torch[:, 2]
+    mask = _get_active_mask(env, agent_id, mask_key)
+    return (root_height < minimum_height).float() * mask
+
+
+def upright_reward(env, asset_cfg, agent_id: str, mask_key: str) -> torch.Tensor:
+    """Reward upright body orientation, shape (num_envs,)."""
+    quat = _asset(env, asset_cfg).data.root_quat_w.torch
+    up_z = matrix_from_quat(quat)[:, 2, 2].clamp(min=-1.0, max=1.0)
+    mask = _get_active_mask(env, agent_id, mask_key)
+    return up_z * mask
+
+
+def robot_collision_event_penalty(env, agent_id: str, mask_key: str) -> torch.Tensor:
+    """One-step penalty for newly detected robot collisions."""
+    root = env.root if hasattr(env, "root") else env
+    events = getattr(root, "_paper_swarm_robot_collision_events", None)
+    if events is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    agent_ids = root.cfg.possible_agents
+    try:
+        index = agent_ids.index(agent_id)
+    except ValueError:
+        return torch.zeros(env.num_envs, device=env.device)
+    mask = _get_active_mask(env, agent_id, mask_key)
+    return events[:, index].float() * mask
+
+
+def obstacle_collision_event_penalty(env, agent_id: str, mask_key: str) -> torch.Tensor:
+    """One-step penalty for newly detected obstacle collisions."""
+    root = env.root if hasattr(env, "root") else env
+    events = getattr(root, "_paper_swarm_obstacle_collision_events", None)
+    if events is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    agent_ids = root.cfg.possible_agents
+    try:
+        index = agent_ids.index(agent_id)
+    except ValueError:
+        return torch.zeros(env.num_envs, device=env.device)
+    mask = _get_active_mask(env, agent_id, mask_key)
+    return events[:, index].float() * mask
 
 
 # -----------------------------------------------------------------------------

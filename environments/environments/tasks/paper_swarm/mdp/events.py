@@ -29,7 +29,7 @@ def reset_drone_root_state_uniform(
 ) -> dict[str, torch.Tensor]:
     """Sample separated positions and set zero-rotation hover start state.
 
-    Inactive agents are placed far below the ground plane.
+    Inactive agents are placed at the environment origin, resting on the ground plane.
 
     Args:
         xy_bounds: (min, max) [m] for each axis.
@@ -76,7 +76,7 @@ def reset_drone_root_state_uniform(
         asset = env.scene[agent_id]
         root_pose = asset.data.default_root_pose.torch[env_ids].clone()
         root_velocity = asset.data.default_root_vel.torch[env_ids].clone()
-        root_pose[:, :3] = env.scene.env_origins[env_ids] + torch.tensor((0.0, 0.0, -10.0), device=env.device)
+        root_pose[:, :3] = env.scene.env_origins[env_ids] + torch.tensor((0.0, 0.0, 0.05), device=env.device)
         root_pose[:, 3:7] = torch.tensor([0.0, 0.0, 0.0, 1.0], device=env.device)
         root_velocity[:, :] = 0.0
 
@@ -222,4 +222,24 @@ def _sample_separated_positions(
             candidate[:2] = low + (high - low) * torch.rand(2, device=device)
         positions[i] = candidate
 
-    return positions
+
+def reset_drone_hover_thrust(
+    env,
+    env_ids: torch.Tensor,
+    agent_ids: list[str],
+    collective_hover_thrust: float,
+):
+    """Set hover thrust on every drone so it doesn't fall on reset.
+
+    Mirrors the proven pattern from lab_5_precision_hover.
+    """
+    for agent_id in agent_ids:
+        asset = env.scene[agent_id]
+        hover_per_motor = float(collective_hover_thrust) / asset.num_thrusters
+        thrust = torch.full(
+            (len(env_ids), asset.num_thrusters),
+            hover_per_motor,
+            device=env.device,
+            dtype=torch.float32,
+        )
+        asset.set_thrust_target(thrust, env_ids=env_ids)
