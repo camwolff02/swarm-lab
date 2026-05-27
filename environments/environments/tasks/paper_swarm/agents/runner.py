@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import torch
 from skrl.models.torch import Model
 import skrl.utils.runner.torch.runner as skrl_runner_module
 from skrl.utils.runner.torch import Runner
@@ -53,6 +54,9 @@ def _generate_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model
         env.action_spaces[first_agent],
         device,
         encoder_cfg=encoder_cfg,
+        clip_log_std=bool(model_cfg.get("clip_log_std", False)),
+        min_log_std=float(model_cfg.get("min_log_std", -20.0)),
+        max_log_std=float(model_cfg.get("max_log_std", 2.0)),
     )
     shared_value = PaperDeterministicValue(
         state_spaces.get(first_agent) or env.observation_spaces[first_agent],

@@ -141,6 +141,10 @@ class PaperAttentionEncoder(nn.Module):
                 f"Expected observation dim {self.cfg.observation_dim}, got {observations.shape[-1]}."
             )
 
+        if observations.isnan().any():
+            nan_dims = observations.isnan().any(dim=0).nonzero(as_tuple=True)[0]
+            raise ValueError(f"NaN in encoder input at observation dims {nan_dims.tolist()}")
+
         # Tokenize
         x = self.split_embed(observations)  # (B, num_tokens, attention_dim)
 

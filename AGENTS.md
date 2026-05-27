@@ -1,9 +1,5 @@
 # IsaacLab Guidelines
 
-## Breaking API changes
-
-- **Breaking changes require a deprecation first.** Do not remove or rename public API symbols without deprecating them in a prior release.
-
 ## API design rules (naming + structure)
 
 - **Group by common prefix for discoverability (autocomplete).**
@@ -12,140 +8,21 @@
 - **Method names are `snake_case`.**
 - **CLI arguments are `snake_case`.**
 - **Prefer nested classes when self-contained.**
-  - If a helper type or an enum is only meaningful inside one parent class and doesn't need a public identity, define it as a nested class instead of creating a new top-level class/module.
-- **Follow PEP 8 for Python code.**
+- **Follow PEP 8.**
 - **Use modern Python type-hint syntax.**
   - Prefer PEP 604 unions: `x | y`, `x | None`. Do not use `typing.Union` or `typing.Optional`.
-- **Use specific type hints for public interfaces.**
-  - For torch tensors, annotate with `torch.Tensor`. For Warp arrays, annotate concrete dtypes (e.g., `wp.array(dtype=wp.vec3)`) rather than generic `object`.
-  - Prefer consistent parameter names across base/override APIs (e.g., `xforms`, `scales`, `colors`, `materials`).
 - **Use Google-style docstrings.**
-  - Write clear, concise docstrings that explain what the function does, its parameters, and its return value.
   - Keep argument/return types in function annotations, not inline in docstrings.
   - In `Args:` entries, use `name: description` (not `name (Type): description`).
-  - Use Sphinx cross-reference roles for symbol references (e.g. `:class:`, `:meth:`, `:attr:`, `:paramref:`), but keep targets as short as possible.
-  - Within the same class/module, prefer short local references (e.g. `:meth:\`set_joint_position_target\``,`:attr:\`num_joints\``) over fully qualified paths.
-  - If qualification is needed, prefer public API paths (e.g. `isaaclab.assets.Articulation`) and do not use internal `_src` or private module paths in Sphinx role targets.
 - **State SI units for all physical quantities in docstrings.**
   - Use inline `[unit]` notation, e.g. `"""Particle positions [m], shape [particle_count, 3], float."""`.
-  - For joint-type-dependent quantities use `[m or rad, depending on joint type]`.
-  - For spatial vectors annotate both components, e.g. `[N, N·m]`.
-  - For compound arrays list per-component units, e.g. `[0] k_mu [Pa], [1] k_lambda [Pa], ...`.
-  - When a parameter's interpretation varies across solvers, document each solver's convention instead of a single unit.
-  - Skip non-physical fields (indices, keys, counts, flags).
-  - This rule applies to **public API docstrings only**, not test docstrings.
-- **Keep the documentation up-to-date.**
-  - When adding new files or symbols that are part of the public-facing API, make sure to keep the auto-generated documentation updated by running `./isaaclab.sh -d`.
 
 ## Dependencies
 
-- **Avoid adding new required dependencies.** IsaacLab's core should remain lightweight and minimize external requirements.
-- **Strongly prefer not adding new optional dependencies.** If additional functionality requires a new package, carefully consider whether the benefit justifies the added complexity and maintenance burden. When possible, implement functionality using existing dependencies, including Warp functions and kernels, NumPy, or the standard library.
+- **Avoid adding new required dependencies.** IsaacLab's core should remain lightweight.
+- **Strongly prefer not adding new optional dependencies.** Use existing deps (Warp, NumPy, stdlib) when possible.
 
-## Tooling: prefer `./isaaclab.sh -p` for running, testing, and benchmarking
-
-We use a wrapped python call within `./isaaclab.sh`.
-
-- **Use `./isaaclab.sh -p -c` for inline Python**: When running one-off Python commands, use `./isaaclab.sh -p -c "..."` instead of `python3 -c "..."`.
-- **Use `./isaaclab.sh -p`** to run standalone Python scripts without a `pyproject.toml` (e.g., in CI after switching to a branch with no project files).
-
-### Run tests
-
-```bash
-# run all tests (extremely heavy, should be avoided).
-./isaaclab.sh -t
-
-# run a specific test file by name
-./isaaclab.sh -p -m pytest PATH_TO_TEST
-
-# run a specific example test
-./isaaclab.sh -p -m pytest PATH_TO_TEST::METHOD
-```
-
-### Pre-commit (lint/format hooks)
-
-**CRITICAL: Always run pre-commit hooks BEFORE committing and BEFORE pushing.**
-
-Proper workflow:
-
-1. Make your code changes
-2. Run `./isaaclab.sh -f` to check ALL files
-3. If pre-commit modifies any files (e.g., formatting), review the changes
-4. Stage the modified files with `git add`
-5. Run `./isaaclab.sh -f` again to ensure all checks pass
-6. Only then create your commit with `git commit`
-7. Verify pre-commit still passes before pushing — never push commits that haven't been checked
-
-```bash
-# Run pre-commit checks on all files
-./isaaclab.sh -f
-```
-
-**Common mistakes to avoid:**
-
-- Don't commit first and then run pre-commit (requires amending commits)
-- Don't push before running pre-commit (pushes broken code to the remote)
-- Do run pre-commit before committing and before pushing (clean workflow)
-
-**When reviewing code** (e.g. via a code-reviewer agent), always run `./isaaclab.sh -f` as part of the review to catch formatting or lint issues early.
-
-## Changelog
-
-- **Do not edit `CHANGELOG.rst` or `config/extension.toml` directly.** Each PR adds a fragment file under `source/<package>/changelog.d/`; the changelog and version are compiled by the nightly CI workflow.
-- **Add one fragment per touched package.** Pick any short, unique slug for the filename — your branch name (with `/` replaced by `-`) is a good default. The filename suffix declares the bump tier; within a batch the highest tier wins for the package.
-
-  | Filename                                    | Effect                                    |
-  | ------------------------------------------- | ----------------------------------------- |
-  | `source/<pkg>/changelog.d/<slug>.rst`       | patch bump                                |
-  | `source/<pkg>/changelog.d/<slug>.minor.rst` | minor bump                                |
-  | `source/<pkg>/changelog.d/<slug>.major.rst` | major bump                                |
-  | `source/<pkg>/changelog.d/<slug>.skip`      | no entry, no bump (CI / docs / test-only) |
-
-- Use **past tense** matching the section header: "Added X", "Fixed Y", "Changed Z".
-- Place entries under the correct category: `Added`, `Changed`, `Deprecated`, `Removed`, or `Fixed`.
-- Avoid internal implementation details users wouldn't understand.
-- **For `Deprecated`, `Changed`, and `Removed` entries, include migration guidance.**
-  - Example: "Deprecated `Articulation.A` in favor of `Articulation.B`."
-- **Breaking changes** belong in `Changed`, prefixed with `**Breaking:**`.
-- Use Sphinx cross-reference roles for class/method/module names.
-
-### RST formatting reference
-
-```
-Added
-^^^^^
-
-* Added :class:`~package.ClassName` to support feature X.
-
-Fixed
-^^^^^
-
-* Fixed edge case in :meth:`~package.ClassName.method` where input was
-  not validated, causing ``AttributeError`` at runtime.
-```
-
-Key formatting rules:
-
-- Category heading: underline with `^` (carets), at least as long as the heading text.
-- Entries: `*` prefix, continuation lines indented by 2 spaces.
-
-See `tools/changelog/test/integration/` for worked examples that double as integration-test fixtures.
-
-## Commit and Pull Request Guidelines
-
-Follow conventional commit message practices.
-
-- **Use feature branches**: All development work should be on branches named `<username>/feature-desc` (e.g., `jdoe/docs-versioning`). Do not commit directly to `main`.
-- Keep commits focused and atomic—one logical change per commit.
-- Reference related issues in commit messages when applicable.
-- **When iterating on PR feedback**, prefer adding new commits over amending existing ones. This avoids force-pushing and lets the reviewer easily verify each change request was addressed.
-- **Do not include AI attribution or co-authorship lines** (e.g., "Co-Authored-By: Claude...") in commit messages. Commits should represent human contributions without explicit AI attribution.
-- **Commit message format**:
-  - Separate subject from body with a blank line
-  - Subject: imperative mood, capitalized, ~50 chars, no trailing period
-    - Write as a command: "Fix bug" not "Fixed bug" or "Fixes bug"
-    - Test: "If applied, this commit will _[your subject]_"
-  - Body: wrap at 72 chars, explain _what_ and _why_ (not _how_—the diff shows that)
+## Tooling: prefer `uv run` for running, testing, and benchmarking
 
 ## File headers and copyright
 
@@ -160,62 +37,144 @@ Follow conventional commit message practices.
 
 - Do not change the year in existing file headers.
 
-## Sandbox & Networking
-
-- Network access (e.g., `git push`) is blocked by the sandbox. Use `dangerouslyDisableSandbox: true` so the user gets an approval prompt — don't ask them to run it manually.
-- **Never push to `origin` (`isaac-sim/IsaacLab`).** The `origin` remote is the public upstream repository. Push to your own fork remote (e.g., `antoine`, `alex`) or to the remote of the PR you are working on. If the correct remote is unclear, ask the user before pushing.
-
-## GitHub Actions and CI/CD
-
-- IMPORTANT: Pin actions by SHA hash. Use `action@<sha>  # vX.Y.Z` format for supply-chain security. Check existing workflows in `.github/workflows/` for the allowlisted hashes. New actions or versions require repo admin approval to be added to the allowlist.
-
 ## Testing Guidelines
 
-- **Always verify regression tests fail without the fix.** When writing a regression test for a bug fix, temporarily revert the fix and run the test to confirm it fails. Then reapply the fix and verify the test passes. This ensures the test actually covers the bug.
+- **Always verify regression tests fail without the fix.** Temporarily revert the fix and run the test to confirm it fails, then reapply.
 
-### Debugging Warp kernels
+## Debugging Warp kernels
 
-**Do not add `wp.printf` to kernels in production code.** Debug prints in Warp kernels affect performance and can produce noisy test output. Use them only in standalone reproduction scripts during development, and always remove them before committing.
+**Do not add `wp.printf` to kernels in production code.** Debug prints affect performance and can produce noisy test output.
 
 To debug Warp kernel behavior:
-
-1. **Write a standalone reproduction script** and run it directly with `./isaaclab.sh -p -c "..."` or `./isaaclab.sh -p script.py`. This keeps stdout visible and avoids the test framework entirely.
-2. **Use high-precision format strings** for floating-point debugging (e.g., `wp.printf("val=%.15e\n", x)`) — the default `%f` format hides values smaller than ~1e-6 that can still affect control flow.
-3. **Remove all `wp.printf` calls before committing.**
+1. Write a standalone reproduction script and run with `uv run python -c "..."` or `uv run script.py`.
+2. Use high-precision format strings (e.g., `wp.printf("val=%.15e\n", x)`).
+3. Remove all `wp.printf` calls before committing.
 
 # Swarm-lab Guidelines
 
-Swarm lab guidelines should always be superceded by IsaacLab guidelines
+Swarm lab guidelines should always be superceded by IsaacLab guidelines.
+
+## Architecture
+
+- **IsaacLab is vendored** at `../IsaacLab` (branch `release/3.0.0-beta2`). **Never modify it** to fix this repo.
+- **`cpsquare-lab` is an editable dependency** at `../cpsquare-lab` (see `pyproject.toml` `[tool.uv.sources]`).
+- **`environments/`** is a nested Python package with its own `pyproject.toml`. It registers Gym environments and tasks.
+- Python 3.12 only (pinned in `.python-version` and `pyproject.toml`).
+
+## Commands
+
+```bash
+# Lint
+uv run ruff check .
+
+# Format
+uv run ruff format .
+
+# Typecheck
+uv run pyright
+
+# Pre-commit (runs from IsaacLab, not this repo)
+cd ../IsaacLab && ./isaaclab.sh -f
+
+# Run all tests
+uv run pytest test/
+
+# Run a single test file
+uv run pytest test/test_formation_swarm_task.py
+
+# Run a single test function
+uv run pytest test/test_formation_swarm_task.py::test_formation_laplacian_cost_is_zero_for_target_formation
+
+# Docs (live-reload)
+uv run --group docs mkdocs serve
+
+# Docs (build)
+uv run --group docs mkdocs build --strict
+```
+
+## Test directory: `test/`, NOT `tests/`
+
+Tests live in `test/` (singular). The `tests/` directory is **gitignored** and contains old XML test reports — do not put test files there.
+
+## Training
+
+Training uses SKRL with MAPPO via `scripts/skrl/train.py`. The `justfile` has curated recipes:
+
+```bash
+# Single stage
+just formation-train-stage 1
+
+# Resume from checkpoint
+just formation-train-stage 2 checkpoint=/path/to/agent_*.pt
+
+# Full 3-stage curriculum
+just formation-curriculum
+
+# Play (evaluate) a trained model
+just formation-play
+```
+
+Direct invocation:
+
+```bash
+uv run scripts/skrl/train.py --algorithm MAPPO --task Isaac-Formation-Swarm-Crazyflie-v0 env.curriculum_stage=1
+uv run scripts/skrl/play.py --algorithm MAPPO --task Isaac-Formation-Swarm-Crazyflie-v0 --checkpoint /path/to/agent_*.pt
+```
+
+### Paper Swarm training stages
+
+```bash
+# Stage 1 — single drone waypoint control
+uv run scripts/skrl/train.py --algorithm MAPPO --task Isaac-Paper-Swarm-Waypoint-MAPPO-Stage1-v0
+
+# Stage 2 — resume from Stage 1 checkpoint
+uv run scripts/skrl/train.py --algorithm MAPPO --task Isaac-Paper-Swarm-Waypoint-MAPPO-Stage2-v0 \
+  --checkpoint logs/skrl/paper_swarm/mappo_stage1/<run>/checkpoints/agent_*.pt \
+  --reset_optimizer_on_resume
+
+# Stage 3 — resume from Stage 2 checkpoint
+uv run scripts/skrl/train.py --algorithm MAPPO --task Isaac-Paper-Swarm-Waypoint-MAPPO-Stage3-v0 \
+  --checkpoint logs/skrl/paper_swarm/mappo_stage2/<run>/checkpoints/agent_*.pt \
+  --reset_optimizer_on_resume
+```
+
+## Reviewing Training Progress
+
+Whenever the user asks to review a training run, follow this procedure:
+
+1. **Read TensorBoard logs** — use the `training-metrics` skill to pull up episode length, reward, policy std, value loss, learning rate, and env stepping time. Look for NaN, diverging std, flat reward, or collapsing episode lengths.
+
+2. **Run an eval with the latest checkpoint** — use the Eval environment (`Isaac-Paper-Swarm-Waypoint-Eval-v0` or `Isaac-Paper-Swarm-Waypoint-MAPPO-Eval-v0`) with the recorder enabled. This writes HDF5 data to `/tmp/isaaclab/logs/paper_swarm_dataset.hdf5`. The recorder captures per-step drone positions, quaternions, velocities, goal distances, and the `InitialStateCheckRecorder` validates upright/spacing/bounds on first step.
+
+3. **Inspect the HDF5 recorder output** — open the dataset and check:
+   - `record_drone_state/step_*`: drone positions, quaternions, velocities over time (does the drone fly toward its target or just go up?)
+   - `record_goal_distance/step_*`: goal positions and distances (are waypoints being reached?)
+   - `check_initial_state/step_0`: all_upright, all_in_bounds, all_separated, inactive_parked (did any drone start in a bad state?)
+
+4. **Cross-reference with the TensorBoard metrics** — correlate physical behavior from HDF5 with reward/loss curves. If rewards are flat but the drone is reaching targets, the reward computation may be buggy. If episode lengths are 1.0, a termination is firing immediately.
+
+Task IDs are registered by importing `environments.tasks` (the `environments` package's `__init__.py` does `from .tasks import *`).
 
 ## Repository Rules
 
-- Do not create or restore a top-level `src/cpsquare_lab/assets` package.
-- Do not create or restore a top-level `src/cpsquare_lab/utils` package.
-- Robot-specific assets belong under `src/cpsquare_lab/embodiments/`.
-- Shared robot-generic code belongs under `src/cpsquare_lab/embodiments/common/`.
-- Shared multirotor code belongs under `src/cpsquare_lab/embodiments/multirotor/common/`.
-- Robot-specific logic belongs in that robot's embodiment subtree, for example `src/cpsquare_lab/embodiments/multirotor/cf2x/`.
-- Do not create or restore a top-level `src/cpsquare_lab/mdp` package.
-- Action terms belong with embodiments:
-  `embodiments/common/` if robot-generic,
-  `embodiments/multirotor/common/` if multirotor-generic,
-  or the specific embodiment if not generic.
-- Observations belong with the embodiment when they are embodiment-specific, or alongside the task when they are task-specific.
-- Rewards belong alongside the task when they are task-specific.
-- Task-specific geometry/grid helpers such as `grid_sdf` belong with the relevant task, not in a shared `utils` package.
-- Terminations and task config should live with the task package they serve.
+- Robot-specific assets belong under `../cpsquare-lab/src/cpsquare_lab/embodiments/`.
+- Shared robot-generic code belongs under `../cpsquare-lab/src/cpsquare_lab/embodiments/common/`.
+- Shared multirotor code belongs under `../cpsquare-lab/src/cpsquare_lab/embodiments/multirotor/common/`.
+- Robot-specific logic belongs in that robot's embodiment subtree.
+- Do not create or restore a top-level `../cpsquare-lab/src/cpsquare_lab/mdp`, `assets`, or `utils` package.
+- Action terms belong with embodiments. Observations belong with the embodiment or task. Rewards belong with the task.
+- Task-specific geometry/grid helpers belong with the relevant task, not in a shared `utils` package.
 
 ## Working Conventions
 
 - Prefer fixing imports and call sites to match the current structure instead of adding compatibility packages.
-- Keep public imports shallow and explicit; avoid implicit cross-package magic where a direct import is clearer.
-- When moving files, update tests to the new module paths instead of reintroducing deprecated package surfaces.
-- Keep `../IsaacLab` treated as vendored code; do not modify it to fix this repo.
-- Keep lint and test configuration scoped to this repository so vendored code is not collected.
-- Before adding abstractions, check whether the code can instead reuse an existing embodiment-common or task-local module.
-- Add focused tests for refactor-sensitive helpers such as path resolution, config wiring, and observation/reward logic.
+- Keep public imports shallow and explicit. Avoid implicit cross-package magic.
+- When moving files, update tests to the new module paths.
+- Keep lint and test configuration scoped to this repository; vendored code is not collected.
+- Before adding abstractions, check whether the code can reuse an existing embodiment-common or task-local module.
 - Do not overwrite unrelated user changes in the worktree.
 
-# Primary Directive
+## Code Style
 
-Keep all code implementations as simple as possible and compatible with IsaacLab, preferring to use prebuilt tools instead of rolling your own solution whenever possible. Avoid defensive coding techniques, instead favoring reasonable defaults and simplicity.
+- Ruff config: line-length 120, Python 3.12 target, Google-style docstrings, isort with IsaacLab-aware section ordering.
+- Pyright config: `typeCheckingMode = "basic"`, includes only `environments/`.

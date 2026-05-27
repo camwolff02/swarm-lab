@@ -39,10 +39,19 @@ class PaperGaussianPolicy(GaussianMixin, Model):
         *,
         encoder_cfg: PaperAttentionEncoderCfg = PaperAttentionEncoderCfg(),
         clip_actions: bool = False,
+        clip_log_std: bool = False,
+        min_log_std: float = -20.0,
+        max_log_std: float = 2.0,
     ) -> None:
         """Initialize the PaperGaussianPolicy instance."""
         Model.__init__(self, observation_space=observation_space, action_space=action_space, device=device)
-        GaussianMixin.__init__(self, clip_actions=clip_actions)
+        GaussianMixin.__init__(
+            self,
+            clip_actions=clip_actions,
+            clip_log_std=clip_log_std,
+            min_log_std=min_log_std,
+            max_log_std=max_log_std,
+        )
         self.encoder = PaperAttentionEncoder(encoder_cfg)
         self.mean_head = nn.Linear(encoder_cfg.output_dim, _space_size(action_space))
         nn.init.xavier_uniform_(self.mean_head.weight, gain=0.01)

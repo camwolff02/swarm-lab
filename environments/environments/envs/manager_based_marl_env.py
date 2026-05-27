@@ -166,19 +166,24 @@ class ManagerBasedMarlEnv(ManagerBasedMaEnv):
     def state(self) -> Any:
         """Compute critic observations for the training state channel.
 
-        Computed once (global critic state is agent-independent), then fanned
-        out to every possible agent.
+        Returns:
+            ``None`` when no ``critic`` observation group is configured, or a
+            dict keyed by agent id containing each agent's critic observation.
         """
+
+        if not any(
+            self.critic_observation_group in bundle.observation_manager.group_obs_dim
+            for bundle in self._manager_bundles.values()
+        ):
+            return None
+        states: dict[str, Any] = {}
         for bundle in self._manager_bundles.values():
-            if self.critic_observation_group not in bundle.observation_manager.group_obs_dim:
-                continue
             critic_obs = bundle.observation_manager.compute_group(
                 self.critic_observation_group, update_history=False
             )
-            result = {agent_id: critic_obs for agent_id in self.possible_agents}
-            self.state_buf = result
-            return result
-        return None
+            states.update(self._fanout_tensor(critic_obs, bundle.runtime))
+        self.state_buf = states
+        return states
 
     def _fanout_reward_or_done(self, value: torch.Tensor, runtime, dtype) -> dict[str, torch.Tensor]:
         if dtype is not None and value.dtype != dtype:

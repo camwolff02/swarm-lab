@@ -496,6 +496,34 @@ class PaperSwarmEventsCfg:
 
 
 @configclass
+class Stage1EventsCfg(PaperSwarmEventsCfg):
+    """Stage 1: fixed reset at origin so target is always away from the drone (lab_5 pattern)."""
+
+    reset_drone_root_state = EventTerm(
+        func=mdp.reset_drone_root_state_uniform,
+        mode="reset",
+        params={
+            "agent_ids": DRONE_AGENT_IDS,
+            "xy_bounds": (0.0, 0.0),
+            "z_bounds": (1.0, 1.0),
+            "min_separation": SAFE_WAYPOINT_SEPARATION,
+            "lin_vel_range": (-0.05, 0.05),
+            "ang_vel_range": (-0.05, 0.05),
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+    reset_hover_thrust = EventTerm(
+        func=mdp.reset_drone_hover_thrust,
+        mode="reset",
+        params={
+            "agent_ids": DRONE_AGENT_IDS,
+            "collective_hover_thrust": hover_collective_thrust_from_multirotor_cfg(CRAZYFLIE_CFG),
+            "possible_agent_ids": ["drone_0"],
+        },
+    )
+
+
+@configclass
 class CurriculumCfg:
     active_agent_count = CurrTerm(
         func=mdp.active_agent_count_curriculum,
@@ -559,6 +587,17 @@ class Stage1CurriculumCfg:
             "end_min_separation": SAFE_WAYPOINT_SEPARATION,
             "column_radius": COLUMN_RADIUS,
             "column_safe_distance": COLUMN_SAFE_DISTANCE,
+        },
+    )
+    expand_target_range = CurrTerm(
+        func=mdp.expand_target_range_curriculum,
+        params={
+            "start_step": 0,
+            "end_step": 50_000,
+            "start_xy": 0.0,
+            "end_xy": 1.5,
+            "start_z_delta": 0.0,
+            "end_z_delta": 0.5,
         },
     )
 
@@ -726,7 +765,7 @@ class PaperSwarmIppoEnvCfg(PaperSwarmBaseMarlEnvCfg):
 
 @configclass
 class Stage1CommandsCfg:
-    """Tight target ranges for initial hover-adjacent flight (lab_5 pattern)."""
+    """Target starts at drone position, curriculum expands range outward."""
 
     target_pose = DroneUniformPoseCommandCfg(
         asset_name="{entity_name}",
@@ -734,9 +773,29 @@ class Stage1CommandsCfg:
         resampling_time_range=(1.0e6, 1.0e6),
         debug_vis=False,
         ranges=DroneUniformPoseCommandCfg.Ranges(
-            pos_x=(-0.25, 0.25),
-            pos_y=(-0.25, 0.25),
-            pos_z=(0.9, 1.1),
+            pos_x=(0.0, 0.0),
+            pos_y=(0.0, 0.0),
+            pos_z=(1.0, 1.0),
+            roll=(0.0, 0.0),
+            pitch=(0.0, 0.0),
+            yaw=(0.0, 0.0),
+        ),
+    )
+
+
+@configclass
+class Stage1EvalCommandsCfg:
+    """Target pose ranges matching end-of-curriculum (Stage 1 eval)."""
+
+    target_pose = DroneUniformPoseCommandCfg(
+        asset_name="{entity_name}",
+        body_name="base_link",
+        resampling_time_range=(1.0e6, 1.0e6),
+        debug_vis=False,
+        ranges=DroneUniformPoseCommandCfg.Ranges(
+            pos_x=(-1.5, 1.5),
+            pos_y=(-1.5, 1.5),
+            pos_z=(0.5, 1.5),
             roll=(0.0, 0.0),
             pitch=(0.0, 0.0),
             yaw=(0.0, 0.0),
@@ -829,26 +888,25 @@ class Stage1TerminationsCfg:
             "mask_key": ACTIVE_AGENT_MASK_KEY,
         },
     )
-    too_far_from_command = DoneTerm(
-        func=mdp.pose_command_error_above,
-        params={
-            "asset_cfg": SceneEntityCfg("{entity_name}"),
-            "command_name": "target_pose",
-            "max_position_error": 4.0,
-        },
-    )
 
 
 @configclass
 class PaperSwarmMappoStage1EnvCfg(PaperSwarmBaseMarlEnvCfg):
-    """MAPPO stage 1: single-drone waypoint control baseline, tight workspace, hover init."""
+    """MAPPO stage 1: single-drone waypoint control baseline, tight workspace, hover init.
 
-    scene = PaperSwarmSceneCfg(num_envs=256, env_spacing=ENV_SPACING)
+    Only ``drone_0`` is managed by the RL pipeline (1 execution group = 1 bundle).
+    The other 7 drones are physically simulated but parked at z=0.05 with hover
+    thrust — they do not contribute observation/reward/termination overhead.
+    """
+
+    scene = PaperSwarmSceneCfg(num_envs=512, env_spacing=ENV_SPACING)
+    events = Stage1EventsCfg()
+    possible_agents = ["drone_0"]
 
     agent_groups = [
         AgentGroupCfg(
             name="drone",
-            count=NUM_DRONES,
+            count=1,
             id_template="drone_{i}",
             agent_cfg=AgentRlCfg(
                 asset_name="{agent_id}",
@@ -967,6 +1025,40 @@ class PaperSwarmMappoEvalEnvCfg(PaperSwarmEvalEnvCfg):
                 rewards=RewardsCfg(),
                 terminations=TerminationsCfg(),
                 commands=CommandsCfg(),
+                curriculum=None,
+            ),
+        )
+    ]
+
+
+@configclass
+class PaperSwarmMappoStage1EvalCfg(PaperSwarmEvalEnvCfg):
+    """MAPPO Stage 1 eval: single-drone waypoint control with recorder enabled.
+
+    Inherits recorder, shorter episodes, and eval workspace bounds from
+    PaperSwarmEvalEnvCfg. Overrides to use Stage 1 settings:
+    - Only drone_0 is managed (possible_agents = ["drone_0"])
+    - Stage 1 actions, rewards, terminations
+    - Fixed target range matching end-of-curriculum XY and Z
+    - No dynamic curriculum
+    """
+
+    possible_agents = ["drone_0"]
+    events = Stage1EventsCfg()
+    replay_enabled = False
+
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
+            count=1,
+            id_template="drone_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="{agent_id}",
+                observations=MappoObservationsCfg(),
+                actions=Stage1ActionsCfg(),
+                rewards=Stage1RewardsCfg(),
+                terminations=Stage1TerminationsCfg(),
+                commands=Stage1EvalCommandsCfg(),
                 curriculum=None,
             ),
         )

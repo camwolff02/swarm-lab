@@ -95,6 +95,16 @@ def reset_drone_root_state_uniform(
             root_velocity[is_active, :3] = lin_vel
             root_velocity[is_active, 3:6] = ang_vel
 
+        # Spread inactive drones in a grid so they don't clip into each other
+        GRID_SPACING = 1.0
+        GRID_COLS = 3
+        if i > 0:
+            gx = ((i - 1) % GRID_COLS) * GRID_SPACING
+            gy = ((i - 1) // GRID_COLS) * GRID_SPACING
+            root_pose[~is_active, :3] = (
+                env.scene.env_origins[env_ids[~is_active]] + torch.tensor((gx, gy, 0.05), device=env.device)
+            )
+
         asset.write_root_pose_to_sim_index(root_pose=root_pose, env_ids=env_ids)
         asset.write_root_velocity_to_sim_index(root_velocity=root_velocity, env_ids=env_ids)
         resets[agent_id] = torch.cat([root_pose, root_velocity], dim=-1)
@@ -228,18 +238,25 @@ def reset_drone_hover_thrust(
     env_ids: torch.Tensor,
     agent_ids: list[str],
     collective_hover_thrust: float,
+    possible_agent_ids: list[str] | None = None,
 ):
-    """Set hover thrust on every drone so it doesn't fall on reset.
+    """Set hover thrust on managed drones, zero thrust on the rest.
 
-    Mirrors the proven pattern from lab_5_precision_hover.
+    Only drones listed in ``possible_agent_ids`` receive hover thrust.
+    All others get zero thrust — they sit inert on the ground without
+    unstable ground-contact dynamics.
     """
+    managed = set(possible_agent_ids or agent_ids)
     for agent_id in agent_ids:
         asset = env.scene[agent_id]
-        hover_per_motor = float(collective_hover_thrust) / asset.num_thrusters
-        thrust = torch.full(
-            (len(env_ids), asset.num_thrusters),
-            hover_per_motor,
-            device=env.device,
-            dtype=torch.float32,
-        )
+        if agent_id in managed:
+            hover_per_motor = float(collective_hover_thrust) / asset.num_thrusters
+            thrust = torch.full(
+                (len(env_ids), asset.num_thrusters),
+                hover_per_motor,
+                device=env.device,
+                dtype=torch.float32,
+            )
+        else:
+            thrust = torch.zeros(len(env_ids), asset.num_thrusters, device=env.device, dtype=torch.float32)
         asset.set_thrust_target(thrust, env_ids=env_ids)

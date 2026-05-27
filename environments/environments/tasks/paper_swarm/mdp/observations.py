@@ -422,6 +422,11 @@ def paper_swarm_global_state(
 ) -> torch.Tensor:
     """Centralized MAPPO state computed once for the whole swarm.
 
+    Works with any number of managed agents.  Unmanaged drones contribute
+    physics state (they are still simulated) and zero commands so the critic
+    always receives the same fixed-dimension observation regardless of how
+    many agents are actively controlled by the RL pipeline.
+
     Returns:
         Tensor containing active mask, root state, target pose commands,
         pairwise distances, obstacle positions, and obstacle mask.
@@ -435,12 +440,11 @@ def paper_swarm_global_state(
         + max_static_columns * 3
         + max_static_columns
     )
-    if not all(agent_id in getattr(root, "_agent_to_bundle", {}) for agent_id in agent_ids):
-        return torch.zeros(root.num_envs, state_dim, device=root.device)
 
     mask = _active_mask(root, agent_ids, mask_key).float()
     positions = _all_root_pos(root, agent_ids)
 
+    agent_to_bundle: dict[str, str] = getattr(root, "_agent_to_bundle", {})
     root_states = []
     commands = []
     for agent_id in agent_ids:
@@ -456,8 +460,11 @@ def paper_swarm_global_state(
                 dim=-1,
             )
         )
-        bundle = root._manager_bundles[root._agent_to_bundle[agent_id]]
-        commands.append(bundle.command_manager.get_command(command_name))
+        if agent_id in agent_to_bundle:
+            bundle = root._manager_bundles[agent_to_bundle[agent_id]]
+            commands.append(bundle.command_manager.get_command(command_name))
+        else:
+            commands.append(torch.zeros(root.num_envs, 7, device=root.device))
 
     active_pair_mask = mask.unsqueeze(-1) * mask.unsqueeze(-2)
     pairwise_distances = torch.cdist(positions, positions) * active_pair_mask

@@ -51,6 +51,17 @@ gym.register(
 )
 
 gym.register(
+    id="Isaac-Paper-Swarm-Waypoint-MAPPO-Stage1-Eval-v0",
+    entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": "environments.tasks.paper_swarm.paper_swarm_env_cfg:PaperSwarmMappoStage1EvalCfg",
+        "skrl_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_mappo_stage1_cfg.yaml",
+        "skrl_mappo_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_mappo_stage1_cfg.yaml",
+    },
+)
+
+gym.register(
     id="Isaac-Paper-Swarm-Waypoint-MAPPO-Stage2-v0",
     entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
     disable_env_checker=True,

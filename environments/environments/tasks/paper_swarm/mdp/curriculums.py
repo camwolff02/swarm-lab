@@ -121,3 +121,38 @@ def paper_swarm_task_curriculum(
     root.extras["static_column_count"] = num_static_columns
     root.extras["safe_sampling_prob"] = safe_prob
     root.extras["spawn_target_min_separation"] = min_sep
+
+
+def curriculum_fraction(env, start_step: int, end_step: int) -> float:
+    """Clipped linear fraction between start_step and end_step."""
+    if end_step <= start_step:
+        return 1.0
+    progress = (_root_env(env).common_step_counter - start_step) / (end_step - start_step)
+    return float(max(0.0, min(1.0, progress)))
+
+
+def expand_target_range_curriculum(
+    env,
+    env_ids: torch.Tensor,
+    start_step: int,
+    end_step: int,
+    start_xy: float,
+    end_xy: float,
+    start_z_delta: float,
+    end_z_delta: float,
+) -> dict[str, float]:
+    """Linearly expand target waypoint range from drone position outward.
+
+    Starts with targets at the drone's hover location (no movement needed)
+    and progressively increases the XY and Z range so the policy must fly
+    further to reach waypoints.  Pattern matches the lab_5 hover curriculum.
+    """
+    del env_ids
+    frac = curriculum_fraction(env, start_step, end_step)
+    xy = start_xy + frac * (end_xy - start_xy)
+    z_delta = start_z_delta + frac * (end_z_delta - start_z_delta)
+    ranges = env.command_manager.cfg.target_pose.ranges
+    ranges.pos_x = (-xy, xy)
+    ranges.pos_y = (-xy, xy)
+    ranges.pos_z = (1.0 - z_delta, 1.0 + z_delta)
+    return {"frac": frac, "xy": xy, "z_delta": z_delta}
