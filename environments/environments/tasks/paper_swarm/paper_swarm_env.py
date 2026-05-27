@@ -198,16 +198,7 @@ class PaperSwarmMarlEnv(ManagerBasedMarlEnv):
                 )
 
     def _restore_goals(self, env_ids: torch.Tensor, goals: torch.Tensor) -> None:
-        first_command = None
-        for agent_id in self.possible_agents:
-            bundle = self._manager_bundles[self._agent_to_bundle[agent_id]]
-            command = bundle.command_manager._terms.get("target_pose")
-            if command is not None:
-                first_command = command
-                break
-        if first_command is None:
-            return
-        _sync_swarm_pose_commands(self, env_ids, self.possible_agents, goals, first_command.time_left[env_ids])
+        _sync_swarm_pose_commands(self, env_ids, self.possible_agents, goals)
 
     def _agent_positions(self) -> torch.Tensor:
         return torch.stack(

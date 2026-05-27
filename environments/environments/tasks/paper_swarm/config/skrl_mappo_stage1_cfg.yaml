@@ -10,7 +10,7 @@ models:
   hidden_units: [256, 256, 256]
   initial_log_std: -1.5
   clip_log_std: true
-  min_log_std: -4.0
+  min_log_std: -3.0
   max_log_std: -0.5
 
 agent:
@@ -44,7 +44,7 @@ agent:
   # clip predicted values
   clip_predicted_values: true
   # entropy loss scaling factor
-  entropy_loss_scale: 0.0005
+  entropy_loss_scale: 0.0001
   # value function loss scaling factor
   value_loss_scale: 1.0
   observation_preprocessor: RunningStandardScaler
@@ -63,8 +63,8 @@ memory:
 
 trainer:
   class: SequentialTrainer
-  # SKRL counts env steps here (not agent steps). With 256 envs and 8 agents per step,
-  # 75000 env steps gives ~10.8M agent transitions.
-  timesteps: 75000
+  # SKRL counts env steps here (not agent steps). With 8192 envs and 1 agent per step,
+  # 200000 env steps gives ~1.64B agent transitions.
+  timesteps: 200000
   close_environment_at_exit: false
 seed: 42

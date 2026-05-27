@@ -19,7 +19,7 @@ import torch
 from isaaclab.envs.mdp import action_rate_l2  # noqa: F401
 from isaaclab.utils.math import euler_xyz_from_quat, matrix_from_quat, wrap_to_pi
 
-from .observations import _asset, _root_env
+from .observations import _asset, _root_env, get_agent_active_mask as _get_active_mask
 from .observations import command_decompose as _decomposed_target
 
 
@@ -220,15 +220,3 @@ def obstacle_collision_event_penalty(env, agent_id: str, mask_key: str) -> torch
 # -----------------------------------------------------------------------------
 
 
-def _get_active_mask(env, agent_id: str, mask_key: str) -> torch.Tensor:
-    """Get the active mask for a specific agent as a float vector, shape (num_envs,)."""
-    from .observations import _active_mask
-
-    root = env.root if hasattr(env, "root") else env
-    agent_ids = root.cfg.possible_agents
-    mask = _active_mask(env, agent_ids, mask_key)
-    try:
-        index = agent_ids.index(agent_id)
-    except ValueError:
-        return torch.ones(env.num_envs, device=env.device)
-    return mask[:, index].float()

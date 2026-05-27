@@ -11,6 +11,8 @@ import torch
 
 from isaaclab.envs.mdp import time_out  # noqa: F401
 
+from .observations import get_agent_active_mask as _get_active_mask
+
 
 def drone_out_of_bounds(
     env, asset_cfg, agent_id: str, xy_bounds: tuple[float, float], z_bounds: tuple[float, float], mask_key: str
@@ -92,10 +94,31 @@ def drone_column_collision(
     return (min_dist < column_radius) & (mask > 0)
 
 
+def drone_crash(
+    env, asset_cfg, agent_id: str, minimum_height: float, mask_key: str
+) -> torch.Tensor:
+    """True if drone root height drops below minimum_height.
+
+    Args:
+        minimum_height: Minimum allowed root height [m].
+
+    Returns:
+        Bool tensor, shape (num_envs,). True if crashed.
+    """
+    root = env.root if hasattr(env, "root") else env
+    asset = env.scene[asset_cfg.name]
+    root_height = asset.data.root_pos_w.torch[:, 2]
+    mask = _get_active_mask(env, agent_id, mask_key)
+    return (root_height < minimum_height) & (mask > 0)
+
+
 def pose_command_error_above(
     env, asset_cfg, command_name: str, max_position_error: float
 ) -> torch.Tensor:
     """True if drone is more than max_position_error from the commanded pose.
+
+    The command is stored in env-local coordinates; convert to world frame
+    before comparison with root_pos_w.
 
     Args:
         asset_cfg: Scene entity config for the drone.
@@ -105,22 +128,30 @@ def pose_command_error_above(
     Returns:
         Bool tensor, shape (num_envs,). True if too far.
     """
+    root = env.root if hasattr(env, "root") else env
     asset = env.scene[asset_cfg.name]
-    cmd = env.command_manager.get_command(command_name)[:, :3]
+    cmd_local = env.command_manager.get_command(command_name)[:, :3]
+    cmd_w = cmd_local + root.scene.env_origins
     pos = asset.data.root_pos_w.torch
-    dist = torch.linalg.norm(cmd - pos, dim=-1)
+    dist = torch.linalg.norm(cmd_w - pos, dim=-1)
     return dist > max_position_error
 
 
-def _get_active_mask(env, agent_id: str, mask_key: str) -> torch.Tensor:
-    """Get the active mask for a specific agent as a float vector, shape (num_envs,)."""
-    from .observations import _active_mask
+def pose_command_error_above_masked(
+    env, asset_cfg, agent_id: str, command_name: str, max_position_error: float, mask_key: str
+) -> torch.Tensor:
+    """True if active drone is more than max_position_error from the commanded pose.
 
-    root = env.root if hasattr(env, "root") else env
-    agent_ids = root.cfg.possible_agents
-    mask = _active_mask(env, agent_ids, mask_key)
-    try:
-        index = agent_ids.index(agent_id)
-    except ValueError:
-        return torch.ones(env.num_envs, device=env.device)
-    return mask[:, index].float()
+    Args:
+        asset_cfg: Scene entity config for the drone.
+        command_name: Name of the command term.
+        max_position_error: Maximum allowed position error [m].
+
+    Returns:
+        Bool tensor, shape (num_envs,). True if too far.
+    """
+    done = pose_command_error_above(env, asset_cfg, command_name, max_position_error)
+    mask = _get_active_mask(env, agent_id, mask_key)
+    return done & (mask > 0)
+
+

@@ -39,17 +39,25 @@ def _root_env(env) -> object:
     return env
 
 
-_step_cache: dict[int, dict[str, torch.Tensor]] = {}
+_CACHE_ATTR = "_paper_swarm_obs_step_cache"
+_CACHE_STEP_ATTR = "_paper_swarm_obs_step_cached_at"
 
 
 def _get_cached(env, key: str, factory, *args) -> torch.Tensor:
-    """Return a per-step cached tensor, computing lazily once per step."""
+    """Return a per-step cached tensor, computing lazily once per step.
+
+    The cache lives on the root environment instance so it is scoped to one
+    environment and cleaned up when the env is garbage-collected.  It is
+    invalidated automatically whenever ``common_step_counter`` advances.
+    """
     root = _root_env(env)
     step = int(root.common_step_counter)
-    if step not in _step_cache:
-        _step_cache.clear()
-        _step_cache[step] = {}
-    cache = _step_cache[step]
+    cache = getattr(root, _CACHE_ATTR, None)
+    cached_at = getattr(root, _CACHE_STEP_ATTR, None)
+    if cache is None or cached_at != step:
+        cache = {}
+        setattr(root, _CACHE_ATTR, cache)
+        setattr(root, _CACHE_STEP_ATTR, step)
     if key not in cache:
         cache[key] = factory(*args)
     return cache[key]
@@ -100,6 +108,23 @@ def _active_mask(env, agent_ids: list[str], mask_key: str) -> torch.Tensor:
     if mask_key is None or not hasattr(root, mask_key):
         return torch.ones((root.num_envs, len(agent_ids)), dtype=torch.bool, device=root.device)
     return getattr(root, mask_key)
+
+
+def get_agent_active_mask(env, agent_id: str, mask_key: str) -> torch.Tensor:
+    """Float mask for a single agent, shape ``(num_envs,)``.
+
+    This is the canonical helper shared by reward, termination, and observation
+    terms.  It returns a float tensor so callers can multiply reward/penalty
+    values without an extra cast.
+    """
+    root = _root_env(env)
+    agent_ids = root.cfg.possible_agents
+    mask = _active_mask(env, agent_ids, mask_key)
+    try:
+        index = agent_ids.index(agent_id)
+    except ValueError:
+        return torch.ones(root.num_envs, device=root.device)
+    return mask[:, index].float()
 
 
 def _pad_features(
@@ -432,14 +457,6 @@ def paper_swarm_global_state(
         pairwise distances, obstacle positions, and obstacle mask.
     """
     root = _root_env(env)
-    state_dim = (
-        len(agent_ids)
-        + len(agent_ids) * 13
-        + len(agent_ids) * 7
-        + len(agent_ids) * len(agent_ids)
-        + max_static_columns * 3
-        + max_static_columns
-    )
 
     mask = _active_mask(root, agent_ids, mask_key).float()
     positions = _all_root_pos(root, agent_ids)

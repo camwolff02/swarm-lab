@@ -42,8 +42,8 @@ def reset_drone_root_state_uniform(
     Returns:
         dict mapping agent_id to root_state tensor (num_envs, 13).
     """
+    from .commands import _sample_positions_vectorized
     from .observations import _active_mask
-    from .commands import _sample_positions
 
     env_ids = torch.as_tensor(env_ids, device=env.device, dtype=torch.long)
     mask = _active_mask(env, agent_ids, mask_key)
@@ -55,21 +55,17 @@ def reset_drone_root_state_uniform(
     column_safe_distance = getattr(root, "_paper_swarm_column_safe_distance", 0.6)
     columns = getattr(root, "column_positions", None)
 
-    sampled_positions = torch.zeros(len(env_ids), len(agent_ids), 3, device=env.device)
-    for local_env_index, env_id in enumerate(env_ids):
-        active_indices = torch.nonzero(mask[env_id], as_tuple=False).flatten()
-        safe = bool(torch.rand((), device=env.device) < spawn_safe_prob)
-        env_columns = None if columns is None else columns[env_id]
-        sampled_positions[local_env_index, active_indices] = _sample_positions(
-            count=len(active_indices),
-            xy_bounds=xy_bounds,
-            z_bounds=z_bounds,
-            min_separation=spawn_min_separation if safe else 0.0,
-            columns=env_columns if safe else None,
-            column_radius=column_radius,
-            column_safe_distance=column_safe_distance,
-            device=env.device,
-        )
+    sampled_positions, _ = _sample_positions_vectorized(
+        active_mask=mask[env_ids],
+        xy_bounds=xy_bounds,
+        z_bounds=z_bounds,
+        min_separation=spawn_min_separation,
+        safe_prob=spawn_safe_prob,
+        columns=columns[env_ids] if columns is not None else None,
+        column_radius=column_radius,
+        column_safe_distance=column_safe_distance,
+        device=env.device,
+    )
 
     for i, agent_id in enumerate(agent_ids):
         is_active = mask[env_ids, i]
@@ -128,6 +124,10 @@ def sample_static_columns(
     Columns are placed in a forward-facing grid aligned with the environment's
     forward direction. The grid is centered at the origin.
 
+    Column positions are stored on the environment attribute named by
+    *column_positions_key*.  Inactive columns (outside the workspace) receive
+    ``(1000, 1000, 0)``.
+
     Args:
         num_columns: Number of columns to place.
         grid_size: Cell size [m].
@@ -153,28 +153,20 @@ def sample_static_columns(
         setattr(env, column_positions_key, torch.zeros(env.num_envs, 0, 3, device=device))
         return
 
-    cell_centers = torch.zeros(total_cells, 2, device=device)
-    idx = 0
-    for row in range(rows):
-        for col in range(cols):
-            x = -grid_border + col * grid_size
-            y = -grid_border + row * grid_size
-            cell_centers[idx, 0] = x
-            cell_centers[idx, 1] = y
-            idx += 1
+    cell_centers = _get_or_build_cell_centers(env, rows, cols, grid_size, grid_border, device)
 
     all_positions = getattr(env, column_positions_key, None)
     if all_positions is None or all_positions.shape != (env.num_envs, num_columns, 3):
         all_positions = torch.zeros(env.num_envs, num_columns, 3, device=device)
+
     positions = torch.zeros(num_envs, num_columns, 3, device=device)
     positions[:, :, 0] = 1000.0
     positions[:, :, 1] = 1000.0
-    for e in range(num_envs):
-        if current_columns == 0:
-            continue
-        perm = torch.randperm(total_cells, device=device)[:current_columns]
-        positions[e, :current_columns, :2] = cell_centers[perm]
-        positions[e, :current_columns, 2] = 0.0
+
+    if current_columns > 0:
+        perms = torch.stack([torch.randperm(total_cells, device=device)[:current_columns] for _ in range(num_envs)])
+        positions[:, :current_columns, :2] = cell_centers[perms]
+        positions[:, :current_columns, 2] = 0.0
 
     all_positions[env_ids] = positions
     setattr(env, column_positions_key, all_positions)
@@ -186,51 +178,33 @@ def sample_static_columns(
 # -----------------------------------------------------------------------------
 
 
-def _sample_separated_positions(
-    n: int,
-    xy_bounds: tuple[float, float],
-    z_bounds: tuple[float, float],
-    min_separation: float,
-    device: torch.device,
-    max_attempts: int = 128,
+_CELL_CENTER_CACHE_KEY = "_paper_swarm_cell_centers_cache"
+
+
+def _get_or_build_cell_centers(
+    env, rows: int, cols: int, grid_size: float, grid_border: float, device: torch.device
 ) -> torch.Tensor:
-    """Rejection-sample N positions with minimum XY separation.
+    """Return precomputed cell centre XY positions, cached on the root env."""
+    root = env.root if hasattr(env, "root") else env
+    cache_key = (_CELL_CENTER_CACHE_KEY, rows, cols, grid_size, grid_border)
+    cache = getattr(root, _CELL_CENTER_CACHE_KEY, None)
+    if cache is not None and isinstance(cache, dict) and cache_key in cache:
+        return cache[cache_key]
 
-    Args:
-        n: Number of positions to sample.
-        xy_bounds: (min, max) per axis [m].
-        z_bounds: (min, max) [m].
-        min_separation: Minimum XY distance between any pair [m].
-        max_attempts: Maximum attempts per agent before giving up.
+    total_cells = rows * cols
+    cell_centers = torch.zeros(total_cells, 2, device=device)
+    idx = 0
+    for row in range(rows):
+        for col in range(cols):
+            cell_centers[idx, 0] = -grid_border + col * grid_size
+            cell_centers[idx, 1] = -grid_border + row * grid_size
+            idx += 1
 
-    Returns:
-        Positions tensor (n, 3).
-    """
-    low = xy_bounds[0]
-    high = xy_bounds[1]
-    z_low, z_high = z_bounds
-
-    positions = torch.zeros(n, 3, device=device)
-    for i in range(n):
-        placed = False
-        for _ in range(max_attempts):
-            candidate = torch.zeros(3, device=device)
-            candidate[0] = low + (high - low) * torch.rand(1, device=device)
-            candidate[1] = low + (high - low) * torch.rand(1, device=device)
-            candidate[2] = z_low + (z_high - z_low) * torch.rand(1, device=device)
-
-            if i == 0:
-                placed = True
-                break
-
-            dists = torch.norm(positions[:i, :2] - candidate[:2].unsqueeze(0), dim=-1)
-            if (dists >= min_separation).all():
-                placed = True
-                break
-
-        if not placed:
-            candidate[:2] = low + (high - low) * torch.rand(2, device=device)
-        positions[i] = candidate
+    if cache is None:
+        cache = {}
+    cache[cache_key] = cell_centers
+    setattr(root, _CELL_CENTER_CACHE_KEY, cache)
+    return cell_centers
 
 
 def reset_drone_hover_thrust(

@@ -33,6 +33,8 @@ from cpsquare_lab.embodiments.multirotor.cf2x.sim.robot import CRAZYFLIE_CFG, CR
 from cpsquare_lab.embodiments.multirotor.common.actions import ActionType, CtbrActionCfg, HandleOutOfRangeAction
 from cpsquare_lab.embodiments.multirotor.common.ctbr import hover_collective_thrust_from_multirotor_cfg
 from isaaclab_physx.physics import PhysxCfg
+from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg
+from isaaclab_tasks.utils import PresetCfg
 
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg
@@ -678,14 +680,37 @@ class Stage3CurriculumCfg:
 
 
 @configclass
+class PaperSwarmPhysicsCfg(PresetCfg):
+    """Physics backend preset for PhysX and Newton."""
+
+    default: PhysxCfg = PhysxCfg(
+        gpu_total_aggregate_pairs_capacity=SWARM_GPU_TOTAL_AGGREGATE_PAIRS_CAPACITY,
+    )
+    physx: PhysxCfg = PhysxCfg(
+        gpu_total_aggregate_pairs_capacity=SWARM_GPU_TOTAL_AGGREGATE_PAIRS_CAPACITY,
+    )
+    newton: NewtonCfg = NewtonCfg(
+        solver_cfg=MJWarpSolverCfg(
+            njmax=200,
+            nconmax=200,
+            ls_iterations=20,
+            cone="pyramidal",
+            ls_parallel=True,
+            integrator="implicitfast",
+            impratio=1,
+        ),
+        num_substeps=1,
+        debug_mode=False,
+    )
+
+
+@configclass
 class PaperSwarmBaseMarlEnvCfg(ManagerBasedMarlEnvCfg):
     scene = PaperSwarmSceneCfg(num_envs=NUM_ENVS, env_spacing=ENV_SPACING)
     sim = SimulationCfg(
         dt=0.01,
         render_interval=2,
-        physics=PhysxCfg(
-            gpu_total_aggregate_pairs_capacity=SWARM_GPU_TOTAL_AGGREGATE_PAIRS_CAPACITY,
-        ),
+        physics=PaperSwarmPhysicsCfg(),
         render=sim_utils.RenderCfg(
             carb_settings={
                 "/rtx/hydra/readTransformsFromFabricInRenderDelegate": False,
@@ -878,6 +903,25 @@ class Stage1RewardsCfg:
 @configclass
 class Stage1TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    crash = DoneTerm(
+        func=mdp.drone_crash,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "minimum_height": 0.2,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+    too_far_from_command = DoneTerm(
+        func=mdp.pose_command_error_above_masked,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "command_name": "target_pose",
+            "max_position_error": 4.0,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
     out_of_bounds = DoneTerm(
         func=mdp.drone_out_of_bounds,
         params={
@@ -899,7 +943,8 @@ class PaperSwarmMappoStage1EnvCfg(PaperSwarmBaseMarlEnvCfg):
     thrust — they do not contribute observation/reward/termination overhead.
     """
 
-    scene = PaperSwarmSceneCfg(num_envs=512, env_spacing=ENV_SPACING)
+    scene = PaperSwarmSceneCfg(num_envs=8192, env_spacing=ENV_SPACING)
+    decimation = 1
     events = Stage1EventsCfg()
     possible_agents = ["drone_0"]
 
