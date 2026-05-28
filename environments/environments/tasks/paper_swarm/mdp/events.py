@@ -15,7 +15,6 @@ import torch
 
 from isaaclab.utils.math import sample_uniform, quat_from_euler_xyz
 
-from cpsquare_lab.embodiments.multirotor.common.events import randomize_multirotor_thrust_coefficient as _randomize_thrust
 from isaaclab.managers import SceneEntityCfg
 
 
@@ -323,13 +322,25 @@ def reset_drone_hover_thrust(
 
     Only drones listed in ``possible_agent_ids`` or identified as passive
     hovering drones receive hover thrust. All others get zero thrust.
+
+    Also resamples per-motor thruster parameters (``thrust_const``, time
+    constants) via ``Thruster.reset_idx()`` for every drone, so the thrust-
+    constant domain randomisation configured in ``CRAZYFLIE_CFG`` takes
+    effect on each episode reset.
     """
+    from isaaclab_contrib.actuators import Thruster
+
     managed = set(possible_agent_ids or agent_ids)
     root = env.root if hasattr(env, "root") else env
     passive_drone_ids = getattr(root, "_passive_drone_ids", [])
     managed |= set(passive_drone_ids)
     for agent_id in agent_ids:
         asset = env.scene[agent_id]
+
+        for actuator in asset.actuators.values():
+            if isinstance(actuator, Thruster):
+                actuator.reset_idx(env_ids)
+
         if agent_id in managed:
             hover_per_motor = float(collective_hover_thrust) / asset.num_thrusters
             thrust = torch.full(
@@ -341,30 +352,3 @@ def reset_drone_hover_thrust(
         else:
             thrust = torch.zeros(len(env_ids), asset.num_thrusters, device=env.device, dtype=torch.float32)
         asset.set_thrust_target(thrust, env_ids=env_ids)
-
-
-def randomize_all_drones_thrust_coefficient(
-    env,
-    env_ids: torch.Tensor,
-    scale_range: tuple[float, float],
-    per_thruster: bool = False,
-) -> None:
-    """Apply thrust-coefficient randomization to every RL-managed drone.
-
-    The ``cpsquare_lab`` thrust-randomisation event operates on one asset per
-    call.  This wrapper iterates over the drones listed in ``possible_agents``
-    so only the learning drones receive thrust randomisation — passive
-    hovering drones keep their nominal thrust model.
-
-    If an asset does not support thrust-coefficient randomisation (e.g. the
-    Crazyflie does not yet expose ``set_thrust_coefficient_scale``), the call
-    is silently skipped for that asset.
-    """
-    root = env.root if hasattr(env, "root") else env
-    for agent_id in root.cfg.possible_agents:
-        try:
-            _randomize_thrust(
-                env, env_ids, asset_cfg=SceneEntityCfg(agent_id), scale_range=scale_range, per_thruster=per_thruster
-            )
-        except TypeError:
-            pass

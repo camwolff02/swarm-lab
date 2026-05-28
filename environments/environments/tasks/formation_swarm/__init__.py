@@ -8,6 +8,7 @@ from .agents.runner import install_formation_swarm_runner_patch
 
 install_formation_swarm_runner_patch()
 
+# Legacy DirectMARLEnv registration
 gym.register(
     id="Isaac-Formation-Swarm-Crazyflie-v3",
     entry_point=f"{__name__}.env:FormationSwarmEnv",
@@ -18,3 +19,44 @@ gym.register(
     },
 )
 
+# --- ManagerBasedMarlEnv registrations ---
+
+gym.register(
+    id="Isaac-Formation-Swarm-MAPPO-v0",
+    entry_point="environments.tasks.formation_swarm.formation_marl_env:FormationSwarmMarlEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": "environments.tasks.formation_swarm.formation_marl_env_cfg:FormationSwarmMarlEnvCfg",
+        "skrl_mappo_cfg_entry_point": "environments.tasks.formation_swarm.agents:skrl_mappo_cfg.yaml",
+    },
+)
+
+gym.register(
+    id="Isaac-Formation-Swarm-MAPPO-Stage1-v0",
+    entry_point="environments.tasks.formation_swarm.formation_marl_env:FormationSwarmMarlEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": "environments.tasks.formation_swarm.formation_marl_env_cfg:FormationSwarmStage1EnvCfg",
+        "skrl_mappo_cfg_entry_point": "environments.tasks.formation_swarm.agents:skrl_mappo_cfg.yaml",
+    },
+)
+
+gym.register(
+    id="Isaac-Formation-Swarm-MAPPO-Stage2-v0",
+    entry_point="environments.tasks.formation_swarm.formation_marl_env:FormationSwarmMarlEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": "environments.tasks.formation_swarm.formation_marl_env_cfg:FormationSwarmStage2EnvCfg",
+        "skrl_mappo_cfg_entry_point": "environments.tasks.formation_swarm.agents:skrl_mappo_cfg.yaml",
+    },
+)
+
+gym.register(
+    id="Isaac-Formation-Swarm-MAPPO-Stage3-v0",
+    entry_point="environments.tasks.formation_swarm.formation_marl_env:FormationSwarmMarlEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": "environments.tasks.formation_swarm.formation_marl_env_cfg:FormationSwarmStage3EnvCfg",
+        "skrl_mappo_cfg_entry_point": "environments.tasks.formation_swarm.agents:skrl_mappo_cfg.yaml",
+    },
+)

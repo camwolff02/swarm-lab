@@ -506,14 +506,6 @@ class PaperSwarmEventsCfg:
             "collective_hover_thrust": hover_collective_thrust_from_multirotor_cfg(CRAZYFLIE_CFG),
         },
     )
-    randomize_thrust_coefficient = EventTerm(
-        func=mdp.randomize_all_drones_thrust_coefficient,
-        mode="reset",
-        params={
-            "scale_range": (1.0, 1.0),
-            "per_thruster": False,
-        },
-    )
 
 
 @configclass
@@ -632,10 +624,6 @@ class Stage1CurriculumCfg:
         func=mdp.update_observation_noise_curriculum,
         params={"start_step": 30_000, "end_step": 100_000, "final_noise": 0.01},
     )
-    thrust_randomization = CurrTerm(
-        func=mdp.update_thrust_randomization_curriculum,
-        params={"start_step": 100_000, "end_step": 150_000, "final_scale_delta": 0.02},
-    )
 
 
 @configclass
@@ -679,10 +667,6 @@ class Stage2CurriculumCfg:
         func=mdp.update_observation_noise_curriculum,
         params={"start_step": 0, "end_step": 100_000, "final_noise": 0.03},
     )
-    thrust_randomization = CurrTerm(
-        func=mdp.update_thrust_randomization_curriculum,
-        params={"start_step": 50_000, "end_step": 150_000, "final_scale_delta": 0.03},
-    )
 
 
 @configclass
@@ -725,10 +709,6 @@ class Stage3CurriculumCfg:
     observation_noise = CurrTerm(
         func=mdp.update_observation_noise_curriculum,
         params={"start_step": 0, "end_step": 150_000, "final_noise": 0.05},
-    )
-    thrust_randomization = CurrTerm(
-        func=mdp.update_thrust_randomization_curriculum,
-        params={"start_step": 50_000, "end_step": 200_000, "final_scale_delta": 0.05},
     )
 
 

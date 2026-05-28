@@ -26,7 +26,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from isaaclab.envs import DirectMARLEnvCfg
-from isaaclab.utils import configclass
+from isaaclab.utils.configclass import configclass
 
 type Position = tuple[float, float, float]
 

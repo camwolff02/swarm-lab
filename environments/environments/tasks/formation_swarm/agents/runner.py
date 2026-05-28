@@ -1,21 +1,28 @@
-"""SKRL Runner hook for the formation-swarm attention model factory."""
+"""SKRL Runner hook for the formation-swarm attention model factory.
+
+Patches SKRL's stock Runner to inject shared custom models when the model config
+specifies ``factory: formation_swarm_attention``.  The standard SKRL MAPPO agent
+handles training; we only override model creation so that all agents share one
+policy and one value network.
+"""
 
 from __future__ import annotations
 
-import copy
 from typing import Any
 
+import torch
 from skrl.models.torch import Model
 import skrl.utils.runner.torch.runner as skrl_runner_module
 from skrl.utils.runner.torch import Runner
+from skrl.utils.spaces.torch import flatten_tensorized_space, tensorize_space
 from torch.optim.lr_scheduler import ExponentialLR
 
-from .shared_mappo import FormationSharedMAPPO
 from environments.tasks.formation_swarm.models import (
     FormationAttentionEncoderCfg,
     FormationDeterministicValue,
     FormationGaussianPolicy,
 )
+from .shared_mappo import FormationMAPPO
 
 _MODEL_FACTORY_NAME = "formation_swarm_attention"
 _ORIGINAL_GENERATE_MODELS = None
@@ -34,12 +41,13 @@ def _encoder_cfg_from_model_config(model_cfg: dict[str, Any]) -> FormationAttent
 
 
 def _generate_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model]]:
-    """Generate models."""
+    """Generate shared policy and value models for the attention factory."""
     device = env.device
     model_cfg = cfg.get("models", {})
     encoder_cfg = _encoder_cfg_from_model_config(model_cfg)
     hidden_units = tuple(int(v) for v in model_cfg.get("hidden_units", [256, 256, 256]))
     first_agent = env.possible_agents[0]
+    state_spaces = getattr(env, "state_spaces", {})
     shared_policy = FormationGaussianPolicy(
         env.observation_spaces[first_agent],
         env.action_spaces[first_agent],
@@ -47,7 +55,7 @@ def _generate_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model
         encoder_cfg=encoder_cfg,
     )
     shared_value = FormationDeterministicValue(
-        env.observation_spaces[first_agent],
+        state_spaces.get(first_agent) or env.observation_spaces[first_agent],
         env.action_spaces[first_agent],
         device,
         hidden_units=hidden_units,
@@ -59,57 +67,12 @@ def _generate_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model
             "policy": shared_policy,
             "value": shared_value,
         }
-
-    seen: set[int] = set()
-    for agent_models in models.values():
-        for role, model in agent_models.items():
-            if id(model) in seen:
-                continue
-            seen.add(id(model))
-            model.init_state_dict(role=role)
     return models
-
-
-def _generate_shared_mappo_agent(self: Runner, env: Any, cfg: dict[str, Any], models: dict[str, dict[str, Model]]) -> FormationSharedMAPPO:
-    """Generate shared mappo agent."""
-    device = env.device
-    possible_agents = env.possible_agents
-    observation_spaces = env.observation_spaces
-    action_spaces = env.action_spaces
-
-    memory_cfg = copy.deepcopy(cfg.get("memory", {"class": "RandomMemory", "memory_size": -1}))
-    memory_class = self._component(memory_cfg.pop("class", "RandomMemory"))
-    if memory_cfg["memory_size"] < 0:
-        memory_cfg["memory_size"] = cfg["agent"]["rollouts"]
-    memories = {
-        agent_id: memory_class(num_envs=env.num_envs, device=device, **self._process_cfg(memory_cfg))
-        for agent_id in possible_agents
-    }
-
-    agent_cfg = self._component("MAPPO_DEFAULT_CONFIG").copy()
-    agent_cfg.update(self._process_cfg(cfg["agent"]))
-    agent_cfg["state_preprocessor_kwargs"].update(
-        {agent_id: {"size": observation_spaces[agent_id], "device": device} for agent_id in possible_agents}
-    )
-    agent_cfg["shared_state_preprocessor_kwargs"].update(
-        {agent_id: {"size": observation_spaces[agent_id], "device": device} for agent_id in possible_agents}
-    )
-    agent_cfg["value_preprocessor_kwargs"].update({"size": 1, "device": device})
-    return FormationSharedMAPPO(
-        models=models,
-        memories=memories,
-        observation_spaces=observation_spaces,
-        action_spaces=action_spaces,
-        shared_observation_spaces=observation_spaces,
-        possible_agents=possible_agents,
-        cfg=agent_cfg,
-        device=device,
-    )
 
 
 def install_formation_swarm_runner_patch() -> None:
     """Install a narrow model factory hook into SKRL's stock Runner."""
-    global _ORIGINAL_GENERATE_AGENT, _ORIGINAL_GENERATE_MODELS
+    global _ORIGINAL_GENERATE_MODELS, _ORIGINAL_GENERATE_AGENT
     skrl_runner_module.ExponentialLR = ExponentialLR
     if getattr(Runner, "_formation_swarm_patch", False):
         return
@@ -117,20 +80,57 @@ def install_formation_swarm_runner_patch() -> None:
     _ORIGINAL_GENERATE_MODELS = Runner._generate_models
     _ORIGINAL_GENERATE_AGENT = Runner._generate_agent
 
-    def _patched_generate_models(self: Runner, env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model]]:
-        """Patched generate models."""
+    def _patched_generate_models(
+        self: Runner, env: Any, cfg: dict[str, Any]
+    ) -> dict[str, dict[str, Model]]:
         if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME:
             return _generate_models(env, cfg)
         return _ORIGINAL_GENERATE_MODELS(self, env, cfg)
 
     def _patched_generate_agent(
         self: Runner, env: Any, cfg: dict[str, Any], models: dict[str, dict[str, Model]]
-    ) -> FormationSharedMAPPO:
-        """Patched generate agent."""
-        if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME:
-            return _generate_shared_mappo_agent(self, env, cfg, models)
+    ):
+        if (
+            cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME
+            and cfg.get("agent", {}).get("class") == "MAPPO"
+        ):
+            self._agent_class = FormationMAPPO
         return _ORIGINAL_GENERATE_AGENT(self, env, cfg, models)
 
     Runner._generate_models = _patched_generate_models
     Runner._generate_agent = _patched_generate_agent
     Runner._formation_swarm_patch = True
+    _install_multi_agent_state_patch()
+
+
+def _install_multi_agent_state_patch() -> None:
+    """Allow SKRL's IsaacLab multi-agent wrapper to consume per-agent state dicts."""
+    import skrl.envs.wrappers.torch.isaaclab_envs as isaaclab_envs
+
+    wrapper_cls = isaaclab_envs.IsaacLabMultiAgentWrapper
+    if getattr(wrapper_cls, "_formation_swarm_state_patch", False):
+        return
+
+    def _state(self):
+        try:
+            state = self._env.state()
+        except AttributeError:
+            state = self._unwrapped.state()
+        if state is None:
+            return {uid: None for uid in self.possible_agents}
+        if isinstance(state, dict):
+            return {
+                uid: flatten_tensorized_space(
+                    tensorize_space(self.state_spaces[uid], state[uid])
+                )
+                if state.get(uid) is not None
+                else None
+                for uid in self.possible_agents
+            }
+        state = flatten_tensorized_space(
+            tensorize_space(next(iter(self.state_spaces.values())), state)
+        )
+        return {uid: state for uid in self.possible_agents}
+
+    wrapper_cls.state = _state
+    wrapper_cls._formation_swarm_state_patch = True

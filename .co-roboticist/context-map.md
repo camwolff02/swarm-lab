@@ -44,13 +44,16 @@ Generated: 2026-05-26 | Branch: `new-paper` | Classification: `research-experime
 - **Uncommitted changes**: Stage1 curriculum rewrite (fixed reset at origin, expand_target_range), hover thrust reset, observation caching
 - **Recent training**: `logs/skrl/paper_swarm/mappo_stage1/` — dozens of runs today and yesterday
 
-### 3.2 `formation_swarm` — STABLE (previous work)
+### 3.2 `formation_swarm` — ACTIVE (V2 ManagerBasedMarlEnv refactor)
 - **Directory**: `environments/environments/tasks/formation_swarm/`
 - **Purpose**: Xie et al. multi-UAV formation control (Laplacian-based)
-- **Agent**: FormationSharedMAPPO with attention encoder
-- **Last training**: `logs/skrl/formation_swarm/` — May 19
-- **Docs**: `docs/xie_formation_swarm_plan.md`
-- **Registration**: `Isaac-Formation-Swarm-Crazyflie-v0`
+- **Agent**: FormationMAPPO (thin MAPPO wrapper) with FormationAttentionEncoder
+- **V2**: Refactored from DirectMARLEnv to ManagerBasedMarlEnv (see `.co-roboticist/formation-v2-stage1.md`)
+- **V1 (legacy)**: `env.py` (786-line DirectMARLEnv), registered as `Isaac-Formation-Swarm-Crazyflie-v3`
+- **V2 (current)**: `formation_marl_env.py` + `mdp/` modules, registered as `Isaac-Formation-Swarm-MAPPO-v0` and `Isaac-Formation-Swarm-MAPPO-Stage{1,2,3}-v0`
+- **Last training (V2)**: `logs/skrl/formation_swarm/2026-05-27_23-33-59_mappo_torch/` — Stage 1 successful to 700K steps
+- **Last training (V1)**: `logs/skrl/formation_swarm/` — May 19
+- **Docs**: `docs/xie_formation_swarm_plan.md`, `.co-roboticist/formation-v2-stage1.md`
 
 ### 3.3 `quad_swarm_paper` — STABLE (shared IPPO work done)
 - **Directory**: `environments/environments/tasks/quad_swarm_paper/`

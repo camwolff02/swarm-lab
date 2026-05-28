@@ -19,8 +19,15 @@ def _space_size(space: gym.Space) -> int:
 
 
 def _states(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
-    """States."""
-    return inputs.get("states", inputs.get("observations"))
+    """Policy state — unwrap dicts preferring 'observations', fall back to 'states'."""
+    if inputs is None:
+        return torch.zeros((1,), dtype=torch.float32)
+    if not isinstance(inputs, dict):
+        return inputs.to(dtype=torch.float32) if isinstance(inputs, torch.Tensor) else inputs
+    result = inputs.get("observations", inputs.get("states"))
+    if result is None:
+        return torch.zeros((1,), dtype=torch.float32)
+    return result.to(dtype=torch.float32) if isinstance(result, torch.Tensor) and result.dtype != torch.float32 else result
 
 
 class FormationGaussianPolicy(GaussianMixin, Model):
@@ -48,11 +55,11 @@ class FormationGaussianPolicy(GaussianMixin, Model):
 
     def compute(
         self, inputs: dict[str, torch.Tensor], role: str = ""
-    ) -> tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
-        """Compute the value for the current inputs."""
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+        """Compute mean actions and log standard deviation."""
         del role
         mean = self.mean_head(self.encoder(_states(inputs)))
-        return mean, self.log_std_parameter.expand_as(mean), {}
+        return mean, {"log_std": self.log_std_parameter.expand_as(mean)}
 
 
 class FormationDeterministicValue(DeterministicMixin, Model):

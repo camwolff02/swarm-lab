@@ -41,6 +41,9 @@ def register_tasks_for(task_name: str | None) -> None:
     if task_name and task_name.startswith("Isaac-Paper-Swarm-Waypoint-"):
         importlib.import_module(f"{__name__}.paper_swarm")
         return
+    if task_name and task_name.startswith("Isaac-Formation-Swarm-"):
+        importlib.import_module(f"{__name__}.formation_swarm")
+        return
     _import_task_packages()
 
 

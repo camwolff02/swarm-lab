@@ -218,22 +218,3 @@ def update_observation_noise_curriculum(
         term.noise.n_min = -noise
         term.noise.n_max = noise
     return {"frac": frac, "obs_noise": noise}
-
-
-def update_thrust_randomization_curriculum(
-    env,
-    env_ids: torch.Tensor,
-    start_step: int,
-    end_step: int,
-    final_scale_delta: float,
-) -> dict[str, float]:
-    """Linearly ramp thrust-coefficient randomization from unity to ±delta.
-
-    Modifies the ``scale_range`` param of the ``randomize_thrust_coefficient``
-    event term at runtime.
-    """
-    del env_ids
-    frac = curriculum_fraction(env, start_step, end_step)
-    delta = frac * final_scale_delta
-    env.event_manager.cfg.randomize_thrust_coefficient.params["scale_range"] = (1.0 - delta, 1.0 + delta)
-    return {"frac": frac, "thrust_scale_delta": delta}
