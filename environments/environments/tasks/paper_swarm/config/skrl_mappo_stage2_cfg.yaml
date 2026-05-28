@@ -1,5 +1,5 @@
 # Paper Swarm MAPPO Stage 2 training configuration
-# Hyperparams aligned with formation-swarm paper (γ=0.995, epochs=4, mini_batches=16)
+# MARL interaction learning: agent count 2→8, sparse→medium obstacles
 models:
   factory: paper_swarm_attention
   separate: true
@@ -16,33 +16,21 @@ agent:
     directory: paper_swarm/mappo_stage2
     experiment_name: ""
   rollouts: 64
-  # PPO update epochs per rollout batch
   learning_epochs: 4
-  # number of minibatches to split the data for learning
   mini_batches: 32
-  # discount factor (formation-swarm paper: 0.995)
   discount_factor: 0.995
-  # lambda for Generalized Advantage Estimation
   gae_lambda: 0.95
-  # KL divergence threshold for adaptive learning rate
   kl_threshold: 0.01
-  # optimizer learning rate
   learning_rate: 0.0005
-  # learning rate scheduler (capped to stay near intended learning_rate)
   learning_rate_scheduler: KLAdaptiveLR
   learning_rate_scheduler_kwargs:
     kl_threshold: 0.01
     max_lr: 0.0005
     min_lr: 0.00005
-  # gradient norm clipping threshold
   grad_norm_clip: 10.0
-  # clipping ratio for PPO
   ratio_clip: 0.1
-  # value function clipping
   value_clip: 0.1
-  # entropy loss scaling factor
   entropy_loss_scale: 0.001
-  # value function loss scaling factor
   value_loss_scale: 1.0
   observation_preprocessor: RunningStandardScaler
   state_preprocessor: RunningStandardScaler
@@ -54,8 +42,7 @@ memory:
 
 trainer:
   class: SequentialTrainer
-  # SKRL counts env steps here (not agent steps). With 32 envs and 8 agents per step,
-  # 300000 env steps trains obstacle-free hard crossing assignments.
+  # 300k env steps: agent count ramps 2→8, obstacles ramp 0→6 sparse
   timesteps: 300000
   close_environment_at_exit: false
 seed: 42

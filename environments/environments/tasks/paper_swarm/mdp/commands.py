@@ -38,7 +38,7 @@ class PaperSwarmPoseCommand(DroneUniformPoseCommand):
 def _get_or_sample_target_plan(root, env_ids: torch.Tensor, agent_ids: list[str]) -> torch.Tensor:
     plan_key = "_paper_swarm_target_plan"
     token_key = "_paper_swarm_target_plan_token"
-    expected_token = (int(root.common_step_counter), tuple(int(x) for x in env_ids.detach().cpu().tolist()))
+    expected_token = (root.common_step_counter, tuple(int(x) for x in env_ids.detach().cpu().tolist()))
     plan = getattr(root, plan_key, None)
     token = getattr(root, token_key, None)
     if plan is None or token != expected_token:

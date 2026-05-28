@@ -91,7 +91,7 @@ def test_stage1_cfg_has_single_agent() -> None:
     cfg = env_cfg_module.PaperSwarmMappoStage1EnvCfg()
     assert cfg.possible_agents == ["drone_0"]
     assert cfg.agent_groups[0].count == 1
-    assert cfg.scene.num_envs == 512
+    assert cfg.scene.num_envs == 8192
 
 
 def test_stage2_cfg_has_all_agents_no_obstacles() -> None:
@@ -370,6 +370,144 @@ def test_sample_positions_min_separation() -> None:
 
 
 # -----------------------------------------------------------------------------
+# Curriculum tests
+# -----------------------------------------------------------------------------
+
+
+def test_active_agent_count_curriculum_prefix() -> None:
+    from environments.tasks.paper_swarm.mdp.curriculums import active_agent_count_curriculum
+
+    env = _fake_env(4, 8)
+    env.common_step_counter = 100_000
+
+    active_agent_count_curriculum(
+        env, env_ids=None, agent_ids=[f"drone_{i}" for i in range(8)],
+        min_agents=2, max_agents=8, ramp_steps=200_000, mask_key="active_drones", selection="prefix",
+    )
+    mask = getattr(env, "active_drones", None)
+    assert mask is not None
+    assert mask.shape == (4, 8)
+    assert mask[:, 0].all()
+    assert mask[:, 1].all()
+    assert mask[:, 2].all()
+    assert mask[:, 3].all()
+    assert mask[:, 4].all()
+    assert not mask[:, 5].any()
+    assert int(env.extras["active_agent_count"]) == 5
+
+
+def test_active_agent_count_ramp_end_reaches_max() -> None:
+    from environments.tasks.paper_swarm.mdp.curriculums import active_agent_count_curriculum
+
+    env = _fake_env(4, 8)
+    env.common_step_counter = 300_000
+
+    active_agent_count_curriculum(
+        env, env_ids=None, agent_ids=[f"drone_{i}" for i in range(8)],
+        min_agents=1, max_agents=8, ramp_steps=200_000, mask_key="active_drones", selection="prefix",
+    )
+    assert int(env.extras["active_agent_count"]) == 8
+
+
+def test_passive_drone_count_curriculum_ramp() -> None:
+    from environments.tasks.paper_swarm.mdp.curriculums import passive_drone_count_curriculum
+
+    env = _fake_env(4, 8)
+    env.common_step_counter = 75_000
+
+    passive_drone_count_curriculum(env, env_ids=None, min_passive=1, max_passive=7, ramp_steps=150_000)
+    assert getattr(env, "_paper_swarm_num_passive_active", None) == 4
+    assert int(env.extras["passive_drone_count"]) == 4
+
+
+def test_passive_drone_count_curriculum_clamped() -> None:
+    from environments.tasks.paper_swarm.mdp.curriculums import passive_drone_count_curriculum
+
+    env = _fake_env(4, 8)
+    env.common_step_counter = 200_000
+
+    passive_drone_count_curriculum(env, env_ids=None, min_passive=1, max_passive=7, ramp_steps=150_000)
+    assert int(env.extras["passive_drone_count"]) == 7
+
+
+def test_paper_swarm_task_curriculum_obstacles_and_randomization() -> None:
+    from environments.tasks.paper_swarm.mdp.curriculums import paper_swarm_task_curriculum
+
+    env = _fake_env(4, 8)
+    env.common_step_counter = 100_000
+
+    paper_swarm_task_curriculum(
+        env, env_ids=None,
+        workspace_xy=(-4.0, 4.0), workspace_z=(1.0, 3.0), max_static_columns=10,
+        obstacle_start_step=50_000, obstacle_ramp_steps=250_000,
+        randomization_start_step=0, randomization_ramp_steps=200_000,
+        start_safe_sampling_prob=1.0, end_safe_sampling_prob=0.0,
+        start_min_separation=2.0, end_min_separation=0.0,
+        column_radius=0.15, column_safe_distance=0.6,
+    )
+    assert getattr(env, "_paper_swarm_num_static_columns", None) == 2
+    assert getattr(env, "_paper_swarm_spawn_safe_sampling_prob", None) == 0.5
+    assert getattr(env, "_paper_swarm_spawn_min_separation", None) == 1.0
+    assert getattr(env, "_paper_swarm_target_min_separation", None) == 1.0
+
+
+def test_paper_swarm_task_curriculum_full_obstacles() -> None:
+    from environments.tasks.paper_swarm.mdp.curriculums import paper_swarm_task_curriculum
+
+    env = _fake_env(4, 8)
+    env.common_step_counter = 300_000
+
+    paper_swarm_task_curriculum(
+        env, env_ids=None,
+        workspace_xy=(-4.0, 4.0), workspace_z=(1.0, 3.0), max_static_columns=6,
+        obstacle_start_step=50_000, obstacle_ramp_steps=250_000,
+        randomization_start_step=300_000, randomization_ramp_steps=100_000,
+        start_safe_sampling_prob=0.5, end_safe_sampling_prob=0.0,
+        start_min_separation=1.0, end_min_separation=0.0,
+        column_radius=0.15, column_safe_distance=0.6,
+    )
+    assert getattr(env, "_paper_swarm_num_static_columns", None) == 6
+    assert getattr(env, "_paper_swarm_spawn_safe_sampling_prob", None) == 0.5
+    assert getattr(env, "_paper_swarm_spawn_min_separation", None) == 1.0
+
+
+def test_curriculum_fraction_clamped() -> None:
+    from environments.tasks.paper_swarm.mdp.curriculums import curriculum_fraction
+
+    env = _fake_env(2, 4)
+    env.common_step_counter = 0
+    assert curriculum_fraction(env, 0, 100_000) == 0.0
+
+    env.common_step_counter = 50_000
+    assert curriculum_fraction(env, 0, 100_000) == 0.5
+
+    env.common_step_counter = 100_000
+    assert curriculum_fraction(env, 0, 100_000) == 1.0
+
+
+def test_expand_target_range_curriculum() -> None:
+    from environments.tasks.paper_swarm.mdp.curriculums import expand_target_range_curriculum
+
+    env = _fake_env(2, 4)
+    env.common_step_counter = 25_000
+
+    cmd_cfg = SimpleNamespace()
+    cmd_cfg.target_pose = SimpleNamespace()
+    cmd_cfg.target_pose.ranges = SimpleNamespace()
+    env.command_manager = SimpleNamespace()
+    env.command_manager.cfg = cmd_cfg
+
+    result = expand_target_range_curriculum(
+        env, env_ids=None,
+        start_step=0, end_step=50_000,
+        start_xy=0.0, end_xy=1.5, start_z_delta=0.0, end_z_delta=0.5,
+    )
+    assert result["frac"] == 0.5
+    assert result["xy"] == 0.75
+    assert result["z_delta"] == 0.25
+
+
+# -----------------------------------------------------------------------------
 # Fake env helpers
 # -----------------------------------------------------------------------------
 
@@ -504,6 +642,7 @@ def _fake_env(num_envs: int, num_agents: int) -> SimpleNamespace:
     env.cfg.possible_agents = [f"drone_{i}" for i in range(num_agents)]
     env.cfg.active_agent_mask_key = "active_drones"
     env.active_drones = torch.ones(num_envs, num_agents, dtype=torch.bool)
+    env.extras = {}
     env.root = env
     return env
 

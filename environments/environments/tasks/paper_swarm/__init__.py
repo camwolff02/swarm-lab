@@ -7,6 +7,11 @@
 
 Importing this module registers the Gymnasium task ids used by Isaac Lab and
 SKRL multi-agent runners.
+
+3-stage curriculum:
+    1. Single-agent pretraining with passive hovering drones.
+    2. MARL interaction learning (variable agent count, sparse obstacles).
+    3. Target fine-tuning (target-N, dense obstacles, strong DR).
 """
 
 from __future__ import annotations

@@ -8,19 +8,18 @@
 Task:
     A team of CTBR-controlled Crazyflie drones navigates to unique
     target pose commands while avoiding static column obstacles and
-    inter-agent collisions. Implements a hybrid of the collision-swarm
-    and formation-swarm papers.
+    inter-agent collisions.
 
 Curriculum:
-    1. Learn baseline waypoint control without obstacles and with safe
-       start/target assignments.
-    2. Train all drones without obstacles using independent random
-       start/target assignments.
-    3. Add static obstacles with a density ramp while keeping hard
-       start/target assignments.
+    1. Single-agent pretraining with passive hovering drones.  Basic
+       quadrotor goal navigation and collision avoidance around
+       drone-shaped objects.  Neighbor-attention encoder is initialised.
+    2. MARL interaction learning.  Learning-drone count ramps from 2
+       to 8 while sparse-to-medium static obstacles are introduced.
+    3. Target fine-tuning with dense obstacles and strongest simple
+       lab-realistic domain randomisation.
 
 Training modes:
-    - IPPO: noisy actor observations plus decentralized, uncorrupted critic observations.
     - MAPPO: noisy actor observations plus centralized critic observations.
 """
 
@@ -32,9 +31,8 @@ from dataclasses import MISSING
 from cpsquare_lab.embodiments.multirotor.cf2x.sim.robot import CRAZYFLIE_CFG, CRAZYFLIE_CTBR_CONTROLLER_CFG
 from cpsquare_lab.embodiments.multirotor.common.actions import ActionType, CtbrActionCfg, HandleOutOfRangeAction
 from cpsquare_lab.embodiments.multirotor.common.ctbr import hover_collective_thrust_from_multirotor_cfg
-from isaaclab_physx.physics import PhysxCfg
 from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg
-from isaaclab_tasks.utils import PresetCfg
+from isaaclab_physx.physics import PhysxCfg
 
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg
@@ -50,8 +48,10 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sim import DomeLightCfg, SimulationCfg
 from isaaclab.terrains import TerrainImporterCfg
 from isaaclab.utils.configclass import configclass
+from isaaclab.utils.noise import UniformNoiseCfg as Unoise
 
 from isaaclab_tasks.manager_based.drone_arl.mdp.commands import DroneUniformPoseCommandCfg
+from isaaclab_tasks.utils import PresetCfg
 
 from environments.envs.manager_based_ma_env_cfg import AgentGroupCfg
 from environments.envs.manager_based_marl_env_cfg import (
@@ -70,13 +70,14 @@ NUM_DRONES = 8
 VISIBLE_NEIGHBORS = 2
 INITIAL_ACTIVE_DRONES = 1
 ACTIVE_AGENT_RAMP_STEPS = 200_000
-OBSTACLE_CURRICULUM_START_STEP = ACTIVE_AGENT_RAMP_STEPS
-OBSTACLE_CURRICULUM_RAMP_STEPS = 100_000
+OBSTACLE_CURRICULUM_START_STEP = 50_000
+OBSTACLE_CURRICULUM_RAMP_STEPS = 250_000
 SPAWN_TARGET_RANDOMIZATION_START_STEP = OBSTACLE_CURRICULUM_START_STEP + OBSTACLE_CURRICULUM_RAMP_STEPS
 SPAWN_TARGET_RANDOMIZATION_RAMP_STEPS = 200_000
-STAGE1_TIMESTEPS = 75_000
+STAGE1_TIMESTEPS = 200_000
 STAGE2_TIMESTEPS = 300_000
-STAGE3_TIMESTEPS = 300_000
+STAGE3_TIMESTEPS = 400_000
+PASSIVE_DRONE_RAMP_STEPS = 150_000
 
 NUM_ENVS = 32
 ENV_SPACING = 8.0
@@ -193,14 +194,19 @@ class ObservationsCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         # -- self block (34 dims) --
-        root_lin_vel_b = ObsTerm(func=mdp.root_lin_vel_b, params={"asset_cfg": SceneEntityCfg("{entity_name}")})
-        root_ang_vel_b = ObsTerm(func=mdp.root_ang_vel_b, params={"asset_cfg": SceneEntityCfg("{entity_name}")})
+        root_lin_vel_b = ObsTerm(func=mdp.root_lin_vel_b, params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+                                  noise=Unoise(n_min=-0.0, n_max=0.0))
+        root_ang_vel_b = ObsTerm(func=mdp.root_ang_vel_b, params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+                                  noise=Unoise(n_min=-0.0, n_max=0.0))
         projected_gravity_b = ObsTerm(
-            func=mdp.projected_gravity_b, params={"asset_cfg": SceneEntityCfg("{entity_name}")}
+            func=mdp.projected_gravity_b, params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
         )
-        root_pos = ObsTerm(func=mdp.root_pos, params={"asset_cfg": SceneEntityCfg("{entity_name}")})
+        root_pos = ObsTerm(func=mdp.root_pos, params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+                            noise=Unoise(n_min=-0.0, n_max=0.0))
         root_rotation_matrix = ObsTerm(
-            func=mdp.root_rotation_matrix, params={"asset_cfg": SceneEntityCfg("{entity_name}")}
+            func=mdp.root_rotation_matrix, params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
         )
         active_flag = ObsTerm(
             func=mdp.agent_active_flag,
@@ -222,6 +228,7 @@ class ObservationsCfg:
                 "radius": 6.0,
                 "mask_key": ACTIVE_AGENT_MASK_KEY,
             },
+            noise=Unoise(n_min=-0.0, n_max=0.0),
         )
 
         # -- SDF block (9 dims) --
@@ -234,20 +241,24 @@ class ObservationsCfg:
                 "grid_resolution": 0.1,
                 "column_radius": COLUMN_RADIUS,
             },
+            noise=Unoise(n_min=-0.0, n_max=0.0),
         )
 
         # -- goal block (6 dims) --
         target_pos_b = ObsTerm(
             func=mdp.relative_target_position_b,
             params={"asset_cfg": SceneEntityCfg("{entity_name}"), "command_name": "target_pose"},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
         )
         target_yaw_error = ObsTerm(
             func=mdp.target_yaw_error,
             params={"asset_cfg": SceneEntityCfg("{entity_name}"), "command_name": "target_pose"},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
         )
         distance_to_goal = ObsTerm(
             func=mdp.distance_to_goal,
             params={"asset_cfg": SceneEntityCfg("{entity_name}"), "command_name": "target_pose"},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
         )
         goal_reached = ObsTerm(
             func=mdp.goal_reached_flag,
@@ -495,11 +506,23 @@ class PaperSwarmEventsCfg:
             "collective_hover_thrust": hover_collective_thrust_from_multirotor_cfg(CRAZYFLIE_CFG),
         },
     )
+    randomize_thrust_coefficient = EventTerm(
+        func=mdp.randomize_all_drones_thrust_coefficient,
+        mode="reset",
+        params={
+            "scale_range": (1.0, 1.0),
+            "per_thruster": False,
+        },
+    )
 
 
 @configclass
 class Stage1EventsCfg(PaperSwarmEventsCfg):
-    """Stage 1: fixed reset at origin so target is always away from the drone (lab_5 pattern)."""
+    """Stage 1: drone_0 at origin, passive drones at randomised hover positions.
+
+    Hover thrust is applied to all drones — the learning drone and all
+    passive hovering drones.
+    """
 
     reset_drone_root_state = EventTerm(
         func=mdp.reset_drone_root_state_uniform,
@@ -512,15 +535,6 @@ class Stage1EventsCfg(PaperSwarmEventsCfg):
             "lin_vel_range": (-0.05, 0.05),
             "ang_vel_range": (-0.05, 0.05),
             "mask_key": ACTIVE_AGENT_MASK_KEY,
-        },
-    )
-    reset_hover_thrust = EventTerm(
-        func=mdp.reset_drone_hover_thrust,
-        mode="reset",
-        params={
-            "agent_ids": DRONE_AGENT_IDS,
-            "collective_hover_thrust": hover_collective_thrust_from_multirotor_cfg(CRAZYFLIE_CFG),
-            "possible_agent_ids": ["drone_0"],
         },
     )
 
@@ -560,7 +574,11 @@ class CurriculumCfg:
 
 @configclass
 class Stage1CurriculumCfg:
-    """Single-drone waypoint control baseline -- all agents share one policy."""
+    """Single-drone waypoint control with passive hovering drones.
+
+    Passive drone count ramps from 1-2 up to 6-8.  Target range expands
+    from zero outward.  No obstacles, full safe sampling throughout.
+    """
 
     active_agent_count = CurrTerm(
         func=mdp.active_agent_count_curriculum,
@@ -571,6 +589,14 @@ class Stage1CurriculumCfg:
             "ramp_steps": 10_000_000,
             "mask_key": ACTIVE_AGENT_MASK_KEY,
             "selection": "prefix",
+        },
+    )
+    passive_drone_count = CurrTerm(
+        func=mdp.passive_drone_count_curriculum,
+        params={
+            "min_passive": 1,
+            "max_passive": 7,
+            "ramp_steps": PASSIVE_DRONE_RAMP_STEPS,
         },
     )
     paper_swarm_task = CurrTerm(
@@ -602,19 +628,31 @@ class Stage1CurriculumCfg:
             "end_z_delta": 0.5,
         },
     )
+    observation_noise = CurrTerm(
+        func=mdp.update_observation_noise_curriculum,
+        params={"start_step": 30_000, "end_step": 100_000, "final_noise": 0.01},
+    )
+    thrust_randomization = CurrTerm(
+        func=mdp.update_thrust_randomization_curriculum,
+        params={"start_step": 100_000, "end_step": 150_000, "final_scale_delta": 0.02},
+    )
 
 
 @configclass
 class Stage2CurriculumCfg:
-    """Paper period 1: all drones, no obstacles, random intersecting assignments."""
+    """MARL interaction learning: agent count ramps 2→8, sparse→medium obstacles.
+
+    Obstacles are introduced halfway through after agents have learned
+    basic drone-drone interaction.
+    """
 
     active_agent_count = CurrTerm(
         func=mdp.active_agent_count_curriculum,
         params={
             "agent_ids": DRONE_AGENT_IDS,
-            "min_agents": NUM_DRONES,
+            "min_agents": 2,
             "max_agents": NUM_DRONES,
-            "ramp_steps": 1,
+            "ramp_steps": STAGE2_TIMESTEPS,
             "mask_key": ACTIVE_AGENT_MASK_KEY,
             "selection": "prefix",
         },
@@ -624,24 +662,36 @@ class Stage2CurriculumCfg:
         params={
             "workspace_xy": WORKSPACE_XY,
             "workspace_z": WORKSPACE_Z,
-            "max_static_columns": 0,
-            "obstacle_start_step": 1_000_000_000,
-            "obstacle_ramp_steps": 1,
+            "max_static_columns": 6,
+            "obstacle_start_step": OBSTACLE_CURRICULUM_START_STEP,
+            "obstacle_ramp_steps": OBSTACLE_CURRICULUM_RAMP_STEPS,
             "randomization_start_step": 0,
-            "randomization_ramp_steps": 1,
-            "start_safe_sampling_prob": 0.0,
+            "randomization_ramp_steps": 100_000,
+            "start_safe_sampling_prob": 0.5,
             "end_safe_sampling_prob": 0.0,
-            "start_min_separation": 0.0,
+            "start_min_separation": 1.0,
             "end_min_separation": 0.0,
             "column_radius": COLUMN_RADIUS,
             "column_safe_distance": COLUMN_SAFE_DISTANCE,
         },
     )
+    observation_noise = CurrTerm(
+        func=mdp.update_observation_noise_curriculum,
+        params={"start_step": 0, "end_step": 100_000, "final_noise": 0.03},
+    )
+    thrust_randomization = CurrTerm(
+        func=mdp.update_thrust_randomization_curriculum,
+        params={"start_step": 50_000, "end_step": 150_000, "final_scale_delta": 0.03},
+    )
 
 
 @configclass
 class Stage3CurriculumCfg:
-    """Paper period 2: random assignments with an increasing static-obstacle field."""
+    """Target fine-tuning: mostly 8-drone episodes, medium→dense obstacles, strong DR.
+
+    Obstacles ramp from medium (4) to target dense (10).  Target/spawn
+    sampling is fully randomised from the start.
+    """
 
     active_agent_count = CurrTerm(
         func=mdp.active_agent_count_curriculum,
@@ -671,6 +721,14 @@ class Stage3CurriculumCfg:
             "column_radius": COLUMN_RADIUS,
             "column_safe_distance": COLUMN_SAFE_DISTANCE,
         },
+    )
+    observation_noise = CurrTerm(
+        func=mdp.update_observation_noise_curriculum,
+        params={"start_step": 0, "end_step": 150_000, "final_noise": 0.05},
+    )
+    thrust_randomization = CurrTerm(
+        func=mdp.update_thrust_randomization_curriculum,
+        params={"start_step": 50_000, "end_step": 200_000, "final_scale_delta": 0.05},
     )
 
 
@@ -830,7 +888,7 @@ class Stage1EvalCommandsCfg:
 
 @configclass
 class Stage1ActionsCfg:
-    """Stage 1 uses CLIP (hard boundary) like lab_5 hover, not TANH."""
+    """Stage 1 uses TANH to match later stages (avoid transfer shock)."""
 
     ctbr = CtbrActionCfg(
         asset_name="{entity_name}",
@@ -838,7 +896,7 @@ class Stage1ActionsCfg:
         max_roll_pitch_rate=3.0,
         max_yaw_rate=2.0,
         action_type=ActionType.NORM_NEG_1_TO_1,
-        handle_out_of_range=HandleOutOfRangeAction.CLIP,
+        handle_out_of_range=HandleOutOfRangeAction.TANH,
     )
 
 
@@ -936,17 +994,21 @@ class Stage1TerminationsCfg:
 
 @configclass
 class PaperSwarmMappoStage1EnvCfg(PaperSwarmBaseMarlEnvCfg):
-    """MAPPO stage 1: single-drone waypoint control baseline, tight workspace, hover init.
+    """MAPPO stage 1: single-drone waypoint control with passive hovering drones.
 
-    Only ``drone_0`` is managed by the RL pipeline (1 execution group = 1 bundle).
-    The other 7 drones are physically simulated but parked at z=0.05 with hover
-    thrust — they do not contribute observation/reward/termination overhead.
+    Only ``drone_0`` is managed by the RL pipeline.  The other 7 drones are
+    physically simulated and actively hover in place via Lee position
+    controllers — they appear in the neighbor-attention stream so the policy
+    learns basic collision avoidance around drone-shaped objects.
+
+    This stage uses 8192 environments for massive parallelisation.
     """
 
     scene = PaperSwarmSceneCfg(num_envs=8192, env_spacing=ENV_SPACING)
-    decimation = 1
+    decimation = 2
     events = Stage1EventsCfg()
     possible_agents = ["drone_0"]
+    replay_enabled = False
 
     agent_groups = [
         AgentGroupCfg(
@@ -968,7 +1030,12 @@ class PaperSwarmMappoStage1EnvCfg(PaperSwarmBaseMarlEnvCfg):
 
 @configclass
 class PaperSwarmMappoStage2EnvCfg(PaperSwarmBaseMarlEnvCfg):
-    """MAPPO stage 2: hard obstacle-free multi-drone crossing task."""
+    """MAPPO stage 2: MARL interaction learning with variable agent count.
+
+    Learning-drones ramp from 2 to 8 over the stage.  Sparse-to-medium
+    static obstacles are introduced halfway through.  Actor is initialised
+    from the Stage 1 checkpoint.
+    """
 
     agent_groups = [
         AgentGroupCfg(
@@ -990,7 +1057,11 @@ class PaperSwarmMappoStage2EnvCfg(PaperSwarmBaseMarlEnvCfg):
 
 @configclass
 class PaperSwarmMappoStage3EnvCfg(PaperSwarmBaseMarlEnvCfg):
-    """MAPPO stage 3: hard multi-drone task with a static-obstacle density ramp."""
+    """MAPPO stage 3: target fine-tuning with dense obstacles and strong DR.
+
+    Mostly 8-drone episodes with medium-to-dense static obstacles.
+    Hard-case collision/deadlock replay and strongest simple lab DR.
+    """
 
     agent_groups = [
         AgentGroupCfg(
@@ -1078,14 +1149,11 @@ class PaperSwarmMappoEvalEnvCfg(PaperSwarmEvalEnvCfg):
 
 @configclass
 class PaperSwarmMappoStage1EvalCfg(PaperSwarmEvalEnvCfg):
-    """MAPPO Stage 1 eval: single-drone waypoint control with recorder enabled.
+    """MAPPO Stage 1 eval: single-drone waypoint control with passive drones.
 
-    Inherits recorder, shorter episodes, and eval workspace bounds from
-    PaperSwarmEvalEnvCfg. Overrides to use Stage 1 settings:
-    - Only drone_0 is managed (possible_agents = ["drone_0"])
-    - Stage 1 actions, rewards, terminations
-    - Fixed target range matching end-of-curriculum XY and Z
-    - No dynamic curriculum
+    Inherits recorder, shorter episodes, and eval workspace bounds.
+    Uses Stage 1 actions/rewards/terminations and fixed target range
+    matching end-of-curriculum XY and Z.
     """
 
     possible_agents = ["drone_0"]

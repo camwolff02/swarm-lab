@@ -267,7 +267,8 @@ def neighbor_state_b(
     ego_pos = _root_pos(env, asset_cfg.name)
     ego_vel = asset.data.root_lin_vel_w.torch
     ego_quat = asset.data.root_quat_w.torch
-    mask = _active_mask(env, agent_ids, mask_key)
+    active_mask = _active_mask(env, agent_ids, mask_key)
+    passive_mask = _active_mask(env, agent_ids, "passive_drones")
     current_index = agent_ids.index(asset_cfg.name)
 
     all_pos = _all_root_pos(env, agent_ids)
@@ -278,7 +279,7 @@ def neighbor_state_b(
     rel_vel_b = _rotate_world_to_body(ego_quat, rel_vel_w)
 
     distances = torch.norm(rel_pos_w, dim=-1)
-    valid = (distances < radius) & mask.bool()
+    valid = (distances < radius) & (active_mask.bool() | passive_mask.bool())
     valid[:, current_index] = False
     keep = torch.ones(len(agent_ids), dtype=torch.bool, device=ego_pos.device)
     keep[current_index] = False
@@ -294,13 +295,14 @@ def relative_neighbor_positions_b(
     asset = _asset(env, asset_cfg)
     ego_pos = _root_pos(env, asset_cfg.name)
     ego_quat = asset.data.root_quat_w.torch
-    mask = _active_mask(env, agent_ids, mask_key)
+    active_mask = _active_mask(env, agent_ids, mask_key)
+    passive_mask = _active_mask(env, agent_ids, "passive_drones")
     current_index = agent_ids.index(asset_cfg.name)
     all_pos = _all_root_pos(env, agent_ids)
     rel_pos_w = all_pos - ego_pos.unsqueeze(1)
     rel_pos_b = _rotate_world_to_body(ego_quat, rel_pos_w)
     distances = torch.norm(rel_pos_w, dim=-1)
-    valid = (distances < radius) & mask.bool()
+    valid = (distances < radius) & (active_mask.bool() | passive_mask.bool())
     valid[:, current_index] = False
     keep = torch.ones(len(agent_ids), dtype=torch.bool, device=ego_pos.device)
     keep[current_index] = False
@@ -315,7 +317,8 @@ def relative_neighbor_velocities_b(
     ego_pos = _root_pos(env, asset_cfg.name)
     ego_vel = asset.data.root_lin_vel_w.torch
     ego_quat = asset.data.root_quat_w.torch
-    mask = _active_mask(env, agent_ids, mask_key)
+    active_mask = _active_mask(env, agent_ids, mask_key)
+    passive_mask = _active_mask(env, agent_ids, "passive_drones")
     current_index = agent_ids.index(asset_cfg.name)
     all_pos = _all_root_pos(env, agent_ids)
     all_vel = _all_root_lin_vel(env, agent_ids)
@@ -323,7 +326,7 @@ def relative_neighbor_velocities_b(
     rel_vel_w = all_vel - ego_vel.unsqueeze(1)
     rel_vel_b = _rotate_world_to_body(ego_quat, rel_vel_w)
     distances = torch.norm(rel_pos_w, dim=-1)
-    valid = (distances < radius) & mask.bool()
+    valid = (distances < radius) & (active_mask.bool() | passive_mask.bool())
     valid[:, current_index] = False
     keep = torch.ones(len(agent_ids), dtype=torch.bool, device=ego_pos.device)
     keep[current_index] = False

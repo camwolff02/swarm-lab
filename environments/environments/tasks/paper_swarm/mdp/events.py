@@ -6,14 +6,17 @@
 """Reset and event functions for the paper_swarm waypoint-navigation task.
 
 Spawns drones at random separated positions, places static column obstacles,
-and hides inactive agents.
+manages passive hovering drones, and hides inactive agents.
 """
 
 from __future__ import annotations
 
 import torch
 
-from isaaclab.utils.math import sample_uniform
+from isaaclab.utils.math import sample_uniform, quat_from_euler_xyz
+
+from cpsquare_lab.embodiments.multirotor.common.events import randomize_multirotor_thrust_coefficient as _randomize_thrust
+from isaaclab.managers import SceneEntityCfg
 
 
 def reset_drone_root_state_uniform(
@@ -29,7 +32,9 @@ def reset_drone_root_state_uniform(
 ) -> dict[str, torch.Tensor]:
     """Sample separated positions and set zero-rotation hover start state.
 
-    Inactive agents are placed at the environment origin, resting on the ground plane.
+    Inactive agents that are passive hovering drones are placed at sampled
+    hover altitudes. Remaining inactive agents are placed at the environment
+    origin, resting on the ground plane.
 
     Args:
         xy_bounds: (min, max) [m] for each axis.
@@ -46,14 +51,16 @@ def reset_drone_root_state_uniform(
     from .observations import _active_mask
 
     env_ids = torch.as_tensor(env_ids, device=env.device, dtype=torch.long)
+    root = env.root if hasattr(env, "root") else env
     mask = _active_mask(env, agent_ids, mask_key)
     resets = {}
-    root = env.root if hasattr(env, "root") else env
     spawn_safe_prob = getattr(root, "_paper_swarm_spawn_safe_sampling_prob", 1.0)
     spawn_min_separation = getattr(root, "_paper_swarm_spawn_min_separation", min_separation)
     column_radius = getattr(root, "_paper_swarm_column_radius", 0.15)
     column_safe_distance = getattr(root, "_paper_swarm_column_safe_distance", 0.6)
     columns = getattr(root, "column_positions", None)
+
+    passive_drone_ids = getattr(root, "_passive_drone_ids", [])
 
     sampled_positions, _ = _sample_positions_vectorized(
         active_mask=mask[env_ids],
@@ -67,8 +74,24 @@ def reset_drone_root_state_uniform(
         device=env.device,
     )
 
+    _sample_passive_hover_positions(
+        root=root,
+        env_ids=env_ids,
+        passive_drone_ids=passive_drone_ids,
+        agent_ids=agent_ids,
+        columns=columns,
+        column_radius=column_radius,
+        column_safe_distance=column_safe_distance,
+    )
+
+    hover_positions = getattr(root, "_passive_drone_hover_positions", None)
+    if hover_positions is not None:
+        passive_to_idx = {aid: i for i, aid in enumerate(passive_drone_ids)}
+
     for i, agent_id in enumerate(agent_ids):
         is_active = mask[env_ids, i]
+        is_passive = agent_id in (passive_to_idx if hover_positions is not None else {})
+
         asset = env.scene[agent_id]
         root_pose = asset.data.default_root_pose.torch[env_ids].clone()
         root_velocity = asset.data.default_root_vel.torch[env_ids].clone()
@@ -79,26 +102,31 @@ def reset_drone_root_state_uniform(
         if is_active.any():
             active_count = int(is_active.sum().item())
             quat = torch.tensor([0.0, 0.0, 0.0, 1.0], device=env.device).repeat(active_count, 1)
-            lin_vel = sample_uniform(
-                lin_vel_range[0], lin_vel_range[1], (active_count, 3), device=env.device
-            )
-            ang_vel = sample_uniform(
-                ang_vel_range[0], ang_vel_range[1], (active_count, 3), device=env.device
-            )
-
+            lin_vel = sample_uniform(lin_vel_range[0], lin_vel_range[1], (active_count, 3), device=env.device)
+            ang_vel = sample_uniform(ang_vel_range[0], ang_vel_range[1], (active_count, 3), device=env.device)
             root_pose[is_active, :3] = sampled_positions[is_active, i] + env.scene.env_origins[env_ids[is_active]]
             root_pose[is_active, 3:7] = quat
             root_velocity[is_active, :3] = lin_vel
             root_velocity[is_active, 3:6] = ang_vel
 
-        # Spread inactive drones in a grid so they don't clip into each other
+        if hover_positions is not None and is_passive:
+            passive_idx = passive_to_idx[agent_id]
+            pos_yaw = hover_positions[env_ids, passive_idx]
+            root_pose[:, :3] = pos_yaw[:, :3] + env.scene.env_origins[env_ids]
+            root_pose[:, 3:7] = quat_from_euler_xyz(
+                torch.zeros(len(env_ids), device=env.device),
+                torch.zeros(len(env_ids), device=env.device),
+                pos_yaw[:, 3],
+            )
+
+        # Spread genuinely inactive drones (not active, not passive) in a grid
         GRID_SPACING = 1.0
         GRID_COLS = 3
-        if i > 0:
+        if i > 0 and not is_active.any() and not is_passive:
             gx = ((i - 1) % GRID_COLS) * GRID_SPACING
             gy = ((i - 1) // GRID_COLS) * GRID_SPACING
-            root_pose[~is_active, :3] = (
-                env.scene.env_origins[env_ids[~is_active]] + torch.tensor((gx, gy, 0.05), device=env.device)
+            root_pose[:, :3] = (
+                env.scene.env_origins[env_ids] + torch.tensor((gx, gy, 0.05), device=env.device)
             )
 
         asset.write_root_pose_to_sim_index(root_pose=root_pose, env_ids=env_ids)
@@ -106,6 +134,83 @@ def reset_drone_root_state_uniform(
         resets[agent_id] = torch.cat([root_pose, root_velocity], dim=-1)
 
     return resets
+
+
+def _sample_passive_hover_positions(
+    root,
+    env_ids: torch.Tensor,
+    passive_drone_ids: list[str],
+    agent_ids: list[str],
+    columns: torch.Tensor | None = None,
+    column_radius: float = 0.15,
+    column_safe_distance: float = 0.6,
+) -> None:
+    """Sample hover positions for passive drones and store on the root env.
+
+    Positions are sampled with separation between passive drones and obstacle
+    avoidance so they never spawn inside each other or inside columns.
+
+    Args:
+        root: The root environment instance.
+        env_ids: Environment indices to sample for.
+        passive_drone_ids: List of passive drone agent IDs.
+        agent_ids: All drone agent IDs (needed for position indexing).
+        columns: Optional column positions tensor ``(num_envs, num_cols, 3)``.
+        column_radius: Column radius for safe sampling [m].
+        column_safe_distance: Safe distance from columns [m].
+    """
+    if not passive_drone_ids:
+        return
+
+    num_envs = len(env_ids)
+    num_passive = len(passive_drone_ids)
+    device = root.device
+
+    hover_positions = getattr(root, "_passive_drone_hover_positions", None)
+    if hover_positions is None or hover_positions.shape != (root.num_envs, num_passive, 4):
+        hover_positions = torch.zeros(root.num_envs, num_passive, 4, device=device)
+
+    x_min, x_max = (-3.5, 3.5)
+    y_min, y_max = (-3.5, 3.5)
+    hover_z = 2.0
+    min_separation = 1.0
+
+    positions = torch.zeros(num_envs, num_passive, 3, device=device)
+    yaws = torch.zeros(num_envs, num_passive, device=device)
+    max_attempts = 64
+
+    for p in range(num_passive):
+        candidates = torch.empty(num_envs, max_attempts, 3, device=device)
+        candidates[:, :, 0].uniform_(x_min, x_max)
+        candidates[:, :, 1].uniform_(y_min, y_max)
+        candidates[:, :, 2] = hover_z
+        valid = torch.ones(num_envs, max_attempts, dtype=torch.bool, device=device)
+
+        if p > 0:
+            prev_xy = positions[:, :p, :2]
+            cand_xy = candidates[:, :, :2]
+            dists = torch.cdist(cand_xy, prev_xy)
+            valid = valid & (dists.min(dim=-1).values >= min_separation)
+
+        env_columns = columns[env_ids] if columns is not None else None
+        if env_columns is not None and env_columns.shape[1] > 0:
+            cand_xy = candidates[:, :, None, :2]
+            col_xy = env_columns[:, None, :, :2]
+            col_dists = torch.linalg.norm(cand_xy - col_xy, dim=-1)
+            col_active = torch.linalg.norm(env_columns[:, :, :2], dim=-1) < 100.0
+            col_clear = (col_dists >= (column_radius + column_safe_distance)) | ~col_active[:, None, :]
+            valid = valid & col_clear.all(dim=-1)
+
+        selected_idx = valid.float().argmax(dim=-1)
+        positions[:, p] = candidates[range(num_envs), selected_idx]
+
+    yaws.uniform_(-torch.pi, torch.pi)
+    hover_positions[env_ids, :, 0] = positions[:, :, 0]
+    hover_positions[env_ids, :, 1] = positions[:, :, 1]
+    hover_positions[env_ids, :, 2] = positions[:, :, 2]
+    hover_positions[env_ids, :, 3] = yaws
+
+    setattr(root, "_passive_drone_hover_positions", hover_positions)
 
 
 def sample_static_columns(
@@ -214,13 +319,15 @@ def reset_drone_hover_thrust(
     collective_hover_thrust: float,
     possible_agent_ids: list[str] | None = None,
 ):
-    """Set hover thrust on managed drones, zero thrust on the rest.
+    """Set hover thrust on managed and passive drones, zero thrust on the rest.
 
-    Only drones listed in ``possible_agent_ids`` receive hover thrust.
-    All others get zero thrust — they sit inert on the ground without
-    unstable ground-contact dynamics.
+    Only drones listed in ``possible_agent_ids`` or identified as passive
+    hovering drones receive hover thrust. All others get zero thrust.
     """
     managed = set(possible_agent_ids or agent_ids)
+    root = env.root if hasattr(env, "root") else env
+    passive_drone_ids = getattr(root, "_passive_drone_ids", [])
+    managed |= set(passive_drone_ids)
     for agent_id in agent_ids:
         asset = env.scene[agent_id]
         if agent_id in managed:
@@ -234,3 +341,30 @@ def reset_drone_hover_thrust(
         else:
             thrust = torch.zeros(len(env_ids), asset.num_thrusters, device=env.device, dtype=torch.float32)
         asset.set_thrust_target(thrust, env_ids=env_ids)
+
+
+def randomize_all_drones_thrust_coefficient(
+    env,
+    env_ids: torch.Tensor,
+    scale_range: tuple[float, float],
+    per_thruster: bool = False,
+) -> None:
+    """Apply thrust-coefficient randomization to every RL-managed drone.
+
+    The ``cpsquare_lab`` thrust-randomisation event operates on one asset per
+    call.  This wrapper iterates over the drones listed in ``possible_agents``
+    so only the learning drones receive thrust randomisation — passive
+    hovering drones keep their nominal thrust model.
+
+    If an asset does not support thrust-coefficient randomisation (e.g. the
+    Crazyflie does not yet expose ``set_thrust_coefficient_scale``), the call
+    is silently skipped for that asset.
+    """
+    root = env.root if hasattr(env, "root") else env
+    for agent_id in root.cfg.possible_agents:
+        try:
+            _randomize_thrust(
+                env, env_ids, asset_cfg=SceneEntityCfg(agent_id), scale_range=scale_range, per_thruster=per_thruster
+            )
+        except TypeError:
+            pass

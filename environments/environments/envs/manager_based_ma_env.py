@@ -7,8 +7,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -28,7 +29,7 @@ from .manager_based_ma_env_cfg import (
 class _AgentGroupEnvView:
     """Stable env-like proxy passed to managers for one execution group."""
 
-    def __init__(self, root_env: "ManagerBasedMaEnv", runtime: AgentGroupRuntimeSpec):
+    def __init__(self, root_env: ManagerBasedMaEnv, runtime: AgentGroupRuntimeSpec):
         object.__setattr__(self, "root", root_env)
         object.__setattr__(self, "runtime", runtime)
         object.__setattr__(self, "command_manager", None)
@@ -162,21 +163,18 @@ class ManagerBasedMaEnv(DirectMARLEnv):
         super().__init__(cfg=cfg, render_mode=render_mode)
 
     @property
-    def unwrapped(self) -> "ManagerBasedMaEnv":
+    def unwrapped(self) -> ManagerBasedMaEnv:
         """Return the base environment, matching Gymnasium's convention."""
-
         return self
 
     @property
     def num_agents(self) -> int:
         """Number of currently active public agents."""
-
         return len(self.agents)
 
     @property
     def max_num_agents(self) -> int:
         """Maximum number of possible public agents."""
-
         return len(self.possible_agents)
 
     def observation_space(self, agent: str) -> gym.Space:
@@ -188,7 +186,6 @@ class ManagerBasedMaEnv(DirectMARLEnv):
         Returns:
             Gymnasium observation space for the requested agent.
         """
-
         return self.observation_spaces[agent]
 
     def action_space(self, agent: str) -> gym.Space:
@@ -200,7 +197,6 @@ class ManagerBasedMaEnv(DirectMARLEnv):
         Returns:
             Gymnasium action space for the requested agent.
         """
-
         return self.action_spaces[agent]
 
     # ---------------------------------------------------------------------
@@ -213,12 +209,10 @@ class ManagerBasedMaEnv(DirectMARLEnv):
         DirectMARLEnv creates ``self.scene`` before calling this hook, so the
         generic manager-based MA environment must not create another scene here.
         """
-
-        return None
+        return
 
     def _configure_env_spaces(self) -> None:
         """Build pooled managers and derive per-agent public spaces."""
-
         self._build_manager_bundles()
         self._configure_multi_agent_spaces()
         self._zero_rewards = {
@@ -231,7 +225,6 @@ class ManagerBasedMaEnv(DirectMARLEnv):
 
     def _populate_direct_cfg_from_spec(self, cfg: ManagerBasedMaEnvCfg) -> None:
         """Fill DirectMARLEnvCfg fields that are derived from the compiled agents."""
-
         cfg.possible_agents = list(self.ma_spec.possible_agents)
         if getattr(cfg, "observation_spaces", None) is None:
             cfg.observation_spaces = {}
@@ -242,7 +235,6 @@ class ManagerBasedMaEnv(DirectMARLEnv):
 
     def _build_manager_bundles(self) -> None:
         """Create one classical manager bundle per execution group."""
-
         if self._manager_bundles:
             return
 
@@ -265,7 +257,6 @@ class ManagerBasedMaEnv(DirectMARLEnv):
 
     def _create_classical_manager_bundle(self, runtime: AgentGroupRuntimeSpec) -> _ManagerBundle:
         """Create classical managers for a pooled execution group."""
-
         agent_cfg = runtime.cfg
         env_view = _AgentGroupEnvView(self, runtime)
 
@@ -288,7 +279,6 @@ class ManagerBasedMaEnv(DirectMARLEnv):
 
     def _configure_multi_agent_spaces(self) -> None:
         """Derive public Gymnasium spaces from pooled manager bundles."""
-
         self.observation_spaces: dict[str, gym.Space] = {}
         self.action_spaces: dict[str, gym.Space] = {}
         self.state_spaces: dict[str, gym.Space | None] = {}

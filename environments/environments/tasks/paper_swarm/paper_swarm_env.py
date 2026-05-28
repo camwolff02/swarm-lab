@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Paper swarm manager-based MARL environment with collision replay."""
+"""Paper swarm manager-based MARL environment with collision replay and passive drone hover control."""
 
 from __future__ import annotations
 
@@ -24,8 +24,20 @@ class PaperSwarmMarlEnv(ManagerBasedMarlEnv):
         self._paper_swarm_obstacle_collision_now: torch.Tensor | None = None
         self._paper_swarm_robot_collision_events: torch.Tensor | None = None
         self._paper_swarm_obstacle_collision_events: torch.Tensor | None = None
+        self._passive_drone_ids: list[str] = []
+        self._passive_controllers: dict[str, object] = {}
+        self._passive_drone_hover_positions: torch.Tensor | None = None
+        self._passive_allocation_pinv: torch.Tensor | None = None
+        self._passive_thruster_ids: slice | torch.Tensor = slice(None)
+        self._passive_num_thrusters: int = 0
+        self._passive_min_thrust: float = 0.0
+        self._passive_max_thrust: float = 0.0
+        self._passive_min_collective: float = 0.0
+        self._passive_max_collective: float = 0.0
+        self._passive_mask_key: str = "passive_drones"
         super().__init__(cfg=cfg, render_mode=render_mode, **kwargs)
         self._setup_replay()
+        self._setup_passive_drone_control()
 
     def _setup_replay(self) -> None:
         agent_count = len(self.possible_agents)
@@ -46,6 +58,119 @@ class PaperSwarmMarlEnv(ManagerBasedMarlEnv):
             max_uses=int(self.cfg.replay_max_uses),
         )
 
+    def _setup_passive_drone_control(self) -> None:
+        if not hasattr(self, "scene"):
+            return
+        all_drone_ids = [f"drone_{i}" for i in range(8)]
+        self._passive_drone_ids = [aid for aid in all_drone_ids if aid not in self.possible_agents]
+        if not self._passive_drone_ids:
+            return
+        self._init_passive_controllers()
+        self._init_passive_hover_positions()
+        self._init_passive_wrench_params()
+        self._init_passive_mask()
+
+    def _init_passive_controllers(self) -> None:
+        from isaaclab_contrib.controllers.lee_position_control import LeePosController
+        from isaaclab_contrib.controllers.lee_position_control_cfg import LeePosControllerCfg
+
+        lee_cfg = LeePosControllerCfg(
+            K_rot_range=((1.85, 1.85, 0.4), (1.85, 1.85, 0.4)),
+            K_angvel_range=((0.5, 0.5, 0.09), (0.5, 0.5, 0.09)),
+            max_inclination_angle_rad=0.8,
+            max_yaw_rate=1.0,
+            K_pos_range=((3.0, 3.0, 2.0), (3.0, 3.0, 2.0)),
+            K_vel_range=((2.5, 2.5, 1.5), (2.5, 2.5, 1.5)),
+        )
+        self._passive_controllers = {}
+        for agent_id in self._passive_drone_ids:
+            asset = self.scene[agent_id]
+            self._passive_controllers[agent_id] = LeePosController(
+                cfg=lee_cfg, asset=asset, num_envs=self.num_envs, device=self.device
+            )
+
+    def _init_passive_hover_positions(self) -> None:
+        num_passive = len(self._passive_drone_ids)
+        self._passive_drone_hover_positions = torch.zeros(
+            self.num_envs, num_passive, 4, device=self.device
+        )
+
+    def _init_passive_wrench_params(self) -> None:
+        first_asset = self.scene[self._passive_drone_ids[0]]
+        self._passive_allocation_pinv = torch.linalg.pinv(first_asset.allocation_matrix)
+        thruster_actuator = first_asset.actuators["thrusters"]
+        self._passive_thruster_ids = thruster_actuator.thruster_indices
+        self._passive_num_thrusters = thruster_actuator.num_thrusters
+        self._passive_min_thrust = thruster_actuator.min_thrust
+        self._passive_max_thrust = thruster_actuator.max_thrust
+        self._passive_min_collective = self._passive_min_thrust * self._passive_num_thrusters
+        self._passive_max_collective = self._passive_max_thrust * self._passive_num_thrusters
+
+    def _init_passive_mask(self) -> None:
+        all_drone_ids = [f"drone_{i}" for i in range(8)]
+        passive_mask = torch.zeros(self.num_envs, len(all_drone_ids), device=self.device, dtype=torch.bool)
+        for agent_id in self._passive_drone_ids:
+            idx = all_drone_ids.index(agent_id)
+            passive_mask[:, idx] = True
+        setattr(self, self._passive_mask_key, passive_mask)
+
+    def _apply_passive_drone_control(self) -> None:
+        if not self._passive_drone_ids or len(self._passive_drone_ids) == 0:
+            return
+        for i, agent_id in enumerate(self._passive_drone_ids):
+            controller = self._passive_controllers[agent_id]
+            asset = self.scene[agent_id]
+            setpoint = self._passive_drone_hover_positions[:, i, :]
+            wrench = controller.compute(setpoint)
+            thrusts = self._wrench_to_motor_thrusts(wrench)
+            asset.set_thrust_target(thrusts, thruster_ids=self._passive_thruster_ids)
+
+    def _wrench_to_motor_thrusts(self, wrench: torch.Tensor) -> torch.Tensor:
+        collective = wrench[:, 2].clamp(self._passive_min_collective, self._passive_max_collective)
+        motor_thrusts = (
+            (collective / self._passive_num_thrusters)
+            .unsqueeze(1)
+            .expand(-1, self._passive_num_thrusters)
+            .clone()
+        )
+        rp_wrench = torch.zeros_like(wrench)
+        rp_wrench[:, 3:5] = wrench[:, 3:5]
+        motor_thrusts = self._scale_delta_to_bounds(motor_thrusts, self._motor_delta_from_wrench(rp_wrench))
+        yaw_wrench = torch.zeros_like(wrench)
+        yaw_wrench[:, 5] = wrench[:, 5]
+        motor_thrusts = self._scale_delta_to_bounds(motor_thrusts, self._motor_delta_from_wrench(yaw_wrench))
+        return motor_thrusts.clamp(self._passive_min_thrust, self._passive_max_thrust)
+
+    def _motor_delta_from_wrench(self, wrench: torch.Tensor) -> torch.Tensor:
+        delta = wrench @ self._passive_allocation_pinv.T
+        return delta - delta.mean(dim=1, keepdim=True)
+
+    def _scale_delta_to_bounds(self, base: torch.Tensor, delta: torch.Tensor) -> torch.Tensor:
+        eps = 1.0e-6
+        scale = torch.ones(base.shape[0], device=base.device, dtype=base.dtype)
+        positive = delta > eps
+        if positive.any():
+            ratio = torch.full_like(delta, float("inf"))
+            ratio[positive] = (self._passive_max_thrust - base[positive]) / delta[positive]
+            scale = torch.minimum(scale, ratio.min(dim=1).values)
+        negative = delta < -eps
+        if negative.any():
+            ratio = torch.full_like(delta, float("inf"))
+            ratio[negative] = (self._passive_min_thrust - base[negative]) / delta[negative]
+            scale = torch.minimum(scale, ratio.min(dim=1).values)
+        scale = scale.clamp(0.0, 1.0).unsqueeze(1)
+        return base + scale * delta
+
+    def _pre_physics_step(self, actions: dict[str, torch.Tensor]) -> None:
+        super()._pre_physics_step(actions)
+        self._apply_passive_drone_control()
+
+    def _reset_passive_drone_controllers(self, env_ids: torch.Tensor | None) -> None:
+        if not self._passive_drone_ids:
+            return
+        for agent_id in self._passive_drone_ids:
+            self._passive_controllers[agent_id].reset_idx(env_ids)
+
     def close(self):
         """Close task-local recorder resources before shutting down simulation."""
         if hasattr(self, "recorder_manager"):
@@ -65,6 +190,7 @@ class PaperSwarmMarlEnv(ManagerBasedMarlEnv):
         else:
             env_ids = torch.as_tensor(env_ids, device=self.device, dtype=torch.long)
         super()._reset_idx(env_ids)
+        self._reset_passive_drone_controllers(env_ids)
         self._clear_collision_state(env_ids)
         if self._paper_swarm_replay is None:
             return

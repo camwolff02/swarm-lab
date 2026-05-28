@@ -7,7 +7,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -170,7 +171,6 @@ class ManagerBasedMarlEnv(ManagerBasedMaEnv):
             ``None`` when no ``critic`` observation group is configured, or a
             dict keyed by agent id containing each agent's critic observation.
         """
-
         if not any(
             self.critic_observation_group in bundle.observation_manager.group_obs_dim
             for bundle in self._manager_bundles.values()
@@ -178,9 +178,7 @@ class ManagerBasedMarlEnv(ManagerBasedMaEnv):
             return None
         states: dict[str, Any] = {}
         for bundle in self._manager_bundles.values():
-            critic_obs = bundle.observation_manager.compute_group(
-                self.critic_observation_group, update_history=False
-            )
+            critic_obs = bundle.observation_manager.compute_group(self.critic_observation_group, update_history=False)
             states.update(self._fanout_tensor(critic_obs, bundle.runtime))
         self.state_buf = states
         return states

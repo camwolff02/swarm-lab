@@ -84,12 +84,8 @@ def drone_column_collision(
     if columns is None or columns.shape[1] == 0:
         return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
 
-    n = pos.shape[0]
-    min_dist = 20.0 * torch.ones(n, device=env.device)
-    for c in range(columns.shape[1]):
-        col_xy = columns[:, c, :2]
-        dist_xy = torch.norm(pos[:, :2] - col_xy, dim=-1)
-        min_dist = torch.min(min_dist, dist_xy)
+    dist_xy = torch.linalg.norm(pos[:, None, :2] - columns[:, :, :2], dim=-1)
+    min_dist = dist_xy.min(dim=-1).values
     mask = _get_active_mask(env, agent_id, mask_key)
     return (min_dist < column_radius) & (mask > 0)
 

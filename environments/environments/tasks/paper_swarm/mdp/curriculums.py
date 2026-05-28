@@ -14,6 +14,29 @@ def _root_env(env):
     return env.root if hasattr(env, "root") else env
 
 
+def passive_drone_count_curriculum(
+    env,
+    env_ids: torch.Tensor,
+    min_passive: int,
+    max_passive: int,
+    ramp_steps: int,
+) -> None:
+    """Ramp the number of passive hovering drones from min_passive to max_passive.
+
+    Sets ``_paper_swarm_num_passive_active`` on the root environment.  The
+    ``_passive_drone_ids`` attribute determines which drones are eligible
+    to hover; this curriculum controls how many of them are actually active
+    (hovering) at a given training step.
+    """
+    root = _root_env(env)
+    step = root.common_step_counter
+    progress = min(float(step) / max(1, ramp_steps), 1.0)
+    target_count = round(min_passive + progress * (max_passive - min_passive))
+    target_count = max(min_passive, min(max_passive, target_count))
+    root._paper_swarm_num_passive_active = target_count
+    root.extras["passive_drone_count"] = target_count
+
+
 def active_agent_count_curriculum(
     env,
     env_ids: torch.Tensor,
@@ -156,3 +179,61 @@ def expand_target_range_curriculum(
     ranges.pos_y = (-xy, xy)
     ranges.pos_z = (1.0 - z_delta, 1.0 + z_delta)
     return {"frac": frac, "xy": xy, "z_delta": z_delta}
+
+
+_OBS_NOISE_TERMS = (
+    "root_lin_vel_b",
+    "root_ang_vel_b",
+    "projected_gravity_b",
+    "root_pos",
+    "root_rotation_matrix",
+    "neighbor_state",
+    "static_sdf",
+    "target_pos_b",
+    "target_yaw_error",
+    "distance_to_goal",
+)
+
+
+def update_observation_noise_curriculum(
+    env,
+    env_ids: torch.Tensor,
+    start_step: int,
+    end_step: int,
+    final_noise: float,
+) -> dict[str, float]:
+    """Linearly ramp observation noise from zero to *final_noise*.
+
+    Modifies the ``noise`` attribute of each observation term in the
+    ``policy`` observation group at runtime.  This follows the lab_5 / lab_6
+    DR pattern.
+    """
+    del env_ids
+    frac = curriculum_fraction(env, start_step, end_step)
+    noise = frac * final_noise
+    for term_name in _OBS_NOISE_TERMS:
+        term = getattr(env.observation_manager.cfg.policy, term_name, None)
+        if term is None or not hasattr(term, "noise"):
+            continue
+        term.noise.n_min = -noise
+        term.noise.n_max = noise
+    return {"frac": frac, "obs_noise": noise}
+
+
+def update_thrust_randomization_curriculum(
+    env,
+    env_ids: torch.Tensor,
+    start_step: int,
+    end_step: int,
+    final_scale_delta: float,
+) -> dict[str, float]:
+    """Linearly ramp thrust-coefficient randomization from unity to ±delta.
+
+    Modifies the ``scale_range`` param of the ``randomize_thrust_coefficient``
+    event term at runtime.
+    """
+    del env_ids
+    frac = curriculum_fraction(env, start_step, end_step)
+    delta = frac * final_scale_delta
+    env.event_manager.cfg.randomize_thrust_coefficient.params["scale_range"] = (1.0 - delta, 1.0 + delta)
+    return {"frac": frac, "thrust_scale_delta": delta}
