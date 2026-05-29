@@ -8,6 +8,7 @@ policy's input dict so the attention encoder sees the correct 86-dim observation
 
 from __future__ import annotations
 
+import itertools
 from typing import Any
 
 import torch
@@ -36,3 +37,26 @@ class PaperMAPPO(MAPPO):
             }
             actions[uid], outputs[uid] = self.policies[uid].act(inputs, role="policy")
         return actions, outputs
+
+    def reset_optimizer_state(self) -> None:
+        """Reset optimiser / scheduler state for all agents to facilitate curriculum transfer.
+
+        Recreates the Adam optimiser and any configured learning-rate scheduler
+        from scratch while leaving model weights and preprocessors untouched.
+        """
+        for uid in self.possible_agents:
+            self.optimizers[uid] = torch.optim.Adam(
+                itertools.chain(self.policies[uid].parameters(), self.values[uid].parameters()),
+                lr=self.cfg.learning_rate[uid][0],
+            )
+            self.checkpoint_modules[uid]["optimizer"] = self.optimizers[uid]
+
+            if self.schedulers[uid] is not None:
+                # Re-invoke the scheduler factory so that internal KL-reference
+                # attributes (e.g. _last_lr) are fresh.
+                if hasattr(self, "cfg") and hasattr(self.cfg, "learning_rate_scheduler"):
+                    sched_cfg = self.cfg.learning_rate_scheduler[uid]
+                    if sched_cfg is not None:
+                        self.schedulers[uid] = sched_cfg[0](
+                            self.optimizers[uid], **sched_cfg[1]
+                        )
