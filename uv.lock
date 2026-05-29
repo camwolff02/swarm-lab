@@ -278,8 +278,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "cfclient", marker = "extra == 'cf2x'" },
-    { name = "cflib", specifier = ">=0.1.13.1" },
-    { name = "cflib", marker = "extra == 'cf2x'" },
+    { name = "cflib", specifier = ">=0.1.32" },
+    { name = "cflib", marker = "extra == 'cf2x'", specifier = "==0.1.32" },
     { name = "isaacsim", extras = ["all", "extscache"], marker = "extra == 'sim'", specifier = "==6.0.0", index = "https://pypi.nvidia.com/" },
     { name = "jinja2", marker = "extra == 'sim'", specifier = "==3.1.5", index = "https://pypi.org/simple" },
     { name = "jsonschema", specifier = ">=4.26.0" },

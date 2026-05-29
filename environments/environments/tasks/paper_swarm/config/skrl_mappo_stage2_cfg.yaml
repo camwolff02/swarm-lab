@@ -9,6 +9,9 @@ models:
   attention_heads: 1
   hidden_units: [256, 256, 256]
   initial_log_std: 0.0
+  clip_log_std: true
+  min_log_std: -3.0
+  max_log_std: -0.5
 
 agent:
   class: MAPPO

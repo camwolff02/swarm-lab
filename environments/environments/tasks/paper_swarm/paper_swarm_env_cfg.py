@@ -1158,5 +1158,59 @@ class PaperSwarmMappoStage1EvalCfg(PaperSwarmEvalEnvCfg):
     ]
 
 
+@configclass
+class PaperSwarmMappoStage3EvalCfg(PaperSwarmEvalEnvCfg):
+    """MAPPO Stage 3 eval: 8-drone waypoint navigation with obstacles.
+
+    Inherits recorder, shorter episodes, and eval workspace bounds.
+    Uses Stage 3 actions/rewards/terminations/observations.  Obstacles are
+    active (``PaperSwarmEventsCfg.sample_static_columns`` runs with
+    ``num_columns=10`` and no curriculum to suppress them).
+    """
+
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
+            count=NUM_DRONES,
+            id_template="drone_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="{agent_id}",
+                observations=MappoObservationsCfg(),
+                actions=ActionsCfg(),
+                rewards=RewardsCfg(),
+                terminations=TerminationsCfg(),
+                commands=CommandsCfg(),
+                curriculum=None,
+            ),
+        )
+    ]
+
+
+@configclass
+class PaperSwarmMappoStage2EvalCfg(PaperSwarmEvalEnvCfg):
+    """MAPPO Stage 2 eval: multi-drone waypoint navigation with sparse obstacles.
+
+    Inherits recorder, shorter episodes, and eval workspace bounds.
+    Matches Stage 2 observations/actions/rewards/terminations.
+    """
+
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
+            count=NUM_DRONES,
+            id_template="drone_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="{agent_id}",
+                observations=MappoObservationsCfg(),
+                actions=ActionsCfg(),
+                rewards=RewardsCfg(),
+                terminations=TerminationsCfg(),
+                commands=CommandsCfg(),
+                curriculum=None,
+            ),
+        )
+    ]
+
+
 PaperSwarmMAPPORunnerCfg = PaperSwarmMappoEnvCfg
 PaperSwarmIPPORunnerCfg = PaperSwarmIppoEnvCfg
