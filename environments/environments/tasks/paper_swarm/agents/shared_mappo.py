@@ -29,13 +29,23 @@ class PaperMAPPO(MAPPO):
         self._current_observations = observations
         self._current_states = states
         actions: dict[str, torch.Tensor] = {}
+        log_prob: dict[str, torch.Tensor] = {}
         outputs: dict[str, Any] = {}
+        current_values: dict[str, torch.Tensor] = {}
         for uid in self.possible_agents:
             inputs = {
                 "states": self._state_preprocessor[uid](states[uid]),
                 "observations": observations[uid],
             }
             actions[uid], outputs[uid] = self.policies[uid].act(inputs, role="policy")
+            log_prob[uid] = outputs[uid].get("log_prob")
+
+            if self.training:
+                values, _ = self.values[uid].act(inputs, role="value")
+                current_values[uid] = self._value_preprocessor[uid](values, inverse=True)
+
+        self._current_log_prob = log_prob
+        self._current_values = current_values
         return actions, outputs
 
     def reset_optimizer_state(self) -> None:
@@ -52,11 +62,6 @@ class PaperMAPPO(MAPPO):
             self.checkpoint_modules[uid]["optimizer"] = self.optimizers[uid]
 
             if self.schedulers[uid] is not None:
-                # Re-invoke the scheduler factory so that internal KL-reference
-                # attributes (e.g. _last_lr) are fresh.
-                if hasattr(self, "cfg") and hasattr(self.cfg, "learning_rate_scheduler"):
-                    sched_cfg = self.cfg.learning_rate_scheduler[uid]
-                    if sched_cfg is not None:
-                        self.schedulers[uid] = sched_cfg[0](
-                            self.optimizers[uid], **sched_cfg[1]
-                        )
+                sched_cls = self.cfg.learning_rate_scheduler[uid][0]
+                sched_kwargs = self.cfg.learning_rate_scheduler_kwargs[uid][0]
+                self.schedulers[uid] = sched_cls(self.optimizers[uid], **sched_kwargs)

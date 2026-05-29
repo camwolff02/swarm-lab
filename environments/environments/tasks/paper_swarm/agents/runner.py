@@ -11,9 +11,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import torch
-from skrl.models.torch import Model
 import skrl.utils.runner.torch.runner as skrl_runner_module
+from skrl.models.torch import Model
 from skrl.utils.runner.torch import Runner
 from skrl.utils.spaces.torch import flatten_tensorized_space, tensorize_space
 from torch.optim.lr_scheduler import ExponentialLR
@@ -23,6 +22,7 @@ from environments.tasks.paper_swarm.models import (
     PaperDeterministicValue,
     PaperGaussianPolicy,
 )
+
 from .shared_mappo import PaperMAPPO
 
 _MODEL_FACTORY_NAME = "paper_swarm_attention"
@@ -84,25 +84,32 @@ def _install_runner_patch() -> None:
     _ORIGINAL_GENERATE_MODELS = Runner._generate_models
     _ORIGINAL_GENERATE_AGENT = Runner._generate_agent
 
+    # Capture the raw function before replacing it so the patched version
+    # can delegate non-mappo lookups without infinite recursion.
+    _original_component = Runner._component
+
     def _patched_generate_models(self: Runner, env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model]]:
         if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME:
             return _generate_models(env, cfg)
         return _ORIGINAL_GENERATE_MODELS(self, env, cfg)
 
     def _patched_generate_agent(self: Runner, env: Any, cfg: dict[str, Any], models: dict[str, dict[str, Model]]):
-        if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME and cfg.get("agent", {}).get("class") == "MAPPO":
-            self._agent_class = PaperMAPPO
         return _ORIGINAL_GENERATE_AGENT(self, env, cfg, models)
+
+    def _patched_component(self: Runner, name: str):
+        if name.lower() == "mappo":
+            return PaperMAPPO
+        return _original_component(self, name)
 
     Runner._generate_models = _patched_generate_models
     Runner._generate_agent = _patched_generate_agent
+    Runner._component = _patched_component
     Runner._paper_swarm_patch = True
     _install_multi_agent_state_patch()
 
 
 def _install_multi_agent_state_patch() -> None:
     """Allow SKRL's IsaacLab multi-agent wrapper to consume per-agent state dicts."""
-
     import skrl.envs.wrappers.torch.isaaclab_envs as isaaclab_envs
 
     wrapper_cls = isaaclab_envs.IsaacLabMultiAgentWrapper
