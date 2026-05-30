@@ -19,12 +19,12 @@ def _space_size(space: gym.Space) -> int:
 
 
 def _states(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
-    """Policy observation — prefers 'observations' (86-dim policy) over 'states' (232-dim critic)."""
+    """Policy observation — prefers ego-centric actor observations over centralized critic states."""
     return inputs.get("observations", inputs.get("states"))
 
 
 def _critic_states(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
-    """Critic state — prefers 'states' (232-dim centralized) over 'observations' (86-dim policy)."""
+    """Critic state — prefers centralized critic states over actor observations."""
     return inputs.get("states", inputs.get("observations"))
 
 
@@ -56,13 +56,10 @@ class PaperGaussianPolicy(GaussianMixin, Model):
         self.mean_head = nn.Linear(encoder_cfg.output_dim, _space_size(action_space))
         nn.init.xavier_uniform_(self.mean_head.weight, gain=0.01)
         nn.init.constant_(self.mean_head.bias, 0.0)
-        self.log_std_parameter = nn.Parameter(
-            torch.full((_space_size(action_space),), float(encoder_cfg.initial_log_std))
-        )
+        self._initial_log_std = float(encoder_cfg.initial_log_std)
+        self.log_std_parameter = nn.Parameter(torch.full((_space_size(action_space),), self._initial_log_std))
 
-    def compute(
-        self, inputs: dict[str, torch.Tensor], role: str = ""
-    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    def compute(self, inputs: dict[str, torch.Tensor], role: str = "") -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Compute the policy distribution."""
         del role
         mean = self.mean_head(self.encoder(_states(inputs)))

@@ -14,7 +14,6 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from contextlib import contextmanager
 
 import h5py
 import numpy as np
@@ -26,12 +25,18 @@ def probe(
     num_envs: int = 1,
     max_steps: int = 100,
     hdf5_path: str = "/tmp/isaaclab/logs/probe_snapshot.hdf5",
+    reset_on_done: bool = False,
+    debug_controller: bool = False,
+    active_hover_action: bool = False,
 ) -> None:
+    """Run a short paper-swarm rollout and save drone/goal state traces."""
     # ------------------------------------------------------------------
     # Late imports (Isaac Lab is heavy)
     # ------------------------------------------------------------------
     import gymnasium as gym
+
     from isaaclab_tasks.utils import resolve_task_config
+
     from environments import tasks as local_tasks
 
     sys.argv = [sys.argv[0]]
@@ -60,6 +65,22 @@ def probe(
     print(f"[probe]   passive_drone_ids: {passive_ids}")
     print(f"[probe]   all_drone_ids (recorder order): {all_drone_ids}")
     print(f"[probe]   episode_length_s: {getattr(root_env.cfg, 'episode_length_s', '?')}")
+
+    if debug_controller and passive_ids:
+        agent_id = passive_ids[0]
+        controller = root_env._passive_controllers[agent_id]
+        setpoint = root_env._passive_drone_hover_positions[:, 0, :].clone()
+        setpoint[:, :3] += root_env.scene.env_origins
+        wrench = controller.compute(setpoint)
+        thrusts = root_env._wrench_to_motor_thrusts(wrench)
+        asset = root_env.scene[agent_id]
+        root_masses = controller._to_torch(asset.root_view.get_masses())
+        print(f"[probe]   debug_controller {agent_id}:")
+        print(f"[probe]     controller_mass={controller.mass[: min(num_envs, 4)].detach().cpu().tolist()}")
+        print(f"[probe]     root_masses={root_masses[: min(num_envs, 4)].detach().cpu().tolist()}")
+        print(f"[probe]     wrench={wrench[: min(num_envs, 4)].detach().cpu().tolist()}")
+        print(f"[probe]     thrust_sum={thrusts[: min(num_envs, 4)].sum(dim=1).detach().cpu().tolist()}")
+        print(f"[probe]     thrust_minmax=({root_env._passive_min_thrust}, {root_env._passive_max_thrust})")
 
     # Check hover positions
     hover = getattr(root_env, "_passive_drone_hover_positions", None)
@@ -92,10 +113,19 @@ def probe(
     # ------------------------------------------------------------------
     # Run steps and record state
     # ------------------------------------------------------------------
-    print(f"\n[probe] Running {max_steps} steps (action = all zeros)...")
+    action_label = "active hover" if active_hover_action else "all zeros"
+    print(f"\n[probe] Running {max_steps} steps (action = {action_label})...")
     # All-zero actions for each agent
     action_dim = root_env.action_spaces[possible[0]].shape[0]
     zero_action = torch.zeros(num_envs, action_dim, device=device)
+    if active_hover_action and action_dim == 4:
+        from cpsquare_lab.embodiments.multirotor.common.ctbr import (
+            hover_normalized_collective_thrust_from_multirotor_cfg,
+        )
+
+        zero_action[:, 3] = float(
+            hover_normalized_collective_thrust_from_multirotor_cfg(root_env.scene[possible[0]].cfg)
+        )
     actions = {a: zero_action for a in possible}
 
     positions_log = []
@@ -126,7 +156,9 @@ def probe(
         # Step with zero actions
         obs, rewards, terminated, truncated, infos = env.step(actions)
         # Reset if any env terminated
-        if any(terminated.values()) or any(truncated.values()):
+        terminated_any = any(bool(done.any().item()) for done in terminated.values())
+        truncated_any = any(bool(done.any().item()) for done in truncated.values())
+        if reset_on_done and (terminated_any or truncated_any):
             env.reset()
             hover = getattr(root_env, "_passive_drone_hover_positions", None)
 
@@ -164,24 +196,39 @@ def probe(
         dist_to_goal_0 = float(np.linalg.norm(p - g))
         dist_to_goal_end = float(np.linalg.norm(p_end - g))
         role = "active" if drone_id in possible else "passive"
-        print(f"  {drone_id:>8s} ({role:>7s}): "
-              f"start=[{p[0]:+.2f},{p[1]:+.2f},{p[2]:.2f}]  "
-              f"goal=[{g[0]:+.2f},{g[1]:+.2f},{g[2]:.2f}]  "
-              f"end_z={p_end[2]:.2f}  drift={drift:.3f}m  "
-              f"dist_goal: {dist_to_goal_0:.2f}→{dist_to_goal_end:.2f}")
+        print(
+            f"  {drone_id:>8s} ({role:>7s}): "
+            f"start=[{p[0]:+.2f},{p[1]:+.2f},{p[2]:.2f}]  "
+            f"goal=[{g[0]:+.2f},{g[1]:+.2f},{g[2]:.2f}]  "
+            f"end_z={p_end[2]:.2f}  drift={drift:.3f}m  "
+            f"dist_goal: {dist_to_goal_0:.2f}→{dist_to_goal_end:.2f}"
+        )
 
 
 def main() -> None:
+    """Parse CLI arguments, launch Isaac Sim, and run the probe."""
     # CLI must work with the Isaac Lab launcher — re-use play.py's argument pattern
     parser = argparse.ArgumentParser(description="Probe paper_swarm environment.")
     parser.add_argument("--task", required=True, help="Gym task ID.")
     parser.add_argument("--num-envs", type=int, default=1)
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--output", default="/tmp/isaaclab/logs/probe_snapshot.hdf5")
+    parser.add_argument(
+        "--reset-on-done",
+        action="store_true",
+        help="Manually reset the env when any rollout is done.",
+    )
+    parser.add_argument("--debug-controller", action="store_true", help="Print the first passive controller snapshot.")
+    parser.add_argument(
+        "--active-hover-action", action="store_true", help="Use a normalized hover CTBR action for active drones."
+    )
+    from isaaclab_tasks.utils import add_launcher_args
+
+    add_launcher_args(parser)
     args, _hydra = parser.parse_known_args()
 
     # The Isaac Lab launcher parses sys.argv, so we must set it up properly
-    from isaaclab_tasks.utils import add_launcher_args, launch_simulation
+    from isaaclab_tasks.utils import launch_simulation
 
     sys.argv = [sys.argv[0]] + _hydra
 
@@ -195,7 +242,15 @@ def main() -> None:
     env_cfg.scene.num_envs = args.num_envs
 
     with launch_simulation(env_cfg, args):
-        probe(args.task, num_envs=args.num_envs, max_steps=args.max_steps, hdf5_path=args.output)
+        probe(
+            args.task,
+            num_envs=args.num_envs,
+            max_steps=args.max_steps,
+            hdf5_path=args.output,
+            reset_on_done=args.reset_on_done,
+            debug_controller=args.debug_controller,
+            active_hover_action=args.active_hover_action,
+        )
 
 
 if __name__ == "__main__":

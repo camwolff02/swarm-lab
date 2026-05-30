@@ -90,6 +90,7 @@ WORKSPACE_Z = (1.0, 3.0)
 START_Z = (1.0, 1.5)
 SAFE_WAYPOINT_SEPARATION = 2.0
 ROBOT_PROXIMITY_DISTANCE = 0.5
+ROBOT_PROXIMITY_MAX_PENALTY = 10.0
 COLLISION_DISTANCE = 0.12
 OBSTACLE_COLLISION_DISTANCE = 0.2
 TARGET_REACHED_DISTANCE = 0.35
@@ -193,28 +194,35 @@ class ObservationsCfg:
 
     @configclass
     class PolicyCfg(ObsGroup):
-        # -- self block (34 dims) --
-        root_lin_vel_b = ObsTerm(func=mdp.root_lin_vel_b, params={"asset_cfg": SceneEntityCfg("{entity_name}")},
-                                  noise=Unoise(n_min=-0.0, n_max=0.0))
-        root_ang_vel_b = ObsTerm(func=mdp.root_ang_vel_b, params={"asset_cfg": SceneEntityCfg("{entity_name}")},
-                                  noise=Unoise(n_min=-0.0, n_max=0.0))
-        projected_gravity_b = ObsTerm(
-            func=mdp.projected_gravity_b, params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+        # -- self block (26 dims) --
+        root_lin_vel_b = ObsTerm(
+            func=mdp.root_lin_vel_b,
+            params={"asset_cfg": SceneEntityCfg("{entity_name}")},
             noise=Unoise(n_min=-0.0, n_max=0.0),
         )
-        root_pos = ObsTerm(func=mdp.root_pos, params={"asset_cfg": SceneEntityCfg("{entity_name}")},
-                            noise=Unoise(n_min=-0.0, n_max=0.0))
+        root_ang_vel_b = ObsTerm(
+            func=mdp.root_ang_vel_b,
+            params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+        )
+        projected_gravity_b = ObsTerm(
+            func=mdp.projected_gravity_b,
+            params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+        )
+        root_pos = ObsTerm(
+            func=mdp.root_pos,
+            params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+        )
         root_rotation_matrix = ObsTerm(
-            func=mdp.root_rotation_matrix, params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+            func=mdp.root_rotation_matrix,
+            params={"asset_cfg": SceneEntityCfg("{entity_name}")},
             noise=Unoise(n_min=-0.0, n_max=0.0),
         )
         active_flag = ObsTerm(
             func=mdp.agent_active_flag,
             params={"agent_ids": DRONE_AGENT_IDS, "agent_id": "{agent_id}", "mask_key": ACTIVE_AGENT_MASK_KEY},
-        )
-        drone_identity = ObsTerm(
-            func=mdp.drone_identity,
-            params={"agent_ids": DRONE_AGENT_IDS, "agent_id": "{agent_id}"},
         )
         last_action = ObsTerm(func=mdp.last_action, params={"action_name": "ctbr"})
 
@@ -363,15 +371,26 @@ class RewardsCfg:
             "mask_key": ACTIVE_AGENT_MASK_KEY,
         },
     )
-    collision_avoidance = RewTerm(
-        func=mdp.collision_avoidance_reward,
-        weight=2.0,
+    robot_collision = RewTerm(
+        func=mdp.robot_collision_penalty,
+        weight=-5.0,
         params={
             "asset_cfg": SceneEntityCfg("{entity_name}"),
             "agent_id": "{agent_id}",
             "agent_ids": DRONE_AGENT_IDS,
-            "safe_distance": ROBOT_PROXIMITY_DISTANCE,
             "collision_distance": COLLISION_DISTANCE,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+    robot_proximity = RewTerm(
+        func=mdp.robot_proximity_penalty,
+        weight=-1.0,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "agent_ids": DRONE_AGENT_IDS,
+            "falloff_distance": ROBOT_PROXIMITY_DISTANCE,
+            "max_penalty": ROBOT_PROXIMITY_MAX_PENALTY,
             "mask_key": ACTIVE_AGENT_MASK_KEY,
         },
     )
@@ -406,15 +425,16 @@ class RewardsCfg:
             "mask_key": ACTIVE_AGENT_MASK_KEY,
         },
     )
-    robot_collision_event = RewTerm(
-        func=mdp.robot_collision_event_penalty,
+    obstacle_collision = RewTerm(
+        func=mdp.obstacle_collision_penalty,
         weight=-5.0,
-        params={"agent_id": "{agent_id}", "mask_key": ACTIVE_AGENT_MASK_KEY},
-    )
-    obstacle_collision_event = RewTerm(
-        func=mdp.obstacle_collision_event_penalty,
-        weight=-5.0,
-        params={"agent_id": "{agent_id}", "mask_key": ACTIVE_AGENT_MASK_KEY},
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "column_positions_key": COLUMN_POSITIONS_KEY,
+            "collision_distance": OBSTACLE_COLLISION_DISTANCE,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
     )
 
 
@@ -510,10 +530,10 @@ class PaperSwarmEventsCfg:
 
 @configclass
 class Stage1EventsCfg(PaperSwarmEventsCfg):
-    """Stage 1: drone_0 at origin, passive drones at randomised hover positions.
+    """Stage 1: active drone at random position, passive drones at sampled hover positions.
 
-    Hover thrust is applied to all drones — the learning drone and all
-    passive hovering drones.
+    Hover thrust is applied to passive drones enabled by the passive-drone
+    curriculum. Inactive drones are parked near the ground.
     """
 
     reset_drone_root_state = EventTerm(
@@ -521,8 +541,8 @@ class Stage1EventsCfg(PaperSwarmEventsCfg):
         mode="reset",
         params={
             "agent_ids": DRONE_AGENT_IDS,
-            "xy_bounds": (0.0, 0.0),
-            "z_bounds": (1.0, 1.0),
+            "xy_bounds": WORKSPACE_XY,
+            "z_bounds": START_Z,
             "min_separation": SAFE_WAYPOINT_SEPARATION,
             "lin_vel_range": (-0.05, 0.05),
             "ang_vel_range": (-0.05, 0.05),
@@ -568,8 +588,8 @@ class CurriculumCfg:
 class Stage1CurriculumCfg:
     """Single-drone waypoint control with passive hovering drones.
 
-    Passive drone count ramps from 1-2 up to 6-8.  Target range expands
-    from zero outward.  No obstacles, full safe sampling throughout.
+    The active learning agent remains drone_0 while the passive drone count
+    ramps from 1 up to 7.  Target range expands from zero outward.
     """
 
     active_agent_count = CurrTerm(
@@ -577,7 +597,7 @@ class Stage1CurriculumCfg:
         params={
             "agent_ids": DRONE_AGENT_IDS,
             "min_agents": INITIAL_ACTIVE_DRONES,
-            "max_agents": NUM_DRONES,
+            "max_agents": INITIAL_ACTIVE_DRONES,
             "ramp_steps": 10_000_000,
             "mask_key": ACTIVE_AGENT_MASK_KEY,
             "selection": "prefix",
@@ -744,6 +764,13 @@ class PaperSwarmPhysicsCfg(PresetCfg):
 
 @configclass
 class PaperSwarmBaseMarlEnvCfg(ManagerBasedMarlEnvCfg):
+    initial_passive_drone_count: int = NUM_DRONES - INITIAL_ACTIVE_DRONES
+    initial_static_column_count: int = STATIC_COLUMNS
+    initial_workspace_xy: tuple[float, float] = WORKSPACE_XY
+    initial_workspace_z: tuple[float, float] = WORKSPACE_Z
+    initial_safe_sampling_prob: float = 1.0
+    initial_spawn_min_separation: float = SAFE_WAYPOINT_SEPARATION
+    initial_target_min_separation: float = SAFE_WAYPOINT_SEPARATION
     scene = PaperSwarmSceneCfg(num_envs=NUM_ENVS, env_spacing=ENV_SPACING)
     sim = SimulationCfg(
         dt=0.01,
@@ -916,6 +943,29 @@ class Stage1RewardsCfg:
             "mask_key": ACTIVE_AGENT_MASK_KEY,
         },
     )
+    robot_collision = RewTerm(
+        func=mdp.robot_collision_penalty,
+        weight=-5.0,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "agent_ids": DRONE_AGENT_IDS,
+            "collision_distance": COLLISION_DISTANCE,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+    robot_proximity = RewTerm(
+        func=mdp.robot_proximity_penalty,
+        weight=-1.0,
+        params={
+            "asset_cfg": SceneEntityCfg("{entity_name}"),
+            "agent_id": "{agent_id}",
+            "agent_ids": DRONE_AGENT_IDS,
+            "falloff_distance": ROBOT_PROXIMITY_DISTANCE,
+            "max_penalty": ROBOT_PROXIMITY_MAX_PENALTY,
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
     crash_penalty = RewTerm(
         func=mdp.crash_penalty,
         weight=-10.0,
@@ -988,6 +1038,8 @@ class PaperSwarmMappoStage1EnvCfg(PaperSwarmBaseMarlEnvCfg):
     decimation = 2
     events = Stage1EventsCfg()
     possible_agents = ["drone_0"]
+    initial_passive_drone_count = 1
+    initial_static_column_count = 0
     replay_enabled = False
 
     agent_groups = [
@@ -1017,6 +1069,8 @@ class PaperSwarmMappoStage2EnvCfg(PaperSwarmBaseMarlEnvCfg):
     from the Stage 1 checkpoint.
     """
 
+    initial_static_column_count = 0
+
     agent_groups = [
         AgentGroupCfg(
             name="drone",
@@ -1042,6 +1096,8 @@ class PaperSwarmMappoStage3EnvCfg(PaperSwarmBaseMarlEnvCfg):
     Mostly 8-drone episodes with medium-to-dense static obstacles.
     Hard-case collision/deadlock replay and strongest simple lab DR.
     """
+
+    initial_static_column_count = 0
 
     agent_groups = [
         AgentGroupCfg(
@@ -1138,6 +1194,10 @@ class PaperSwarmMappoStage1EvalCfg(PaperSwarmEvalEnvCfg):
 
     possible_agents = ["drone_0"]
     events = Stage1EventsCfg()
+    initial_passive_drone_count = NUM_DRONES - 1
+    initial_static_column_count = 0
+    eval_z_max: float = WORKSPACE_Z[1]
+    eval_min_separation: float = 1.0
     replay_enabled = False
 
     agent_groups = [
@@ -1168,6 +1228,8 @@ class PaperSwarmMappoStage3EvalCfg(PaperSwarmEvalEnvCfg):
     ``num_columns=10`` and no curriculum to suppress them).
     """
 
+    initial_static_column_count = STATIC_COLUMNS
+
     agent_groups = [
         AgentGroupCfg(
             name="drone",
@@ -1193,6 +1255,8 @@ class PaperSwarmMappoStage2EvalCfg(PaperSwarmEvalEnvCfg):
     Inherits recorder, shorter episodes, and eval workspace bounds.
     Matches Stage 2 observations/actions/rewards/terminations.
     """
+
+    initial_static_column_count = 0
 
     agent_groups = [
         AgentGroupCfg(

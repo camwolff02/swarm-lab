@@ -1,9 +1,10 @@
 """Minimal MAPPO wrapper that feeds policy observations (not centralized state) to the policy.
 
 SKRL's stock MAPPO passes ``states`` (from ``env.state()``) to both the policy and the
-value network.  In our task the policy input (86 dims) differs from the critic input
-(232 dims).  This thin subclass overrides ``act`` to inject ``observations`` into the
-policy's input dict so the attention encoder sees the correct 86-dim observation.
+value network.  In our task the ego-centric actor observation differs from the
+centralized critic state.  This thin subclass overrides ``act`` to inject
+``observations`` into the policy's input dict so the attention encoder sees the
+correct actor observation.
 """
 
 from __future__ import annotations
@@ -48,12 +49,47 @@ class PaperMAPPO(MAPPO):
         self._current_values = current_values
         return actions, outputs
 
+    def reset_for_transition(self) -> None:
+        """Reset model state for curriculum transition (Stage 1 → Stage 2).
+
+        Resets value function weights, log_std, preprocessor statistics,
+        and optimiser / scheduler state.
+        """
+        first_uid = self.possible_agents[0]
+        # Reset value function weights if shared across agents.
+        value = self.values[first_uid]
+        net = getattr(value, "net", None)
+        if net is not None:
+            for module in net.modules():
+                if hasattr(module, "reset_parameters"):
+                    module.reset_parameters()  # type: ignore[operator]
+        # Reset log_std to the initial config value.
+        policy = self.policies[first_uid]
+        log_std = getattr(policy, "_initial_log_std", None)
+        log_std_param = getattr(policy, "log_std_parameter", None)
+        if log_std is not None and log_std_param is not None:
+            log_std_param.data.fill_(log_std)
+        # Reset preprocessor running statistics.
+        for uid in self.possible_agents:
+            for key in ("_observation_preprocessor", "_state_preprocessor", "_value_preprocessor"):
+                scaler = getattr(self, key, {}).get(uid, None)
+                if scaler is not None and hasattr(scaler, "running_mean"):
+                    scaler.running_mean.zero_()
+                    scaler.running_variance.fill_(1.0)
+                    scaler.current_count.fill_(1.0)
+        # Reset optimiser and scheduler.
+        self._reset_optimizer()
+
     def reset_optimizer_state(self) -> None:
-        """Reset optimiser / scheduler state for all agents to facilitate curriculum transfer.
+        """Reset optimiser / scheduler state for all agents.
 
         Recreates the Adam optimiser and any configured learning-rate scheduler
         from scratch while leaving model weights and preprocessors untouched.
         """
+        self._reset_optimizer()
+
+    def _reset_optimizer(self) -> None:
+        """Shared optimizer reset logic used by both reset methods."""
         for uid in self.possible_agents:
             self.optimizers[uid] = torch.optim.Adam(
                 itertools.chain(self.policies[uid].parameters(), self.values[uid].parameters()),

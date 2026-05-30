@@ -13,9 +13,7 @@ from __future__ import annotations
 
 import torch
 
-from isaaclab.utils.math import sample_uniform, quat_from_euler_xyz
-
-from isaaclab.managers import SceneEntityCfg
+from isaaclab.utils.math import quat_from_euler_xyz, sample_uniform
 
 
 def reset_drone_root_state_uniform(
@@ -78,6 +76,8 @@ def reset_drone_root_state_uniform(
         env_ids=env_ids,
         passive_drone_ids=passive_drone_ids,
         agent_ids=agent_ids,
+        active_positions=sampled_positions,
+        active_mask=mask[env_ids],
         columns=columns,
         column_radius=column_radius,
         column_safe_distance=column_safe_distance,
@@ -86,10 +86,12 @@ def reset_drone_root_state_uniform(
     hover_positions = getattr(root, "_passive_drone_hover_positions", None)
     if hover_positions is not None:
         passive_to_idx = {aid: i for i, aid in enumerate(passive_drone_ids)}
+    passive_mask = _active_mask(env, agent_ids, getattr(root, "_passive_mask_key", "passive_drones"))
 
     for i, agent_id in enumerate(agent_ids):
         is_active = mask[env_ids, i]
-        is_passive = agent_id in (passive_to_idx if hover_positions is not None else {})
+        is_passive_eligible = agent_id in (passive_to_idx if hover_positions is not None else {})
+        is_passive_active = passive_mask[env_ids, i] if is_passive_eligible else torch.zeros_like(is_active)
 
         asset = env.scene[agent_id]
         root_pose = asset.data.default_root_pose.torch[env_ids].clone()
@@ -108,24 +110,27 @@ def reset_drone_root_state_uniform(
             root_velocity[is_active, :3] = lin_vel
             root_velocity[is_active, 3:6] = ang_vel
 
-        if hover_positions is not None and is_passive:
+        if hover_positions is not None and is_passive_active.any():
             passive_idx = passive_to_idx[agent_id]
             pos_yaw = hover_positions[env_ids, passive_idx]
-            root_pose[:, :3] = pos_yaw[:, :3] + env.scene.env_origins[env_ids]
-            root_pose[:, 3:7] = quat_from_euler_xyz(
-                torch.zeros(len(env_ids), device=env.device),
-                torch.zeros(len(env_ids), device=env.device),
-                pos_yaw[:, 3],
+            root_pose[is_passive_active, :3] = pos_yaw[is_passive_active, :3] + env.scene.env_origins[
+                env_ids[is_passive_active]
+            ]
+            root_pose[is_passive_active, 3:7] = quat_from_euler_xyz(
+                torch.zeros(int(is_passive_active.sum().item()), device=env.device),
+                torch.zeros(int(is_passive_active.sum().item()), device=env.device),
+                pos_yaw[is_passive_active, 3],
             )
 
         # Spread genuinely inactive drones (not active, not passive) in a grid
         GRID_SPACING = 1.0
         GRID_COLS = 3
-        if i > 0 and not is_active.any() and not is_passive:
+        is_inactive = ~is_active & ~is_passive_active
+        if i > 0 and is_inactive.any():
             gx = ((i - 1) % GRID_COLS) * GRID_SPACING
             gy = ((i - 1) // GRID_COLS) * GRID_SPACING
-            root_pose[:, :3] = (
-                env.scene.env_origins[env_ids] + torch.tensor((gx, gy, 0.05), device=env.device)
+            root_pose[is_inactive, :3] = (
+                env.scene.env_origins[env_ids[is_inactive]] + torch.tensor((gx, gy, 0.05), device=env.device)
             )
 
         asset.write_root_pose_to_sim_index(root_pose=root_pose, env_ids=env_ids)
@@ -140,6 +145,8 @@ def _sample_passive_hover_positions(
     env_ids: torch.Tensor,
     passive_drone_ids: list[str],
     agent_ids: list[str],
+    active_positions: torch.Tensor | None = None,
+    active_mask: torch.Tensor | None = None,
     columns: torch.Tensor | None = None,
     column_radius: float = 0.15,
     column_safe_distance: float = 0.6,
@@ -154,6 +161,8 @@ def _sample_passive_hover_positions(
         env_ids: Environment indices to sample for.
         passive_drone_ids: List of passive drone agent IDs.
         agent_ids: All drone agent IDs (needed for position indexing).
+        active_positions: Active-agent sampled positions [m], shape (num_envs, num_agents, 3).
+        active_mask: Active-agent mask, shape (num_envs, num_agents).
         columns: Optional column positions tensor ``(num_envs, num_cols, 3)``.
         column_radius: Column radius for safe sampling [m].
         column_safe_distance: Safe distance from columns [m].
@@ -190,6 +199,13 @@ def _sample_passive_hover_positions(
             cand_xy = candidates[:, :, :2]
             dists = torch.cdist(cand_xy, prev_xy)
             valid = valid & (dists.min(dim=-1).values >= min_separation)
+
+        if active_positions is not None and active_mask is not None and active_mask.any():
+            cand_xy = candidates[:, :, :2]
+            active_xy = active_positions[:, :, :2]
+            dists = torch.cdist(cand_xy, active_xy)
+            clear = (dists >= min_separation) | ~active_mask[:, None, :]
+            valid = valid & clear.all(dim=-1)
 
         env_columns = columns[env_ids] if columns is not None else None
         if env_columns is not None and env_columns.shape[1] > 0:

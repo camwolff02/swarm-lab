@@ -129,7 +129,7 @@ class InitialStateCheckRecorder(RecorderTerm):
     - ``all_upright``: all active drone quaternions have |w| ≈ 1
     - ``all_in_bounds``: all active drones within configured XY/Z workspace
     - ``all_separated``: pairwise separation >= configured minimum
-    - ``inactive_parked``: inactive drones are at z ≈ -10
+    - ``inactive_parked``: inactive drones are parked near the ground plane
 
     Configuration is read from ``self._env`` attributes set by the
     :class:`PaperSwarmEvalEnvCfg`.
@@ -151,18 +151,28 @@ class InitialStateCheckRecorder(RecorderTerm):
         possible_agents = root_env.possible_agents
         passive_drone_ids = getattr(root_env, "_passive_drone_ids", [])
         all_agent_ids = list(possible_agents) + [aid for aid in passive_drone_ids if aid not in possible_agents]
+        all_drone_ids = [f"drone_{i}" for i in range(8)]
         num_envs = root_env.num_envs
         device = root_env.device
 
-        xy_bound = float(getattr(root_env, "eval_xy_bound", 1.5))
-        z_min = float(getattr(root_env, "eval_z_min", 1.0))
-        z_max = float(getattr(root_env, "eval_z_max", 1.5))
-        min_sep = float(getattr(root_env, "eval_min_separation", 2.0))
+        cfg = getattr(root_env, "cfg", None)
+        xy_bound = float(getattr(root_env, "eval_xy_bound", getattr(cfg, "eval_xy_bound", 1.5)))
+        z_min = float(getattr(root_env, "eval_z_min", getattr(cfg, "eval_z_min", 1.0)))
+        z_max = float(getattr(root_env, "eval_z_max", getattr(cfg, "eval_z_max", 1.5)))
+        min_sep = float(getattr(root_env, "eval_min_separation", getattr(cfg, "eval_min_separation", 2.0)))
 
         all_upright = torch.ones(num_envs, dtype=torch.bool, device=device)
         all_in_bounds = torch.ones(num_envs, dtype=torch.bool, device=device)
         all_separated = torch.ones(num_envs, dtype=torch.bool, device=device)
         inactive_parked = torch.ones(num_envs, dtype=torch.bool, device=device)
+        active_drone_count = torch.zeros(num_envs, dtype=torch.float32, device=device)
+        passive_drone_count = torch.zeros(num_envs, dtype=torch.float32, device=device)
+        max_abs_xy = torch.zeros(num_envs, dtype=torch.float32, device=device)
+        min_pairwise_separation = torch.full((num_envs,), float("inf"), dtype=torch.float32, device=device)
+
+        active_mask = getattr(root_env, "active_drones", None)
+        passive_mask = getattr(root_env, "_passive_mask_key", "passive_drones")
+        passive_mask = getattr(root_env, passive_mask, None)
 
         for e in range(num_envs):
             pos_local = {}
@@ -172,8 +182,16 @@ class InitialStateCheckRecorder(RecorderTerm):
                 quat = asset.root_quat_w.torch[e]
                 pos = pos_w - env_origins[e]
 
-                is_active = pos[2] > 0.0
+                agent_index = all_drone_ids.index(agent_id)
+                is_learning_active = agent_id in possible_agents and (
+                    active_mask is None or bool(active_mask[e, agent_index].item())
+                )
+                is_passive_active = passive_mask is not None and bool(passive_mask[e, agent_index].item())
+                is_active = is_learning_active or is_passive_active
                 if is_active:
+                    active_drone_count[e] += 1.0
+                    if is_passive_active:
+                        passive_drone_count[e] += 1.0
                     if abs(quat.norm() - 1.0) > 0.01:
                         all_upright[e] = False
                     if abs(pos[0]) > xy_bound or abs(pos[1]) > xy_bound:
@@ -181,23 +199,54 @@ class InitialStateCheckRecorder(RecorderTerm):
                     if pos[2] < z_min or pos[2] > z_max:
                         all_in_bounds[e] = False
                     pos_local[agent_id] = pos[:2]
+                    max_abs_xy[e] = torch.maximum(max_abs_xy[e], torch.max(torch.abs(pos[:2])))
                 else:
-                    if abs(pos[2] - (-10.0)) > 1.0:
+                    if abs(pos[2] - 0.05) > 0.2:
                         inactive_parked[e] = False
 
             # Pairwise separation
             agents = list(pos_local.keys())
             for j in range(len(agents)):
                 for k in range(j + 1, len(agents)):
-                    if torch.norm(pos_local[agents[j]] - pos_local[agents[k]]) < min_sep:
+                    distance = torch.norm(pos_local[agents[j]] - pos_local[agents[k]])
+                    min_pairwise_separation[e] = torch.minimum(min_pairwise_separation[e], distance)
+                    if distance < min_sep:
                         all_separated[e] = False
                         break
+            if len(agents) < 2:
+                min_pairwise_separation[e] = 0.0
 
         return "initial_state", {
             "all_upright": all_upright.float(),
             "all_in_bounds": all_in_bounds.float(),
             "all_separated": all_separated.float(),
             "inactive_parked": inactive_parked.float(),
+            "active_drone_count": active_drone_count,
+            "passive_drone_count": passive_drone_count,
+            "max_abs_xy": max_abs_xy,
+            "min_pairwise_separation": min_pairwise_separation,
+        }
+
+
+class StaticColumnRecorder(RecorderTerm):
+    """Records static obstacle column positions and active-column counts."""
+
+    def record_pre_step(self):
+        """Record static column state before physics step."""
+        env_view = self._env
+        root_env = env_view.root if hasattr(env_view, "root") else env_view
+        columns = getattr(root_env, "column_positions", None)
+        if columns is None:
+            num_envs = root_env.num_envs
+            columns = torch.empty(num_envs, 0, 3, device=root_env.device)
+            active_count = torch.zeros(num_envs, device=root_env.device)
+        else:
+            active = torch.linalg.norm(columns[:, :, :2], dim=-1) < 100.0
+            active_count = active.sum(dim=-1).float()
+
+        return "static_columns", {
+            "positions": columns,
+            "active_count": active_count,
         }
 
 
@@ -217,6 +266,11 @@ class InitialStateCheckRecorderCfg(RecorderTermCfg):
 
 
 @configclass
+class StaticColumnRecorderCfg(RecorderTermCfg):
+    class_type: type = StaticColumnRecorder
+
+
+@configclass
 class PaperSwarmRecorderManagerCfg(RecorderManagerBaseCfg):
     """Recorder manager config for paper_swarm debugging."""
 
@@ -226,3 +280,4 @@ class PaperSwarmRecorderManagerCfg(RecorderManagerBaseCfg):
     record_drone_state = DroneStateRecorderCfg()
     record_goal_distance = GoalDistanceRecorderCfg()
     check_initial_state = InitialStateCheckRecorderCfg()
+    record_static_columns = StaticColumnRecorderCfg()

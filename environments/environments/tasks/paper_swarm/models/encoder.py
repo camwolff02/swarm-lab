@@ -26,11 +26,13 @@ class PaperAttentionEncoderCfg:
         [sdf: static_sdf_dim] [goal: goal_obs_dim]
 
     where the *self* block ends with the active-flag and last-action aux features.
+    The actor observation is ego-centric and intentionally excludes absolute
+    drone identity so one learned policy can control any homogeneous drone.
     """
 
     num_drones: int = 8
     max_neighbors: int = 7
-    self_obs_dim: int = 34
+    self_obs_dim: int = 26
     other_obs_dim: int = 6
     static_sdf_dim: int = 9
     goal_obs_dim: int = 6

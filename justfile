@@ -1,7 +1,7 @@
 set shell := ["bash", "-uc"]
 
 formation_log_root := "logs/skrl/formation_swarm"
-formation_task := "Isaac-Formation-Swarm-Crazyflie-v0"
+formation_task := "Isaac-Formation-Swarm-MAPPO-v0"
 formation_algorithm := "MAPPO"
 
 _latest-formation-checkpoint:

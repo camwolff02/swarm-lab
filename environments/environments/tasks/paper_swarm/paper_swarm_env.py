@@ -35,6 +35,13 @@ class PaperSwarmMarlEnv(ManagerBasedMarlEnv):
         self._passive_min_collective: float = 0.0
         self._passive_max_collective: float = 0.0
         self._passive_mask_key: str = "passive_drones"
+        self._paper_swarm_num_static_columns = int(getattr(cfg, "initial_static_column_count", 0))
+        self._paper_swarm_workspace_xy = getattr(cfg, "initial_workspace_xy", (-4.0, 4.0))
+        self._paper_swarm_workspace_z = getattr(cfg, "initial_workspace_z", (1.0, 3.0))
+        self._paper_swarm_spawn_safe_sampling_prob = float(getattr(cfg, "initial_safe_sampling_prob", 1.0))
+        self._paper_swarm_target_safe_sampling_prob = float(getattr(cfg, "initial_safe_sampling_prob", 1.0))
+        self._paper_swarm_spawn_min_separation = float(getattr(cfg, "initial_spawn_min_separation", 2.0))
+        self._paper_swarm_target_min_separation = float(getattr(cfg, "initial_target_min_separation", 2.0))
         super().__init__(cfg=cfg, render_mode=render_mode, **kwargs)
         self._setup_replay()
         self._setup_passive_drone_control()
@@ -75,8 +82,8 @@ class PaperSwarmMarlEnv(ManagerBasedMarlEnv):
         from isaaclab_contrib.controllers.lee_position_control_cfg import LeePosControllerCfg
 
         lee_cfg = LeePosControllerCfg(
-            K_rot_range=((1.85, 1.85, 0.4), (1.85, 1.85, 0.4)),
-            K_angvel_range=((0.5, 0.5, 0.09), (0.5, 0.5, 0.09)),
+            K_rot_range=((2.0e-4, 2.0e-4, 1.0e-4), (2.0e-4, 2.0e-4, 1.0e-4)),
+            K_angvel_range=((1.0e-4, 1.0e-4, 5.0e-5), (1.0e-4, 1.0e-4, 5.0e-5)),
             max_inclination_angle_rad=0.8,
             max_yaw_rate=1.0,
             K_pos_range=((3.0, 3.0, 2.0), (3.0, 3.0, 2.0)),
@@ -91,9 +98,7 @@ class PaperSwarmMarlEnv(ManagerBasedMarlEnv):
 
     def _init_passive_hover_positions(self) -> None:
         num_passive = len(self._passive_drone_ids)
-        self._passive_drone_hover_positions = torch.zeros(
-            self.num_envs, num_passive, 4, device=self.device
-        )
+        self._passive_drone_hover_positions = torch.zeros(self.num_envs, num_passive, 4, device=self.device)
 
     def _init_passive_wrench_params(self) -> None:
         first_asset = self.scene[self._passive_drone_ids[0]]
@@ -109,7 +114,9 @@ class PaperSwarmMarlEnv(ManagerBasedMarlEnv):
     def _init_passive_mask(self) -> None:
         all_drone_ids = [f"drone_{i}" for i in range(8)]
         passive_mask = torch.zeros(self.num_envs, len(all_drone_ids), device=self.device, dtype=torch.bool)
-        for agent_id in self._passive_drone_ids:
+        initial_count = int(getattr(self.cfg, "initial_passive_drone_count", len(self._passive_drone_ids)))
+        initial_count = max(0, min(len(self._passive_drone_ids), initial_count))
+        for agent_id in self._passive_drone_ids[:initial_count]:
             idx = all_drone_ids.index(agent_id)
             passive_mask[:, idx] = True
         setattr(self, self._passive_mask_key, passive_mask)
@@ -117,21 +124,30 @@ class PaperSwarmMarlEnv(ManagerBasedMarlEnv):
     def _apply_passive_drone_control(self) -> None:
         if not self._passive_drone_ids or len(self._passive_drone_ids) == 0:
             return
+        passive_mask = getattr(self, self._passive_mask_key, None)
+        all_drone_ids = [f"drone_{i}" for i in range(8)]
         for i, agent_id in enumerate(self._passive_drone_ids):
+            if passive_mask is not None:
+                agent_index = all_drone_ids.index(agent_id)
+                active = passive_mask[:, agent_index]
+                if not active.any():
+                    continue
+            else:
+                active = torch.ones(self.num_envs, device=self.device, dtype=torch.bool)
             controller = self._passive_controllers[agent_id]
             asset = self.scene[agent_id]
-            setpoint = self._passive_drone_hover_positions[:, i, :]
+            setpoint = self._passive_drone_hover_positions[:, i, :].clone()
+            setpoint[:, :3] += self.scene.env_origins
             wrench = controller.compute(setpoint)
             thrusts = self._wrench_to_motor_thrusts(wrench)
+            if not active.all():
+                thrusts = torch.where(active.unsqueeze(-1), thrusts, torch.zeros_like(thrusts))
             asset.set_thrust_target(thrusts, thruster_ids=self._passive_thruster_ids)
 
     def _wrench_to_motor_thrusts(self, wrench: torch.Tensor) -> torch.Tensor:
         collective = wrench[:, 2].clamp(self._passive_min_collective, self._passive_max_collective)
         motor_thrusts = (
-            (collective / self._passive_num_thrusters)
-            .unsqueeze(1)
-            .expand(-1, self._passive_num_thrusters)
-            .clone()
+            (collective / self._passive_num_thrusters).unsqueeze(1).expand(-1, self._passive_num_thrusters).clone()
         )
         rp_wrench = torch.zeros_like(wrench)
         rp_wrench[:, 3:5] = wrench[:, 3:5]
@@ -217,8 +233,10 @@ class PaperSwarmMarlEnv(ManagerBasedMarlEnv):
             active_columns = torch.linalg.norm(columns[:, :, :2], dim=-1) < 100.0
             dist_xy = torch.linalg.norm(positions[:, :, None, :2] - columns[:, None, :, :2], dim=-1)
             obstacle_now = (
-                dist_xy < float(getattr(self.cfg, "obstacle_collision_distance", 0.2))
-            ) & active.unsqueeze(-1) & active_columns.unsqueeze(1)
+                (dist_xy < float(getattr(self.cfg, "obstacle_collision_distance", 0.2)))
+                & active.unsqueeze(-1)
+                & active_columns.unsqueeze(1)
+            )
             obstacle_now = obstacle_now.any(dim=-1)
 
         self._paper_swarm_robot_collision_events = robot_now & ~self._paper_swarm_robot_collision_now
@@ -229,10 +247,9 @@ class PaperSwarmMarlEnv(ManagerBasedMarlEnv):
     def _record_replay_state(self) -> None:
         assert self._paper_swarm_replay is not None
         snapshot = self._make_replay_snapshot()
-        collision_envs = (
-            self._paper_swarm_robot_collision_events.any(dim=1)
-            | self._paper_swarm_obstacle_collision_events.any(dim=1)
-        )
+        collision_envs = self._paper_swarm_robot_collision_events.any(
+            dim=1
+        ) | self._paper_swarm_obstacle_collision_events.any(dim=1)
         grace_steps = max(0, round(float(self.cfg.collision_grace_period_s) / self.step_dt))
         collision_envs &= self.episode_length_buf >= grace_steps
         env_ids = collision_envs.nonzero(as_tuple=False).squeeze(-1)

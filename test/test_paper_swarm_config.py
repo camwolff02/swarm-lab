@@ -12,19 +12,19 @@ instance.
 
 from __future__ import annotations
 
-import gymnasium as gym
-import torch
-import pytest
-
 from types import SimpleNamespace
 
+import gymnasium as gym
+import torch
+from environments.envs.manager_based_marl_env_cfg import ManagerBasedMarlEnvCfg
 from environments.tasks.paper_swarm import (  # noqa: F401 — registers Gym ids
-    paper_swarm_env_cfg as env_cfg_module,
     paper_swarm_env,
 )
+from environments.tasks.paper_swarm import (
+    paper_swarm_env_cfg as env_cfg_module,
+)
 from environments.tasks.paper_swarm.mdp import observations as obs_module
-from environments.envs.manager_based_marl_env_cfg import ManagerBasedMarlEnvCfg
-
+from environments.tasks.paper_swarm.models import PaperAttentionEncoderCfg
 
 # -----------------------------------------------------------------------------
 # Gym registration
@@ -87,21 +87,37 @@ def test_mappo_cfg_uses_centralized_critic() -> None:
     assert observations.critic.__class__.__name__ == "CentralizedCriticCfg"
 
 
+def test_policy_observation_is_ego_centric_without_drone_identity() -> None:
+    policy = env_cfg_module.ObservationsCfg.PolicyCfg()
+    assert not hasattr(policy, "drone_identity")
+    assert PaperAttentionEncoderCfg(max_neighbors=2).observation_dim == 53
+
+
 def test_stage1_cfg_has_single_agent() -> None:
     cfg = env_cfg_module.PaperSwarmMappoStage1EnvCfg()
     assert cfg.possible_agents == ["drone_0"]
     assert cfg.agent_groups[0].count == 1
     assert cfg.scene.num_envs == 8192
+    assert cfg.initial_passive_drone_count == 1
+    assert cfg.initial_static_column_count == 0
+    active_count_params = cfg.agent_groups[0].agent_cfg.curriculum.active_agent_count.params
+    assert active_count_params["min_agents"] == 1
+    assert active_count_params["max_agents"] == 1
+    rewards = cfg.agent_groups[0].agent_cfg.rewards
+    assert rewards.robot_collision.func is env_cfg_module.mdp.robot_collision_penalty
+    assert rewards.robot_proximity.func is env_cfg_module.mdp.robot_proximity_penalty
 
 
 def test_stage2_cfg_has_all_agents_no_obstacles() -> None:
     cfg = env_cfg_module.PaperSwarmMappoStage2EnvCfg()
     assert cfg.possible_agents == [f"drone_{i}" for i in range(8)]
+    assert cfg.initial_static_column_count == 0
 
 
 def test_stage3_cfg_has_all_agents_with_obstacles() -> None:
     cfg = env_cfg_module.PaperSwarmMappoStage3EnvCfg()
     assert cfg.possible_agents == [f"drone_{i}" for i in range(8)]
+    assert cfg.initial_static_column_count == 0
 
 
 def test_eval_cfg_has_recorder_and_fewer_envs() -> None:
@@ -215,6 +231,55 @@ def test_collision_reward_returns_correct_shape() -> None:
         env, _fake_scene_entity_cfg(), "drone_0", [f"drone_{i}" for i in range(4)], 0.5, 0.12, "active_drones"
     )
     assert result.shape == (4,)
+
+
+def test_robot_collision_penalty_counts_passive_drones() -> None:
+    from environments.tasks.paper_swarm.mdp.rewards import robot_collision_penalty
+
+    env = _fake_env_with_full_scene(2, 4)
+    env.step_dt = 0.02
+    env.active_drones = torch.zeros(2, 4, dtype=torch.bool)
+    env.active_drones[:, 0] = True
+    env.passive_drones = torch.zeros(2, 4, dtype=torch.bool)
+    env.passive_drones[:, 1] = True
+    env.scene["drone_0"].data.root_pos_w.torch_raw[:] = torch.tensor([[0.0, 0.0, 1.0], [0.0, 0.0, 1.0]])
+    env.scene["drone_1"].data.root_pos_w.torch_raw[:] = torch.tensor([[0.05, 0.0, 1.0], [1.0, 0.0, 1.0]])
+
+    result = robot_collision_penalty(
+        env,
+        _fake_scene_entity_cfg(),
+        "drone_0",
+        [f"drone_{i}" for i in range(4)],
+        collision_distance=0.12,
+        mask_key="active_drones",
+    )
+
+    assert result.tolist() == [1.0, 0.0]
+
+
+def test_robot_proximity_penalty_matches_linear_falloff_and_step_dt() -> None:
+    from environments.tasks.paper_swarm.mdp.rewards import robot_proximity_penalty
+
+    env = _fake_env_with_full_scene(1, 4)
+    env.step_dt = 0.02
+    env.active_drones = torch.zeros(1, 4, dtype=torch.bool)
+    env.active_drones[:, 0] = True
+    env.passive_drones = torch.zeros(1, 4, dtype=torch.bool)
+    env.passive_drones[:, 1] = True
+    env.scene["drone_0"].data.root_pos_w.torch_raw[:] = torch.tensor([[0.0, 0.0, 1.0]])
+    env.scene["drone_1"].data.root_pos_w.torch_raw[:] = torch.tensor([[0.25, 0.0, 1.0]])
+
+    result = robot_proximity_penalty(
+        env,
+        _fake_scene_entity_cfg(),
+        "drone_0",
+        [f"drone_{i}" for i in range(4)],
+        falloff_distance=0.5,
+        max_penalty=10.0,
+        mask_key="active_drones",
+    )
+
+    assert torch.allclose(result, torch.tensor([0.1]))
 
 
 def test_drone_out_of_bounds_shape() -> None:
@@ -344,7 +409,7 @@ def test_sample_positions_vectorized_shape() -> None:
     assert positions.shape == (num_envs, num_agents, 3)
     assert yaws.shape == (num_envs, num_agents)
     assert positions[0, 4:, :].eq(0.0).all()
-    assert (positions[:3, :4].abs().max() <= 4.0)
+    assert positions[:3, :4].abs().max() <= 4.0
 
 
 def test_sample_positions_min_separation() -> None:
@@ -381,8 +446,14 @@ def test_active_agent_count_curriculum_prefix() -> None:
     env.common_step_counter = 100_000
 
     active_agent_count_curriculum(
-        env, env_ids=None, agent_ids=[f"drone_{i}" for i in range(8)],
-        min_agents=2, max_agents=8, ramp_steps=200_000, mask_key="active_drones", selection="prefix",
+        env,
+        env_ids=None,
+        agent_ids=[f"drone_{i}" for i in range(8)],
+        min_agents=2,
+        max_agents=8,
+        ramp_steps=200_000,
+        mask_key="active_drones",
+        selection="prefix",
     )
     mask = getattr(env, "active_drones", None)
     assert mask is not None
@@ -403,8 +474,14 @@ def test_active_agent_count_ramp_end_reaches_max() -> None:
     env.common_step_counter = 300_000
 
     active_agent_count_curriculum(
-        env, env_ids=None, agent_ids=[f"drone_{i}" for i in range(8)],
-        min_agents=1, max_agents=8, ramp_steps=200_000, mask_key="active_drones", selection="prefix",
+        env,
+        env_ids=None,
+        agent_ids=[f"drone_{i}" for i in range(8)],
+        min_agents=1,
+        max_agents=8,
+        ramp_steps=200_000,
+        mask_key="active_drones",
+        selection="prefix",
     )
     assert int(env.extras["active_agent_count"]) == 8
 
@@ -413,21 +490,31 @@ def test_passive_drone_count_curriculum_ramp() -> None:
     from environments.tasks.paper_swarm.mdp.curriculums import passive_drone_count_curriculum
 
     env = _fake_env(4, 8)
+    env._passive_drone_ids = [f"drone_{i}" for i in range(1, 8)]
+    env._passive_mask_key = "passive_drones"
     env.common_step_counter = 75_000
 
     passive_drone_count_curriculum(env, env_ids=None, min_passive=1, max_passive=7, ramp_steps=150_000)
     assert getattr(env, "_paper_swarm_num_passive_active", None) == 4
     assert int(env.extras["passive_drone_count"]) == 4
+    assert env.passive_drones.shape == (4, 8)
+    assert env.passive_drones[:, 0].eq(False).all()
+    assert env.passive_drones[:, 1:5].eq(True).all()
+    assert env.passive_drones[:, 5:].eq(False).all()
 
 
 def test_passive_drone_count_curriculum_clamped() -> None:
     from environments.tasks.paper_swarm.mdp.curriculums import passive_drone_count_curriculum
 
     env = _fake_env(4, 8)
+    env._passive_drone_ids = [f"drone_{i}" for i in range(1, 8)]
+    env._passive_mask_key = "passive_drones"
     env.common_step_counter = 200_000
 
     passive_drone_count_curriculum(env, env_ids=None, min_passive=1, max_passive=7, ramp_steps=150_000)
     assert int(env.extras["passive_drone_count"]) == 7
+    assert env.passive_drones[:, 0].eq(False).all()
+    assert env.passive_drones[:, 1:].eq(True).all()
 
 
 def test_paper_swarm_task_curriculum_obstacles_and_randomization() -> None:
@@ -437,13 +524,21 @@ def test_paper_swarm_task_curriculum_obstacles_and_randomization() -> None:
     env.common_step_counter = 100_000
 
     paper_swarm_task_curriculum(
-        env, env_ids=None,
-        workspace_xy=(-4.0, 4.0), workspace_z=(1.0, 3.0), max_static_columns=10,
-        obstacle_start_step=50_000, obstacle_ramp_steps=250_000,
-        randomization_start_step=0, randomization_ramp_steps=200_000,
-        start_safe_sampling_prob=1.0, end_safe_sampling_prob=0.0,
-        start_min_separation=2.0, end_min_separation=0.0,
-        column_radius=0.15, column_safe_distance=0.6,
+        env,
+        env_ids=None,
+        workspace_xy=(-4.0, 4.0),
+        workspace_z=(1.0, 3.0),
+        max_static_columns=10,
+        obstacle_start_step=50_000,
+        obstacle_ramp_steps=250_000,
+        randomization_start_step=0,
+        randomization_ramp_steps=200_000,
+        start_safe_sampling_prob=1.0,
+        end_safe_sampling_prob=0.0,
+        start_min_separation=2.0,
+        end_min_separation=0.0,
+        column_radius=0.15,
+        column_safe_distance=0.6,
     )
     assert getattr(env, "_paper_swarm_num_static_columns", None) == 2
     assert getattr(env, "_paper_swarm_spawn_safe_sampling_prob", None) == 0.5
@@ -458,13 +553,21 @@ def test_paper_swarm_task_curriculum_full_obstacles() -> None:
     env.common_step_counter = 300_000
 
     paper_swarm_task_curriculum(
-        env, env_ids=None,
-        workspace_xy=(-4.0, 4.0), workspace_z=(1.0, 3.0), max_static_columns=6,
-        obstacle_start_step=50_000, obstacle_ramp_steps=250_000,
-        randomization_start_step=300_000, randomization_ramp_steps=100_000,
-        start_safe_sampling_prob=0.5, end_safe_sampling_prob=0.0,
-        start_min_separation=1.0, end_min_separation=0.0,
-        column_radius=0.15, column_safe_distance=0.6,
+        env,
+        env_ids=None,
+        workspace_xy=(-4.0, 4.0),
+        workspace_z=(1.0, 3.0),
+        max_static_columns=6,
+        obstacle_start_step=50_000,
+        obstacle_ramp_steps=250_000,
+        randomization_start_step=300_000,
+        randomization_ramp_steps=100_000,
+        start_safe_sampling_prob=0.5,
+        end_safe_sampling_prob=0.0,
+        start_min_separation=1.0,
+        end_min_separation=0.0,
+        column_radius=0.15,
+        column_safe_distance=0.6,
     )
     assert getattr(env, "_paper_swarm_num_static_columns", None) == 6
     assert getattr(env, "_paper_swarm_spawn_safe_sampling_prob", None) == 0.5
@@ -498,9 +601,14 @@ def test_expand_target_range_curriculum() -> None:
     env.command_manager.cfg = cmd_cfg
 
     result = expand_target_range_curriculum(
-        env, env_ids=None,
-        start_step=0, end_step=50_000,
-        start_xy=0.0, end_xy=1.5, start_z_delta=0.0, end_z_delta=0.5,
+        env,
+        env_ids=None,
+        start_step=0,
+        end_step=50_000,
+        start_xy=0.0,
+        end_xy=1.5,
+        start_z_delta=0.0,
+        end_z_delta=0.5,
     )
     assert result["frac"] == 0.5
     assert result["xy"] == 0.75
@@ -589,10 +697,10 @@ class _FakeCommandManager:
 
 class _FakeObservationManager:
     def __init__(self) -> None:
-        self.group_obs_dim = {"policy": (86,)}
+        self.group_obs_dim = {"policy": (53,)}
 
     def compute(self, update_history=None):
-        return {"policy": torch.zeros(4, 86)}
+        return {"policy": torch.zeros(4, 53)}
 
 
 class _FakeActionManager:
@@ -669,3 +777,41 @@ def _fake_scene_entity_cfg() -> SimpleNamespace:
     cfg = SimpleNamespace()
     cfg.name = "drone_0"
     return cfg
+
+
+def test_passive_drone_control_sends_world_frame_hover_setpoint() -> None:
+    class _FakeController:
+        def __init__(self) -> None:
+            self.command: torch.Tensor | None = None
+
+        def compute(self, command: torch.Tensor) -> torch.Tensor:
+            self.command = command.clone()
+            return torch.ones(command.shape[0], 6)
+
+    class _FakeAsset:
+        def set_thrust_target(self, thrusts: torch.Tensor, thruster_ids=None) -> None:
+            self.thrusts = thrusts
+            self.thruster_ids = thruster_ids
+
+    class _FakeScene(dict):
+        env_origins = torch.tensor([[10.0, -4.0, 0.5], [-3.0, 7.0, 1.0]])
+
+    env = SimpleNamespace()
+    controller = _FakeController()
+    asset = _FakeAsset()
+    env.scene = _FakeScene(drone_1=asset)
+    env._passive_drone_ids = ["drone_1"]
+    env._passive_controllers = {"drone_1": controller}
+    env._passive_drone_hover_positions = torch.tensor([[[1.0, 2.0, 3.0, 0.1]], [[4.0, 5.0, 6.0, -0.2]]])
+    env._passive_mask_key = "passive_drones"
+    env.passive_drones = torch.zeros(2, 8, dtype=torch.bool)
+    env.passive_drones[:, 1] = True
+    env._passive_thruster_ids = slice(None)
+    env._wrench_to_motor_thrusts = lambda wrench: wrench[:, :4]
+
+    paper_swarm_env.PaperSwarmMarlEnv._apply_passive_drone_control(env)
+
+    expected = torch.tensor([[11.0, -2.0, 3.5, 0.1], [1.0, 12.0, 7.0, -0.2]])
+    assert controller.command is not None
+    assert torch.allclose(controller.command, expected)
+    assert torch.all(asset.thrusts == 1.0)

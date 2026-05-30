@@ -82,6 +82,7 @@ def install_formation_swarm_runner_patch() -> None:
 
     _ORIGINAL_GENERATE_MODELS = Runner._generate_models
     _ORIGINAL_GENERATE_AGENT = Runner._generate_agent
+    _original_component = Runner._component
 
     def _patched_generate_models(self: Runner, env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model]]:
         if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME:
@@ -89,12 +90,16 @@ def install_formation_swarm_runner_patch() -> None:
         return _ORIGINAL_GENERATE_MODELS(self, env, cfg)
 
     def _patched_generate_agent(self: Runner, env: Any, cfg: dict[str, Any], models: dict[str, dict[str, Model]]):
-        if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME and cfg.get("agent", {}).get("class") == "MAPPO":
-            self._agent_class = FormationMAPPO
         return _ORIGINAL_GENERATE_AGENT(self, env, cfg, models)
+
+    def _patched_component(self: Runner, name: str):
+        if name.lower() == "mappo":
+            return FormationMAPPO
+        return _original_component(self, name)
 
     Runner._generate_models = _patched_generate_models
     Runner._generate_agent = _patched_generate_agent
+    Runner._component = _patched_component
     Runner._formation_swarm_patch = True
     _install_multi_agent_state_patch()
 

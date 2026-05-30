@@ -1,0 +1,2638 @@
+{
+  "/home/cam/Development/cpsquare/swarm-lab/docs/gen_ref_pages.py": {
+    "mtime": 1777778844.0744915,
+    "hash": "37ab1b6f2ef065f1f32f6dc46ff4ff1a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/docs/javascripts/mathjax.js": {
+    "mtime": 1777779251.8107173,
+    "hash": "aa4d2a20090380521440cc555c804151"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/gen_ref_pages.py": {
+    "mtime": 1777780689.1423292,
+    "hash": "37ab1b6f2ef065f1f32f6dc46ff4ff1a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/bundle.79ae519e.min.js": {
+    "mtime": 1777780689.1425304,
+    "hash": "70adeb0be4442f31d1abcf7b671d26dc"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/wordcut.js": {
+    "mtime": 1777780689.1431346,
+    "hash": "bba0d876ec8dcca1f4effced534f58f7"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/tinyseg.js": {
+    "mtime": 1777780689.1430454,
+    "hash": "982caada2fd97756b05b2cd1b8bf5f8a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.te.min.js": {
+    "mtime": 1777780689.1498213,
+    "hash": "5ea846981ba3c69844166791e58b3205"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.ro.min.js": {
+    "mtime": 1777780689.1493661,
+    "hash": "5b1587eb20faac2c53dd11ff84425df5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.hi.min.js": {
+    "mtime": 1777780689.1484952,
+    "hash": "987fe4e02a319b28840a259930c38e2d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.hy.min.js": {
+    "mtime": 1777780689.1486387,
+    "hash": "72621c38dc5df3cb135d3446772d22f6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.fi.min.js": {
+    "mtime": 1777780689.1482563,
+    "hash": "7e38b7aea539e5d70556e17c5eeeb27b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.zh.min.js": {
+    "mtime": 1777780689.150108,
+    "hash": "c389a3f75a63e2f82583e2299e71d24c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.no.min.js": {
+    "mtime": 1777780689.149218,
+    "hash": "5bbc2f5e8186556dbc1782063cfc8ee1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.jp.min.js": {
+    "mtime": 1777780689.1488583,
+    "hash": "92740e202ca53e306ab899d3c6477ce1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.ru.min.js": {
+    "mtime": 1777780689.1494403,
+    "hash": "b238b05d00dafa7ab40299c7b8f5f46b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.th.min.js": {
+    "mtime": 1777780689.149891,
+    "hash": "74bd1a28d804d58de3ab6ffb536e7f0a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.ar.min.js": {
+    "mtime": 1777780689.144696,
+    "hash": "1a64840641c8d52b800388a538b4ca35"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.da.min.js": {
+    "mtime": 1777780689.1447768,
+    "hash": "cb5c7deacc09fdef5ba23a484697a7c4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.du.min.js": {
+    "mtime": 1777780689.1449282,
+    "hash": "c3dd5e22a4bbd93cea8db0a189c75507"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.hu.min.js": {
+    "mtime": 1777780689.1485646,
+    "hash": "16ba822c6ba96ea3c46200b5a52e8e8f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.pt.min.js": {
+    "mtime": 1777780689.1492922,
+    "hash": "0f5a525b2bf38d1ec11cb67356773622"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.ta.min.js": {
+    "mtime": 1777780689.1497464,
+    "hash": "cdcbc4445530bf338f7410008621c5a3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.es.min.js": {
+    "mtime": 1777780689.1470747,
+    "hash": "e5353de9835f5a2ae223b9ca84042458"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.kn.min.js": {
+    "mtime": 1777780689.1489275,
+    "hash": "52e5ec6c79e8607d8a4d287cffd5d0b3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.tr.min.js": {
+    "mtime": 1777780689.1499615,
+    "hash": "c64da4ee31851fbae9eecb6d3c328930"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.vi.min.js": {
+    "mtime": 1777780689.1500387,
+    "hash": "6f44534ba60b0ee9efab689d05e9093d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.he.min.js": {
+    "mtime": 1777780689.1484218,
+    "hash": "652294dbd7c18736f8bab6165da5c868"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.sa.min.js": {
+    "mtime": 1777780689.1495152,
+    "hash": "2a9731e42ec88940a7d57282ff20b304"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.it.min.js": {
+    "mtime": 1777780689.1487079,
+    "hash": "498452a1930fe4528d960aae4f716c7c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.de.min.js": {
+    "mtime": 1777780689.1448572,
+    "hash": "d8ad86c7d3f64f0a2f933a6af0d9bb90"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.el.min.js": {
+    "mtime": 1777780689.1449988,
+    "hash": "e16237c91ffdd50e5caf2cda98ce763d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.stemmer.support.min.js": {
+    "mtime": 1777780689.149588,
+    "hash": "f58cd5cb3aceec05fa133d8e47ac8b66"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.ko.min.js": {
+    "mtime": 1777780689.1489985,
+    "hash": "785bb0c4e6c0fb12917b39c2b7f99a0a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.nl.min.js": {
+    "mtime": 1777780689.1491427,
+    "hash": "3461b858ef55ad5fa276854c535cbae3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.multi.min.js": {
+    "mtime": 1777780689.149073,
+    "hash": "f58ed4a6a8909ca5e997d9c14bd564f6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.ja.min.js": {
+    "mtime": 1777780689.1487818,
+    "hash": "5623d7b1d52549da7ef6fcdff14b31f4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.sv.min.js": {
+    "mtime": 1777780689.1496713,
+    "hash": "2c22035941f0d81181afb599dc66bf4d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/lunr/min/lunr.fr.min.js": {
+    "mtime": 1777780689.1483414,
+    "hash": "fa552c71d8b6df7524f1faaa5ebc8501"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/javascripts/workers/search.2c215733.min.js": {
+    "mtime": 1777780689.1502042,
+    "hash": "185b93ebc008f99370eccd9274d04629"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/javascripts/mathjax.js": {
+    "mtime": 1777780689.1508057,
+    "hash": "aa4d2a20090380521440cc555c804151"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/__init__.py": {
+    "mtime": 1777064630.1786475,
+    "hash": "7ea4fcae3fa8565ce969f65a943c4337"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/envs/manager_based_marl_env_cfg.py": {
+    "mtime": 1779663280.0710247,
+    "hash": "83be20a2e744a513f7a28e9a28c7bab3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/envs/manager_based_ma_env.py": {
+    "mtime": 1779930425.3793652,
+    "hash": "9decba149d30b7f8b9242c0afe9fbcd6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/envs/manager_based_ma_env_cfg.py": {
+    "mtime": 1779663337.8990452,
+    "hash": "522b42e2ef29c400c2ff614f6d0a92e9"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/envs/manager_based_marl_env.py": {
+    "mtime": 1779930441.4934769,
+    "hash": "b7ade204a0461265f8260c6aafa910a7"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/envs/__init__.py": {
+    "mtime": 1779663280.2540247,
+    "hash": "5d74b40805c0163e063461b32a336cfb"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/__init__.py": {
+    "mtime": 1779945494.7828894,
+    "hash": "19e2fd975be3331d39a35500187210d5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/env_cfg.py": {
+    "mtime": 1779174239.8322504,
+    "hash": "3a4cf063bb2dfb9e0fee675f897d7c14"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/env.py": {
+    "mtime": 1779175158.1482687,
+    "hash": "a6662daba4c6c8cd478a34d6501cc346"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/formation_marl_env.py": {
+    "mtime": 1779949597.6420164,
+    "hash": "3b00bf816624990654f67725d61d4d8a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/paper_spec.py": {
+    "mtime": 1779948578.1461349,
+    "hash": "4eac9fa1d11d1d9bb00240b5dbc1f9ec"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/formation_marl_env_cfg.py": {
+    "mtime": 1779948687.1638806,
+    "hash": "664463c2f7e7125d13136fdc0c3f0425"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/__init__.py": {
+    "mtime": 1779948701.8779807,
+    "hash": "41a6c5effd5e37f4f3fb51ff48c37cf8"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/models/encoder.py": {
+    "mtime": 1778463027.9530573,
+    "hash": "d926a45ce5ac377f81df405848028e86"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/models/skrl_models.py": {
+    "mtime": 1780100704.3320663,
+    "hash": "84e6c3580f2bbc0c3d6a88edfe1211a1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/models/__init__.py": {
+    "mtime": 1777687801.0597966,
+    "hash": "bcb544d16ecbd9f1119aee8a79a2b37a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/mdp/observations.py": {
+    "mtime": 1780100704.3320663,
+    "hash": "ba9fa8f3a1a614f671d701404c892ae1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/mdp/events.py": {
+    "mtime": 1779945285.2554755,
+    "hash": "e1dc0b873febc1ac6584d09390da983f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/mdp/curriculums.py": {
+    "mtime": 1779945304.0596066,
+    "hash": "b9680066f24aa5c6eb7e588a9d2d636c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/mdp/rewards.py": {
+    "mtime": 1779945716.875304,
+    "hash": "9af4795c74a8a18b063bac3c92e0f34e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/mdp/terminations.py": {
+    "mtime": 1779945255.7732682,
+    "hash": "202905faa9c8f95edf06e0a0b2d1b8bc"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/mdp/__init__.py": {
+    "mtime": 1779945125.5213218,
+    "hash": "d8c74308f41c053e5aa6861bf4fb85a8"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/agents/shared_mappo.py": {
+    "mtime": 1780100505.5767262,
+    "hash": "e48b7efa81da9ff2dcbb7ab78df6d369"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/agents/runner.py": {
+    "mtime": 1780111561.6296031,
+    "hash": "2dfe6e836140b798964facc260212c4f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/agents/__init__.py": {
+    "mtime": 1777687849.9919693,
+    "hash": "cefc10678c1d5d19e45cfd31bc7b1699"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/paper_swarm_env.py": {
+    "mtime": 1780184473.0830445,
+    "hash": "78583f47e0c6a36409763d639323c61f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/paper_swarm_recorders.py": {
+    "mtime": 1780184846.2860806,
+    "hash": "c7e502f1ac95cf3e956e723a5f7f39ac"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/__init__.py": {
+    "mtime": 1780081983.2595184,
+    "hash": "d76116cbd889f03bbed10c49a333272e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/paper_swarm_env_cfg.py": {
+    "mtime": 1780184485.9690762,
+    "hash": "0c07d8ba58e3c3bb98da3c46154cfe7e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/models/encoder.py": {
+    "mtime": 1780180332.7700143,
+    "hash": "e568a4fb8f1af95b4b53a507437049b0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/models/skrl_models.py": {
+    "mtime": 1780180300.8479986,
+    "hash": "9b4c6b1aba7af45a2c6dac4f92329051"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/models/__init__.py": {
+    "mtime": 1779584367.5504904,
+    "hash": "7f28bc8561e86b64ffe1f1dc0d30b8a5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/mdp/observations.py": {
+    "mtime": 1779922432.3147876,
+    "hash": "4341910e5c41b76c3bde4cd43e130704"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/mdp/events.py": {
+    "mtime": 1780181214.0018175,
+    "hash": "c332459c5038ccf7ec89a3d863fd600d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/mdp/curriculums.py": {
+    "mtime": 1780181174.001703,
+    "hash": "e6594399c59121aba0d99a3ada0a8c8b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/mdp/rewards.py": {
+    "mtime": 1780181652.8811553,
+    "hash": "55fafb526505bc4186ad21fd8993bdef"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/mdp/terminations.py": {
+    "mtime": 1779932944.3322034,
+    "hash": "420c13265c85dc6077e8440088f87ca8"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/mdp/commands.py": {
+    "mtime": 1779932951.1962583,
+    "hash": "c6eb732de6089cf345ba2a3577750017"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/mdp/__init__.py": {
+    "mtime": 1779680286.0678813,
+    "hash": "3d58bfd03d3a76292035e8ea84d3cb57"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/agents/shared_mappo.py": {
+    "mtime": 1780180300.9769988,
+    "hash": "e8c434beeb2077652aeab6e10a3cec5b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/agents/runner.py": {
+    "mtime": 1780018466.0280058,
+    "hash": "843ab0cb1d29f53e089fe01eb3542ec1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/agents/__init__.py": {
+    "mtime": 1779667131.7453492,
+    "hash": "8866ac0fe92273ae07befb8b18d71b6f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/zero_agent.py": {
+    "mtime": 1777773414.4211047,
+    "hash": "dbee6f3272d5bd331039a2a76339e922"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/random_agent.py": {
+    "mtime": 1777773414.4211047,
+    "hash": "ab5a695e98e53ef87d1d89cd1bd600dc"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/list_envs.py": {
+    "mtime": 1777773414.4211047,
+    "hash": "3ee39e12d513576b0084132c45e04218"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/rsl_rl/cli_args.py": {
+    "mtime": 1777778874.974584,
+    "hash": "535381dd4d3b2304ba5a2cb1f4cb97e8"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/rsl_rl/train.py": {
+    "mtime": 1777064630.1886613,
+    "hash": "9c29a2a5f035ee8443898b14e954cb7f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/rsl_rl/play.py": {
+    "mtime": 1777080801.8588161,
+    "hash": "2b9650dea2ac768aa2be981772a5468a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/analysis/analyze_paper_swarm_eval.py": {
+    "mtime": 1780077928.83259,
+    "hash": "7ad9f03efa75fc8f42ac3960cede6a2c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/analysis/probe_env.py": {
+    "mtime": 1780181816.7996805,
+    "hash": "56b96f59fbff3f2a5d3a46e645f09472"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/isaaclab_sitecustomize/sitecustomize.py": {
+    "mtime": 1779569126.9959748,
+    "hash": "5624d33c4193a1a1aa176626d449b6fc"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/ros2/run_agent.py": {
+    "mtime": 1777773513.7774513,
+    "hash": "7ea8726554772fe24d83c8fd07b79de4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/ros2/run_env.py": {
+    "mtime": 1777064630.1907754,
+    "hash": "a25d87163a3aa26a0bf45ff467624b3d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/skrl/train.py": {
+    "mtime": 1780174294.8587894,
+    "hash": "8ec78e47926700c023f56d337c397996"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/skrl/play.py": {
+    "mtime": 1779736345.9355013,
+    "hash": "47fd6b11ba13766815055298e77d33ce"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/test/conftest.py": {
+    "mtime": 1777064630.14906,
+    "hash": "f657003007911d3365ac43ae973629d2"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/test/test_quad_swarm_task_config.py": {
+    "mtime": 1777332249.8407075,
+    "hash": "6456b46b7456a4f4c5e00bb12a7e9856"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/test/test_lab_2_bridge_agent.py": {
+    "mtime": 1777064630.1509025,
+    "hash": "03fff3a977b6e202a33f0a5a3154543f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/test/test_paper_swarm_config.py": {
+    "mtime": 1780184494.3110967,
+    "hash": "196272051fff4bb082fdfbc47016bf1a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/test/test_formation_swarm_task.py": {
+    "mtime": 1777831526.0171168,
+    "hash": "b97ddb0aafe30ee4bed3c806975bb3a9"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/test/test_shared_swarm_ippo_phase1.py": {
+    "mtime": 1777606719.4706469,
+    "hash": "520d16a98425307f48ed805a15fc7bae"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/test/test_quad_swarm_model_forward.py": {
+    "mtime": 1777328987.8398428,
+    "hash": "c688ccfa5557623d33d7bed45deb8a68"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/test/test_run_agent.py": {
+    "mtime": 1777064630.151319,
+    "hash": "b6423a0a231448448385e8a6004e854f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/test/test_agent_bridge.py": {
+    "mtime": 1777064630.1506796,
+    "hash": "209f596572c58428641117c871fb4cd9"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/test/test_environment_bridge.py": {
+    "mtime": 1777064630.1515505,
+    "hash": "d84717e9c40015b5e24eff3b43ba0fdd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/test/test_lab_2_imports.py": {
+    "mtime": 1777064630.1497025,
+    "hash": "e860e4e6450587931dac056710ae5441"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/test/test_quad_swarm_env_cache.py": {
+    "mtime": 1777607619.8216553,
+    "hash": "c6fcf16a7279a0237c50d42f2e913468"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_agent_package/scripts/compute_hover_action.py": {
+    "mtime": 1777527284.0,
+    "hash": "16aaedf4b2037752a7398e5046a290bd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/README.md": {
+    "mtime": 1777780876.6326442,
+    "hash": "49dfdec6be51a478effb9ab44a104341"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/PAPER_SWARM_PLAN.md": {
+    "mtime": 1779584203.5049703,
+    "hash": "93270d6aebc989be4e0c70c8c159e307"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/mkdocs.yml": {
+    "mtime": 1777779251.8097174,
+    "hash": "551e1852239ea2738c104ab87b5424eb"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/AGENTS.md": {
+    "mtime": 1780096826.233547,
+    "hash": "8c79a00208d06c8c2220c3de1298fa28"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/docs/shared_ippo_phase0.md": {
+    "mtime": 1777606691.394607,
+    "hash": "ff73d86502dbbc909c914faa654bc811"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/docs/index.md": {
+    "mtime": 1777778874.974584,
+    "hash": "e12fdb918f278d3de0f5f0d3b3125534"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/docs/training.md": {
+    "mtime": 1777773629.5146935,
+    "hash": "1d99e92b52a036bfc947a7cedbb7e9ac"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/docs/quad_swarm_port_notes.md": {
+    "mtime": 1777332238.1187136,
+    "hash": "f927ec20297f6f92aa8670297165eb4f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/docs/xie_formation_swarm_plan.md": {
+    "mtime": 1777746310.8116636,
+    "hash": "21e6c0895efa989d69e1f01fa286ad9e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/docs/viser_isaacsim6_compatibility.md": {
+    "mtime": 1777331207.3579473,
+    "hash": "c1e9e365ab98244968fbb54300a0cbed"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/docs/env_cache_validation.md": {
+    "mtime": 1777607592.659629,
+    "hash": "33747ae2d16fa589438ff7bd03e89c92"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/docs/development.md": {
+    "mtime": 1777778934.3117619,
+    "hash": "23724bfde6dd123ce3579f9b948c164c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/404.html": {
+    "mtime": 1777780689.228758,
+    "hash": "2f99f0c840768305700956c9b10a5a17"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/index.html": {
+    "mtime": 1777780689.2571106,
+    "hash": "cc1cd8261a9aed3ec715e1adedfbc401"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/quad_swarm_port_notes/index.html": {
+    "mtime": 1777780689.264018,
+    "hash": "95405bc33a502e2d02f5c23e89177c85"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/training/index.html": {
+    "mtime": 1777780689.2680259,
+    "hash": "8b0deba9673c56bcd6331cf48234272a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/development/index.html": {
+    "mtime": 1777780689.259624,
+    "hash": "f7ae9d029b35c28f9fecef4a4791c203"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/index.html": {
+    "mtime": 1777780689.2790203,
+    "hash": "493ee05e2fc4d92a3327afac37dd2bc0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/index.html": {
+    "mtime": 1777780689.2812135,
+    "hash": "764cf9bea3e9ddc92abf37740a8fb35a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/formation_swarm/index.html": {
+    "mtime": 1777780689.2828605,
+    "hash": "b5e723bdaa8f7b0298340eabac0a9234"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/formation_swarm/models/index.html": {
+    "mtime": 1777780689.5015125,
+    "hash": "68a5bacf05bdcfefcc9e0840776c9a9b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/formation_swarm/models/encoder/index.html": {
+    "mtime": 1777780689.5187297,
+    "hash": "d252e28359dc4ec0d8ef8c1af32685bb"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/formation_swarm/models/skrl_models/index.html": {
+    "mtime": 1777780689.5378447,
+    "hash": "fff9f0e36d97284b405332a2822a2600"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/formation_swarm/env_cfg/index.html": {
+    "mtime": 1777780689.3867605,
+    "hash": "a3d08f435dcfb538b4356798f994798a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/formation_swarm/paper_spec/index.html": {
+    "mtime": 1777780689.3886812,
+    "hash": "fed1097070a78e5a05e3e89e8a0f2f16"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/formation_swarm/agents/index.html": {
+    "mtime": 1777780689.3905666,
+    "hash": "6a34716552b1c04bfe9df2f25360c32f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/formation_swarm/agents/shared_mappo/index.html": {
+    "mtime": 1777780689.4625206,
+    "hash": "51556959b17d32c61f1e0dc0ea1d5243"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/formation_swarm/agents/runner/index.html": {
+    "mtime": 1777780689.3967104,
+    "hash": "52e536095d8afc952796fd8ef8233740"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/quad_swarm_paper/index.html": {
+    "mtime": 1777780689.5394723,
+    "hash": "d43ee114bc8a7adf904962af7b00bf39"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/quad_swarm_paper/obstacle_room/index.html": {
+    "mtime": 1777780689.7059145,
+    "hash": "8ef9030b15ceb1adb374714e1e7e8341"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/quad_swarm_paper/models/index.html": {
+    "mtime": 1777780689.8441179,
+    "hash": "5a8521966ceafa01e59959f59cd3985d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/quad_swarm_paper/models/quad_swarm_encoder/index.html": {
+    "mtime": 1777780689.875869,
+    "hash": "6d136b84921d31a17fa2dbbc67160c9b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/quad_swarm_paper/models/attention/index.html": {
+    "mtime": 1777780689.860006,
+    "hash": "99a5400ab4e9ff41ca5ed4c3d931d5da"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/quad_swarm_paper/models/quad_swarm_skrl_models/index.html": {
+    "mtime": 1777780689.8915763,
+    "hash": "5848c06e02abc2c730d694cd4db59c91"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/quad_swarm_paper/env_cfg/index.html": {
+    "mtime": 1777780689.686849,
+    "hash": "0150b1f6ce78154ca4c4210b922b5915"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/quad_swarm_paper/paper_spec/index.html": {
+    "mtime": 1777780689.7074573,
+    "hash": "76ad95c5770d46406d98468c7e63647e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/quad_swarm_paper/env_cache/index.html": {
+    "mtime": 1777780689.6713336,
+    "hash": "7ef33e200e9b1ca5d4420e48fc4fc812"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/quad_swarm_paper/agents/index.html": {
+    "mtime": 1777780689.7088857,
+    "hash": "ee21a187c9d176af45b299726be983bd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/quad_swarm_paper/agents/runner/index.html": {
+    "mtime": 1777780689.713811,
+    "hash": "047a016f08b43dc966335da19fcbbc4e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/environments/tasks/quad_swarm_paper/agents/shared_ippo/index.html": {
+    "mtime": 1777780689.842075,
+    "hash": "f6fa7c4809a4e11476b116de4bedec70"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/scripts/zero_agent/index.html": {
+    "mtime": 1777780689.9093642,
+    "hash": "85af13f3dcd3651f744c9339f5f6dc43"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/scripts/rsl_rl/play/index.html": {
+    "mtime": 1777780689.9501367,
+    "hash": "cee34087f62f8e37fadd805592dbc0c3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/scripts/rsl_rl/cli_args/index.html": {
+    "mtime": 1777780689.9321566,
+    "hash": "d22fadd81ec1ea4365427bc76f1939bd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/scripts/rsl_rl/train/index.html": {
+    "mtime": 1777780689.963496,
+    "hash": "c463997ca7503c05be70594f76d24ced"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/scripts/random_agent/index.html": {
+    "mtime": 1777780689.904653,
+    "hash": "84f6e8543c11ed18a844024c65baf7f0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/scripts/list_envs/index.html": {
+    "mtime": 1777780689.8967016,
+    "hash": "d2752d88b5b8de0df9a782979f7fe6eb"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/scripts/ros2/run_agent/index.html": {
+    "mtime": 1777780689.9157715,
+    "hash": "b9b665882ab56df92a67578c82aad3f2"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/scripts/skrl/play/index.html": {
+    "mtime": 1777780689.9802544,
+    "hash": "5cf628bcceaa6b57457a7b81ad49eff0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/scripts/skrl/train/index.html": {
+    "mtime": 1777780689.994132,
+    "hash": "232dbaf9542ee4ea6add8677a7620cdc"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/reference/SUMMARY/index.html": {
+    "mtime": 1777780689.276835,
+    "hash": "62bda4afaef208b167b48fce9a06cfd1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/viser_isaacsim6_compatibility/index.html": {
+    "mtime": 1777780689.2704303,
+    "hash": "b5c62c21b36da3fe213a1c4f70a12330"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/shared_ippo_phase0/index.html": {
+    "mtime": 1777780689.2659986,
+    "hash": "ff04b0e5918efc535da34964eda7c851"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/env_cache_validation/index.html": {
+    "mtime": 1777780689.2615218,
+    "hash": "fed2a3b91a040c12400247d11f87b904"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/xie_formation_swarm_plan/index.html": {
+    "mtime": 1777780689.2735333,
+    "hash": "7a8ea582a41d080280c80f05a48ca271"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/paper_swarm_train_stage2_v2/2026-05-29_16-14-58_mappo_torch/params/agent.yaml": {
+    "mtime": 1780096498.0,
+    "hash": "558de2abae1b8fdaa2bf4a0347d2fae3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/paper_swarm_train_stage2_v2/2026-05-29_16-14-58_mappo_torch/params/env.yaml": {
+    "mtime": 1780096498.0,
+    "hash": "2e5352e06ec59becbe52d2f93fdb1c41"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/README.md": {
+    "mtime": 1777064630.178356,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/envs/README.md": {
+    "mtime": 1779663332.9730434,
+    "hash": "2eba797f81ad61415b0a3600ca9efd6a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/formation_swarm/agents/skrl_mappo_cfg.yaml": {
+    "mtime": 1779949352.5523767,
+    "hash": "a6f2cb6e0435d47f12ef440fc7482569"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/config/skrl_mappo_stage1_cfg.yaml": {
+    "mtime": 1779866892.0783057,
+    "hash": "1b6bc56434dcb13d2b810cadafc29015"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/config/skrl_mappo_stage3_cfg.yaml": {
+    "mtime": 1780082115.5189617,
+    "hash": "3484dd1641045ee9588fc0e5014f16f0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/config/skrl_mappo_cfg.yaml": {
+    "mtime": 1779746178.1330256,
+    "hash": "0907970df6c40715af79323638234ca4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/config/skrl_mappo_stage2_cfg.yaml": {
+    "mtime": 1780082098.4509044,
+    "hash": "c92e11e6f328a297ac8bbebb8b7af2fc"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/environments/environments/tasks/paper_swarm/config/skrl_ippo_cfg.yaml": {
+    "mtime": 1779746180.9800813,
+    "hash": "093f8ab4d679470d7dda6c2280e1c74b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/scripts/ros2/README.md": {
+    "mtime": 1777064630.1905575,
+    "hash": "6d5b09bd5804c743151fd94762105786"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/paper_swarm_train_stage3/2026-05-29_01-09-43_mappo_torch/params/agent.yaml": {
+    "mtime": 1780042183.0,
+    "hash": "07640a2065d1249267c3c9bbfe037bc8"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/paper_swarm_train_stage3/2026-05-29_01-09-43_mappo_torch/params/env.yaml": {
+    "mtime": 1780042183.0,
+    "hash": "41a54f52d58abca614b93ae454397e2f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/rsl_rl/simpleflight_hover_crazyflie/2026-04-17_15-29-39/params/agent.yaml": {
+    "mtime": 1777064630.1588676,
+    "hash": "294d468d6c071f34adfb72d169679c34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/rsl_rl/simpleflight_hover_crazyflie/2026-04-17_15-29-39/params/env.yaml": {
+    "mtime": 1777064630.1588442,
+    "hash": "8417e4c7609403de5a838e939dbed282"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/rsl_rl/simpleflight_hover_crazyflie/2026-04-21_19-13-58/params/agent.yaml": {
+    "mtime": 1777064630.1669018,
+    "hash": "294d468d6c071f34adfb72d169679c34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/rsl_rl/simpleflight_hover_crazyflie/2026-04-21_19-13-58/params/env.yaml": {
+    "mtime": 1777064630.166878,
+    "hash": "517fa7378123da6d6cfdf63610b70116"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-23_21-41-29_zenoh-json/params/env.yaml": {
+    "mtime": 1777064630.1551788,
+    "hash": "a0fbc18ec4d325edaa763965fdaf5896"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-23_23-38-16_zenoh-json/params/env.yaml": {
+    "mtime": 1777064630.1553047,
+    "hash": "a0fbc18ec4d325edaa763965fdaf5896"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-23_23-39-19_zenoh-json/params/env.yaml": {
+    "mtime": 1777064630.1555264,
+    "hash": "a0fbc18ec4d325edaa763965fdaf5896"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_00-14-28_ros2/env.yaml": {
+    "mtime": 1777064630.1576884,
+    "hash": "271becd2b33571dc4c52c8787b7a5c8a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_00-06-42_ros2/env.yaml": {
+    "mtime": 1777064630.1569421,
+    "hash": "271becd2b33571dc4c52c8787b7a5c8a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-23_23-40-45_zenoh-json/params/env.yaml": {
+    "mtime": 1777064630.1557631,
+    "hash": "a0fbc18ec4d325edaa763965fdaf5896"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-23_23-48-27_zenoh-json/params/env.yaml": {
+    "mtime": 1777064630.1563287,
+    "hash": "d71f969fbc502458b5a4729664c302ad"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_00-11-47_ros2/env.yaml": {
+    "mtime": 1777064630.1571882,
+    "hash": "271becd2b33571dc4c52c8787b7a5c8a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_00-12-20_ros2/env.yaml": {
+    "mtime": 1777064630.157308,
+    "hash": "271becd2b33571dc4c52c8787b7a5c8a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_00-03-23_ros2/env.yaml": {
+    "mtime": 1777064630.1564505,
+    "hash": "0524e85404623cad592e02b43d94e866"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_00-06-05_ros2/env.yaml": {
+    "mtime": 1777064630.1568248,
+    "hash": "271becd2b33571dc4c52c8787b7a5c8a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_00-11-11_ros2/env.yaml": {
+    "mtime": 1777064630.1570647,
+    "hash": "271becd2b33571dc4c52c8787b7a5c8a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_00-04-52_ros2/env.yaml": {
+    "mtime": 1777064630.15662,
+    "hash": "0524e85404623cad592e02b43d94e866"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_00-03-55_ros2/env.yaml": {
+    "mtime": 1777064630.1565356,
+    "hash": "0524e85404623cad592e02b43d94e866"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_00-05-51_ros2/env.yaml": {
+    "mtime": 1777064630.1567018,
+    "hash": "0524e85404623cad592e02b43d94e866"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_00-13-45_ros2/env.yaml": {
+    "mtime": 1777064630.1575665,
+    "hash": "271becd2b33571dc4c52c8787b7a5c8a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_00-18-31_ros2/env.yaml": {
+    "mtime": 1777064630.157879,
+    "hash": "271becd2b33571dc4c52c8787b7a5c8a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-23_23-45-21_zenoh-json/params/env.yaml": {
+    "mtime": 1777064630.1561167,
+    "hash": "a0fbc18ec4d325edaa763965fdaf5896"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/connector/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-23_21-40-37_zenoh-json/params/env.yaml": {
+    "mtime": 1777064630.1550477,
+    "hash": "a0fbc18ec4d325edaa763965fdaf5896"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/ros2/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_11-26-34_ros2/env.yaml": {
+    "mtime": 1777064630.1581972,
+    "hash": "0524e85404623cad592e02b43d94e866"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/ros2/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_11-24-51_ros2/env.yaml": {
+    "mtime": 1777064630.1586637,
+    "hash": "0524e85404623cad592e02b43d94e866"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/ros2/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_11-28-42_ros2/env.yaml": {
+    "mtime": 1777064630.158526,
+    "hash": "271becd2b33571dc4c52c8787b7a5c8a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/ros2/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_11-27-41_ros2/env.yaml": {
+    "mtime": 1777064630.1582944,
+    "hash": "0524e85404623cad592e02b43d94e866"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/ros2/Isaac-SimpleFlight-Classical-Crazyflie-v0/2026-04-24_12-39-06_ros2/env.yaml": {
+    "mtime": 1777064630.1584098,
+    "hash": "0524e85404623cad592e02b43d94e866"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-02_11-26-45_mappo_torch/params/agent.yaml": {
+    "mtime": 1777746405.399792,
+    "hash": "2aa94b7624607b39b44be47e44bba3f3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-02_11-26-45_mappo_torch/params/env.yaml": {
+    "mtime": 1777746405.3977919,
+    "hash": "201d06a298d2f9901550c11c42b0093a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-19_00-04-23_mappo_torch/params/agent.yaml": {
+    "mtime": 1779174263.6122131,
+    "hash": "c9b52c8d95fa31cf0ec3f8fe399a2366"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-19_00-04-23_mappo_torch/params/env.yaml": {
+    "mtime": 1779174263.608213,
+    "hash": "6a2df6ebf5b5291175877b0761177508"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-11_11-02-52_mappo_torch/params/agent.yaml": {
+    "mtime": 1778522572.6689942,
+    "hash": "7464c30cbc760508e2e7fc41933bb595"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-11_11-02-52_mappo_torch/params/env.yaml": {
+    "mtime": 1778522572.6659944,
+    "hash": "04b189d184ca20fe2e3e06b3c4f4148a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-29_20-27-08_mappo_torch/params/agent.yaml": {
+    "mtime": 1780111628.4258227,
+    "hash": "7e1953ca4f96068cc35211a71733193c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-29_20-27-08_mappo_torch/params/env.yaml": {
+    "mtime": 1780111628.4238226,
+    "hash": "0bf0d0303fe26fdc923a177d861ed1e1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-29_20-24-20_mappo_torch/params/agent.yaml": {
+    "mtime": 1780111460.8922746,
+    "hash": "a3a41ec022870202d7d6e4c65e311f6e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-29_20-24-20_mappo_torch/params/env.yaml": {
+    "mtime": 1780111460.8902745,
+    "hash": "5f3b2edd41e383e18d54eb00b3b9aa4e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-02_11-47-00_mappo_torch/params/agent.yaml": {
+    "mtime": 1777747620.159611,
+    "hash": "8aee3572161c7a377af221b50389cb25"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-02_11-47-00_mappo_torch/params/env.yaml": {
+    "mtime": 1777747620.157611,
+    "hash": "428231f57ce81f86c1b751c6abc769a8"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-01_19-12-39_mappo_torch/params/agent.yaml": {
+    "mtime": 1777687959.7493546,
+    "hash": "26d64bf8fc4c9502981e5662585281ed"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-01_19-12-39_mappo_torch/params/env.yaml": {
+    "mtime": 1777687959.7473545,
+    "hash": "aa5a8c10a8841cdf5f9a3e0fe5e07b1e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-27_23-33-59_mappo_torch/params/agent.yaml": {
+    "mtime": 1779950039.3729596,
+    "hash": "3b30108469fb196b7169970d3a1fca78"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-27_23-33-59_mappo_torch/params/env.yaml": {
+    "mtime": 1779950039.3709598,
+    "hash": "c7a7b63ec53ce8b1deb2e8b2affc1b2d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-19_13-36-13_mappo_torch/params/agent.yaml": {
+    "mtime": 1779222973.791597,
+    "hash": "6483bee89866a084794892e552f8a716"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-19_13-36-13_mappo_torch/params/env.yaml": {
+    "mtime": 1779222973.7885969,
+    "hash": "6a2df6ebf5b5291175877b0761177508"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-04_15-18-48_mappo_torch/params/agent.yaml": {
+    "mtime": 1777933128.9369836,
+    "hash": "520e274641c15e420ac0727611f04cbc"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-04_15-18-48_mappo_torch/params/env.yaml": {
+    "mtime": 1777933128.9339836,
+    "hash": "63eb680174e573b444bca40ff0cd52fe"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-03_01-43-05_mappo_torch/params/agent.yaml": {
+    "mtime": 1777797785.9653392,
+    "hash": "ad9f6bd3f341d20a5c65b4f33da5385d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-03_01-43-05_mappo_torch/params/env.yaml": {
+    "mtime": 1777797785.963339,
+    "hash": "428231f57ce81f86c1b751c6abc769a8"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-02_11-24-20_mappo_torch/params/agent.yaml": {
+    "mtime": 1777746260.590588,
+    "hash": "de95faacbdf2d11c275de078fcbf5c5d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-02_11-24-20_mappo_torch/params/env.yaml": {
+    "mtime": 1777746260.587588,
+    "hash": "201d06a298d2f9901550c11c42b0093a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-29_20-28-07_mappo_torch/params/agent.yaml": {
+    "mtime": 1780111687.9680197,
+    "hash": "a185cd260b9aa0d44770ab7a7c6d3143"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-29_20-28-07_mappo_torch/params/env.yaml": {
+    "mtime": 1780111687.9650197,
+    "hash": "0369d0e95a9f683bd6caba77d6db27a7"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-27_23-32-36_mappo_torch/params/agent.yaml": {
+    "mtime": 1779949957.040412,
+    "hash": "e4d4b5102b9405f68509f6e731c7613d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-27_23-32-36_mappo_torch/params/env.yaml": {
+    "mtime": 1779949957.0384119,
+    "hash": "c7a7b63ec53ce8b1deb2e8b2affc1b2d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-29_20-26-13_mappo_torch/params/agent.yaml": {
+    "mtime": 1780111573.6276424,
+    "hash": "0e78c1bc9cd28b575965222f3216c653"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-29_20-26-13_mappo_torch/params/env.yaml": {
+    "mtime": 1780111573.6266425,
+    "hash": "5f3b2edd41e383e18d54eb00b3b9aa4e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-28_16-57-51_mappo_torch/params/agent.yaml": {
+    "mtime": 1780012671.7984838,
+    "hash": "c2196ea3b9119ef198b53c7f7e380abf"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-28_16-57-51_mappo_torch/params/env.yaml": {
+    "mtime": 1780012671.7964838,
+    "hash": "7648ff63336c497e99e23de7b6be4d45"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-10_18-32-13_mappo_torch/params/agent.yaml": {
+    "mtime": 1778463133.389747,
+    "hash": "df80def9780507396b572c84e9c5f502"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-10_18-32-13_mappo_torch/params/env.yaml": {
+    "mtime": 1778463133.387747,
+    "hash": "04b189d184ca20fe2e3e06b3c4f4148a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-04_01-08-38_mappo_torch/params/agent.yaml": {
+    "mtime": 1777882118.8446093,
+    "hash": "6b7211b1677de2790e8445166856b8d3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-04_01-08-38_mappo_torch/params/env.yaml": {
+    "mtime": 1777882118.8416092,
+    "hash": "d9a1dfc351a615a240d278b722df5294"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-03_11-11-40_mappo_torch/params/agent.yaml": {
+    "mtime": 1777831900.78056,
+    "hash": "6f77e2cb25fd76f95dee17f523b305d5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-03_11-11-40_mappo_torch/params/env.yaml": {
+    "mtime": 1777831900.77856,
+    "hash": "6102ba9a76e82a7869e2637a2f356611"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-29_20-25-18_mappo_torch/params/agent.yaml": {
+    "mtime": 1780111518.2684612,
+    "hash": "b7e1649e90e8290273ba2c24541b791c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-29_20-25-18_mappo_torch/params/env.yaml": {
+    "mtime": 1780111518.2664611,
+    "hash": "0bf0d0303fe26fdc923a177d861ed1e1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-01_19-18-57_mappo_torch/params/agent.yaml": {
+    "mtime": 1777688337.2996578,
+    "hash": "c651daea0df575a3ae528a5e581fe53e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-01_19-18-57_mappo_torch/params/env.yaml": {
+    "mtime": 1777688337.2966578,
+    "hash": "4e9caefab0cae675760562ffde76ac52"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-02_11-08-16_mappo_torch/params/agent.yaml": {
+    "mtime": 1777745296.0700428,
+    "hash": "e6b4bf86c39944eeb4195d3347747468"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-02_11-08-16_mappo_torch/params/env.yaml": {
+    "mtime": 1777745296.068043,
+    "hash": "201d06a298d2f9901550c11c42b0093a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-01_19-25-01_mappo_torch/params/agent.yaml": {
+    "mtime": 1777688702.0058982,
+    "hash": "5c1c33b0715494de8cac556ce9e96900"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-01_19-25-01_mappo_torch/params/env.yaml": {
+    "mtime": 1777688702.0038981,
+    "hash": "aa5a8c10a8841cdf5f9a3e0fe5e07b1e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-03_11-14-41_mappo_torch/params/agent.yaml": {
+    "mtime": 1777832082.0177631,
+    "hash": "84ac2a52621eb139c6434ef7c80fc6d3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-03_11-14-41_mappo_torch/params/env.yaml": {
+    "mtime": 1777832082.0157633,
+    "hash": "6102ba9a76e82a7869e2637a2f356611"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-19_00-19-33_mappo_torch/params/agent.yaml": {
+    "mtime": 1779175173.9492564,
+    "hash": "7746cc6225bf2c36b8a1528c1f3683f3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-19_00-19-33_mappo_torch/params/env.yaml": {
+    "mtime": 1779175173.9462564,
+    "hash": "6a2df6ebf5b5291175877b0761177508"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-10_22-54-03_mappo_torch/params/agent.yaml": {
+    "mtime": 1778478843.0886548,
+    "hash": "f410dff7788c362585a4879ed2871179"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-10_22-54-03_mappo_torch/params/env.yaml": {
+    "mtime": 1778478843.0856547,
+    "hash": "04b189d184ca20fe2e3e06b3c4f4148a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-19_00-45-55_mappo_torch/params/agent.yaml": {
+    "mtime": 1779176755.6174316,
+    "hash": "6e4971d21e029afe3c5e2e26ff17735a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-19_00-45-55_mappo_torch/params/env.yaml": {
+    "mtime": 1779176755.61485,
+    "hash": "6a2df6ebf5b5291175877b0761177508"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-01_22-32-26_mappo_torch/params/agent.yaml": {
+    "mtime": 1777699946.663985,
+    "hash": "99bba6a2c932ea80e1f43e741a941092"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-01_22-32-26_mappo_torch/params/env.yaml": {
+    "mtime": 1777699946.661985,
+    "hash": "f6efb2efe488d7ecada8cf90028011eb"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-28_15-45-03_mappo_torch/params/agent.yaml": {
+    "mtime": 1780008303.0771337,
+    "hash": "9ed25ca5cda40ab02e059059f4815b26"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-28_15-45-03_mappo_torch/params/env.yaml": {
+    "mtime": 1780008303.0751336,
+    "hash": "7648ff63336c497e99e23de7b6be4d45"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-29_20-47-13_mappo_torch/params/agent.yaml": {
+    "mtime": 1780112833.4301908,
+    "hash": "6686698315e02edffa234c08c3d97bfb"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-29_20-47-13_mappo_torch/params/env.yaml": {
+    "mtime": 1780112833.428191,
+    "hash": "0bf0d0303fe26fdc923a177d861ed1e1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-03_11-12-11_mappo_torch/params/agent.yaml": {
+    "mtime": 1777831931.9455953,
+    "hash": "c8fdf929c99e6b55f4bbf2092fa23fea"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-03_11-12-11_mappo_torch/params/env.yaml": {
+    "mtime": 1777831931.9435954,
+    "hash": "d9a1dfc351a615a240d278b722df5294"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-03_11-12-44_mappo_torch/params/agent.yaml": {
+    "mtime": 1777831964.533632,
+    "hash": "edff2c5655b20e82857285bbbba05345"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-03_11-12-44_mappo_torch/params/env.yaml": {
+    "mtime": 1777831964.531632,
+    "hash": "63eb680174e573b444bca40ff0cd52fe"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-19_00-45-37_mappo_torch/params/agent.yaml": {
+    "mtime": 1779176737.3241918,
+    "hash": "67114ba874397ca5a78a8149cf0639cb"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-19_00-45-37_mappo_torch/params/env.yaml": {
+    "mtime": 1779176737.3211918,
+    "hash": "6a2df6ebf5b5291175877b0761177508"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-02_11-06-26_mappo_torch/params/agent.yaml": {
+    "mtime": 1777745186.743868,
+    "hash": "876fce036967d38213ae0bd3a10252b1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/formation_swarm/2026-05-02_11-06-26_mappo_torch/params/env.yaml": {
+    "mtime": 1777745186.740868,
+    "hash": "808d5567aa3bb3ec8a2109b9cc3fe0a5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-39-54_mappo_torch/params/agent.yaml": {
+    "mtime": 1779604794.2344606,
+    "hash": "83c25250b9ea9c471be727c2d6029630"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-39-54_mappo_torch/params/env.yaml": {
+    "mtime": 1779604794.2324605,
+    "hash": "afecee0103c37176297c0641a6a9a23f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-16-51_mappo_torch/params/agent.yaml": {
+    "mtime": 1779603411.3995361,
+    "hash": "4fb71e0487bcd994a6a9dc2a0cc0c0bd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-16-51_mappo_torch/params/env.yaml": {
+    "mtime": 1779603411.3975363,
+    "hash": "a485f781b8051ad614c8eed7f784b0aa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_19-11-07_mappo_torch/params/agent.yaml": {
+    "mtime": 1779675067.1183617,
+    "hash": "923a688aeff610f54b1474bfe4f82e51"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_19-11-07_mappo_torch/params/env.yaml": {
+    "mtime": 1779675067.1163619,
+    "hash": "4112cae922774334e825d1475ef8630d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-19-24_mappo_torch/params/agent.yaml": {
+    "mtime": 1779603564.2314386,
+    "hash": "08b9ea4f97084451fa6e47be583436be"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-19-24_mappo_torch/params/env.yaml": {
+    "mtime": 1779603564.2294388,
+    "hash": "8b44cbffa329703fec194012dfb15288"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_13-27-57_mappo_torch/params/agent.yaml": {
+    "mtime": 1779654478.0372543,
+    "hash": "207551739c702843d152dd1fb2e6e220"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_13-27-57_mappo_torch/params/env.yaml": {
+    "mtime": 1779654478.0362544,
+    "hash": "415c0c33de8d53be1493566035d8e71b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-46-42_mappo_torch/params/agent.yaml": {
+    "mtime": 1779605202.64075,
+    "hash": "c2e32fcc60b1e466bd86192fa8f35ff5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-46-42_mappo_torch/params/env.yaml": {
+    "mtime": 1779605202.63775,
+    "hash": "3fcd91ac19f2b64ab043355988694028"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_21-34-20_mappo_torch/params/agent.yaml": {
+    "mtime": 1779683660.5695817,
+    "hash": "043c132f7e00aa25e79731424f78faa9"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_21-34-20_mappo_torch/params/env.yaml": {
+    "mtime": 1779683660.567582,
+    "hash": "45c0c8eee947bc4345dcb034025e21b1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-30-56_mappo_torch/params/agent.yaml": {
+    "mtime": 1779672656.7548213,
+    "hash": "0c7d58ee1f693756352292c223d32186"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-30-56_mappo_torch/params/env.yaml": {
+    "mtime": 1779672656.7528214,
+    "hash": "0ac8990b466bfcadeddc2e1db5b316de"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_21-21-45_mappo_torch/params/agent.yaml": {
+    "mtime": 1779682905.723977,
+    "hash": "0c0fccc902302d1c268d529edf72fe38"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_21-21-45_mappo_torch/params/env.yaml": {
+    "mtime": 1779682905.720977,
+    "hash": "5b844cedd2eead891af02b040c096820"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_16-06-42_mappo_torch/params/agent.yaml": {
+    "mtime": 1779664002.1344957,
+    "hash": "c524f6aa7fa5aa6116462f5c04e9d341"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_16-06-42_mappo_torch/params/env.yaml": {
+    "mtime": 1779664002.1334956,
+    "hash": "4fae92c86eff4f24e0b7139bb04a5be5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_16-00-51_mappo_torch/params/agent.yaml": {
+    "mtime": 1779663651.2641475,
+    "hash": "3896455c81172ea493447e02f705fec4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_16-00-51_mappo_torch/params/env.yaml": {
+    "mtime": 1779663651.2621474,
+    "hash": "37837e175642ebdd61269c02a23716c4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_23-14-45_mappo_torch/params/agent.yaml": {
+    "mtime": 1779689685.7370296,
+    "hash": "5b4267a408db5f26ae40fed0679b902d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_23-14-45_mappo_torch/params/env.yaml": {
+    "mtime": 1779689685.7340295,
+    "hash": "1a2e6f4b962cda7201ba97342a1766b8"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-25_15-00-10_mappo_torch/params/agent.yaml": {
+    "mtime": 1779746410.4319024,
+    "hash": "379f32da6995edf6c8a2183295bd0c9e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-25_15-00-10_mappo_torch/params/env.yaml": {
+    "mtime": 1779746410.4299026,
+    "hash": "71b790f5b0c2d44802338e083e1c78e7"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-48-01_mappo_torch/params/agent.yaml": {
+    "mtime": 1779673681.3092813,
+    "hash": "8614b474d7edca82dfa3ad38c08d67b4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-48-01_mappo_torch/params/env.yaml": {
+    "mtime": 1779673681.3072813,
+    "hash": "0ac8990b466bfcadeddc2e1db5b316de"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_15-57-03_mappo_torch/params/agent.yaml": {
+    "mtime": 1779663423.2350745,
+    "hash": "42580a32c9436ca92e91e3ab040cd08c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_15-57-03_mappo_torch/params/env.yaml": {
+    "mtime": 1779663423.2330744,
+    "hash": "37837e175642ebdd61269c02a23716c4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-25_17-28-20_mappo_torch/params/agent.yaml": {
+    "mtime": 1779755300.8405278,
+    "hash": "a3b438d2ebef971fc8040c241cc9a1a4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-25_17-28-20_mappo_torch/params/env.yaml": {
+    "mtime": 1779755300.8395276,
+    "hash": "146df47d637831ddced582f0a4b9ef87"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_23-26-47_mappo_torch/params/agent.yaml": {
+    "mtime": 1779690407.199715,
+    "hash": "0636a59b69ab058708afe1d43daae77f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_23-26-47_mappo_torch/params/env.yaml": {
+    "mtime": 1779690407.1987147,
+    "hash": "1a2e6f4b962cda7201ba97342a1766b8"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_22-53-48_mappo_torch/params/agent.yaml": {
+    "mtime": 1779602028.3826342,
+    "hash": "9f6de686cc834d45c89a0767b4d46404"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_22-53-48_mappo_torch/params/env.yaml": {
+    "mtime": 1779602028.3816342,
+    "hash": "6446992abd8a54a48a6c9d13963e0fb0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-36-46_mappo_torch/params/agent.yaml": {
+    "mtime": 1779604606.8302,
+    "hash": "708c7d17d1c7a30332fe2b3cbab6c380"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-36-46_mappo_torch/params/env.yaml": {
+    "mtime": 1779604606.8281999,
+    "hash": "afecee0103c37176297c0641a6a9a23f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_12-57-03_mappo_torch/params/agent.yaml": {
+    "mtime": 1779652623.1690226,
+    "hash": "e9b139b8d0390c4a31ae75a89d4d6eb0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_12-57-03_mappo_torch/params/env.yaml": {
+    "mtime": 1779652623.1670225,
+    "hash": "48dcf22f3655de6d4b20cfac4f213695"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_21-33-48_mappo_torch/params/agent.yaml": {
+    "mtime": 1779683628.5805588,
+    "hash": "032b965af008f26a1b337d503573b887"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_21-33-48_mappo_torch/params/env.yaml": {
+    "mtime": 1779683628.578559,
+    "hash": "5b844cedd2eead891af02b040c096820"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-18-24_mappo_torch/params/agent.yaml": {
+    "mtime": 1779603504.4404762,
+    "hash": "51c6f46e7b9e1929608d4d883c0b41ca"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-18-24_mappo_torch/params/env.yaml": {
+    "mtime": 1779603504.438476,
+    "hash": "a485f781b8051ad614c8eed7f784b0aa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-19-01_mappo_torch/params/agent.yaml": {
+    "mtime": 1779603541.9704525,
+    "hash": "d8ea7ca4aaa615805638841f5261e8ed"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-19-01_mappo_torch/params/env.yaml": {
+    "mtime": 1779603541.9684525,
+    "hash": "a485f781b8051ad614c8eed7f784b0aa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-29-27_mappo_torch/params/agent.yaml": {
+    "mtime": 1779604167.2420933,
+    "hash": "aac3bb3714dcbd37fa4cc740ce902b32"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-29-27_mappo_torch/params/env.yaml": {
+    "mtime": 1779604167.2400932,
+    "hash": "5f7eb0a3ae2e575e343c2e63fe3fd8b9"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_15-21-53_mappo_torch/params/agent.yaml": {
+    "mtime": 1779661313.5387988,
+    "hash": "91147e61636e179c44d4ca9b0cf4efe6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_15-21-53_mappo_torch/params/env.yaml": {
+    "mtime": 1779661313.5377986,
+    "hash": "d38ba33ad0b4a4bf846f3ad5a56bbdf6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_18-23-57_mappo_torch/params/agent.yaml": {
+    "mtime": 1779585837.4880066,
+    "hash": "90d87bba3b2f8d66dfe26c2e82fb96f3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_18-23-57_mappo_torch/params/env.yaml": {
+    "mtime": 1779585837.4860067,
+    "hash": "e27808abc565a9aa1043a48d310fe0b7"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-44-54_mappo_torch/params/agent.yaml": {
+    "mtime": 1779673494.1553428,
+    "hash": "db66299bb798ff4c16e5eb13caeb81b1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-44-54_mappo_torch/params/env.yaml": {
+    "mtime": 1779673494.153343,
+    "hash": "0ac8990b466bfcadeddc2e1db5b316de"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_20-22-04_mappo_torch/params/agent.yaml": {
+    "mtime": 1779679324.4382381,
+    "hash": "c18dc87ede0360913b93587208b905c1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_20-22-04_mappo_torch/params/env.yaml": {
+    "mtime": 1779679324.437238,
+    "hash": "8c1bf86e30af9d89dc674a255b7f8708"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-25-58_mappo_torch/params/agent.yaml": {
+    "mtime": 1779672359.0211809,
+    "hash": "9b8d06da0ac3164e8d587bbf7a559220"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-25-58_mappo_torch/params/env.yaml": {
+    "mtime": 1779672359.019181,
+    "hash": "0ac8990b466bfcadeddc2e1db5b316de"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-16-28_mappo_torch/params/agent.yaml": {
+    "mtime": 1779603388.5285513,
+    "hash": "b9b39d223ea64506500cac3ac5d9a735"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-16-28_mappo_torch/params/env.yaml": {
+    "mtime": 1779603388.5275514,
+    "hash": "a485f781b8051ad614c8eed7f784b0aa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-08-51_mappo_torch/params/agent.yaml": {
+    "mtime": 1779602931.9109,
+    "hash": "9f7215f74759d95dd19a3520521c13ba"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-08-51_mappo_torch/params/env.yaml": {
+    "mtime": 1779602931.9089,
+    "hash": "6446992abd8a54a48a6c9d13963e0fb0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_13-27-29_mappo_torch/params/agent.yaml": {
+    "mtime": 1779654449.3321989,
+    "hash": "e2b9c8468011ce066a421e596c882460"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_13-27-29_mappo_torch/params/env.yaml": {
+    "mtime": 1779654449.330199,
+    "hash": "415c0c33de8d53be1493566035d8e71b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_20-17-09_mappo_torch/params/agent.yaml": {
+    "mtime": 1779679029.8559043,
+    "hash": "b80446c4c9b69e03d6a28617afc1171e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_20-17-09_mappo_torch/params/env.yaml": {
+    "mtime": 1779679029.8539042,
+    "hash": "8c1bf86e30af9d89dc674a255b7f8708"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_18-14-14_mappo_torch/params/agent.yaml": {
+    "mtime": 1779585254.7687325,
+    "hash": "a1f85f1a8ccf050f7b97ec6b79728b1a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_18-14-14_mappo_torch/params/env.yaml": {
+    "mtime": 1779585254.7667325,
+    "hash": "e27808abc565a9aa1043a48d310fe0b7"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-17-12_mappo_torch/params/agent.yaml": {
+    "mtime": 1779603432.1915226,
+    "hash": "8a508bbd52dadd24b5ec6773ba85d539"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-17-12_mappo_torch/params/env.yaml": {
+    "mtime": 1779603432.1905227,
+    "hash": "a485f781b8051ad614c8eed7f784b0aa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-35-23_mappo_torch/params/agent.yaml": {
+    "mtime": 1779604523.8050451,
+    "hash": "cb2effc91e3308000a7f2a000a735d64"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-35-23_mappo_torch/params/env.yaml": {
+    "mtime": 1779604523.8030453,
+    "hash": "a00874493cabf82467558e21e165214a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-17-30_mappo_torch/params/agent.yaml": {
+    "mtime": 1779603450.5495107,
+    "hash": "b64a895646740cfca08994067ca26a17"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-17-30_mappo_torch/params/env.yaml": {
+    "mtime": 1779603450.5465107,
+    "hash": "a485f781b8051ad614c8eed7f784b0aa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-23-17_mappo_torch/params/agent.yaml": {
+    "mtime": 1779603797.7332993,
+    "hash": "1974110f54063844b77de23e895e05c7"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-23-17_mappo_torch/params/env.yaml": {
+    "mtime": 1779603797.7312992,
+    "hash": "6446992abd8a54a48a6c9d13963e0fb0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_15-56-44_mappo_torch/params/agent.yaml": {
+    "mtime": 1779663404.7740684,
+    "hash": "f15f0d34c54ced5fb2b532da55f8b827"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_15-56-44_mappo_torch/params/env.yaml": {
+    "mtime": 1779663404.7720683,
+    "hash": "37837e175642ebdd61269c02a23716c4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-25_15-00-37_mappo_torch/params/agent.yaml": {
+    "mtime": 1779746437.4378953,
+    "hash": "998020aaebd0a9953fb1ededb8c0b7d0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-25_15-00-37_mappo_torch/params/env.yaml": {
+    "mtime": 1779746437.4348953,
+    "hash": "d19850a4391ac4d97dfcde1c184932d8"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-14-35_mappo_torch/params/agent.yaml": {
+    "mtime": 1779603275.333629,
+    "hash": "35d48b5fc44704114c2a9153b08b87ae"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-14-35_mappo_torch/params/env.yaml": {
+    "mtime": 1779603275.3316288,
+    "hash": "a485f781b8051ad614c8eed7f784b0aa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_15-28-03_mappo_torch/params/agent.yaml": {
+    "mtime": 1779661683.8597593,
+    "hash": "0df4aa67c350d9651f3558fd75f26cf6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_15-28-03_mappo_torch/params/env.yaml": {
+    "mtime": 1779661683.8577595,
+    "hash": "e442ad8c0ca5c961484d537ad9643e8e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-13-45_mappo_torch/params/agent.yaml": {
+    "mtime": 1779603225.9276643,
+    "hash": "d0fd83f6c671b30f7b895ed28743593f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-13-45_mappo_torch/params/env.yaml": {
+    "mtime": 1779603225.9256642,
+    "hash": "a485f781b8051ad614c8eed7f784b0aa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-56-34_mappo_torch/params/agent.yaml": {
+    "mtime": 1779674194.2212079,
+    "hash": "94a27cb3b21dc0cccc19478d09896e38"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-56-34_mappo_torch/params/env.yaml": {
+    "mtime": 1779674194.2192078,
+    "hash": "0ac8990b466bfcadeddc2e1db5b316de"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-25_18-49-21_mappo_torch/params/agent.yaml": {
+    "mtime": 1779760162.0157313,
+    "hash": "03f3882f0abf459b2e45b3c66c87d64e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-25_18-49-21_mappo_torch/params/env.yaml": {
+    "mtime": 1779760162.0147314,
+    "hash": "ce88551ba02396c60e1c1c243a09f3e3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-59-02_mappo_torch/params/agent.yaml": {
+    "mtime": 1779674342.9172695,
+    "hash": "52588da14a6a061c8ed3f1cf541d114c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-59-02_mappo_torch/params/env.yaml": {
+    "mtime": 1779674342.9152696,
+    "hash": "4112cae922774334e825d1475ef8630d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_15-10-23_mappo_torch/params/agent.yaml": {
+    "mtime": 1779660623.6270442,
+    "hash": "a101c1efd3e7a46d089f85511370eded"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_15-10-23_mappo_torch/params/env.yaml": {
+    "mtime": 1779660623.626044,
+    "hash": "415c0c33de8d53be1493566035d8e71b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-16-03_mappo_torch/params/agent.yaml": {
+    "mtime": 1779603363.432568,
+    "hash": "120de845f060ba34d0e8095dee4514dc"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-16-03_mappo_torch/params/env.yaml": {
+    "mtime": 1779603363.4295683,
+    "hash": "a485f781b8051ad614c8eed7f784b0aa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-48-25_mappo_torch/params/agent.yaml": {
+    "mtime": 1779605305.7157848,
+    "hash": "f37ef7738cf2c34c397bea1a0952f316"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-48-25_mappo_torch/params/env.yaml": {
+    "mtime": 1779605305.7137847,
+    "hash": "48dcf22f3655de6d4b20cfac4f213695"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-17-54_mappo_torch/params/agent.yaml": {
+    "mtime": 1779603474.8734949,
+    "hash": "a2d8da5229de8925e068e7fb4f986fb8"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-17-54_mappo_torch/params/env.yaml": {
+    "mtime": 1779603474.870495,
+    "hash": "a485f781b8051ad614c8eed7f784b0aa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-44-16_mappo_torch/params/agent.yaml": {
+    "mtime": 1779673456.3953564,
+    "hash": "74a432a9760bc9a9d17d65f156dbd2f6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_18-44-16_mappo_torch/params/env.yaml": {
+    "mtime": 1779673456.3933563,
+    "hash": "0ac8990b466bfcadeddc2e1db5b316de"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-46-24_mappo_torch/params/agent.yaml": {
+    "mtime": 1779605184.8967426,
+    "hash": "f25978a0f9de3846c903d98612e28a24"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-23_23-46-24_mappo_torch/params/env.yaml": {
+    "mtime": 1779605184.8937426,
+    "hash": "317bd63e01ec531c8524032557954833"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_20-38-24_mappo_torch/params/agent.yaml": {
+    "mtime": 1779680304.2359018,
+    "hash": "f4043f6eab365e1da3130d792657d729"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_20-38-24_mappo_torch/params/env.yaml": {
+    "mtime": 1779680304.234902,
+    "hash": "30379c26c145f1ff07b47b85675ae493"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_20-27-03_mappo_torch/params/agent.yaml": {
+    "mtime": 1779679624.0784817,
+    "hash": "2139f4cc96177288c1fae1e3c50ae73d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo/2026-05-24_20-27-03_mappo_torch/params/env.yaml": {
+    "mtime": 1779679624.0754817,
+    "hash": "dab644d4566cada16e5f49ab15858dc6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-30_16-42-20_mappo_torch/params/agent.yaml": {
+    "mtime": 1780184540.300213,
+    "hash": "db999c0be50003a721a209aa73afa5ea"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-30_16-42-20_mappo_torch/params/env.yaml": {
+    "mtime": 1780184540.297213,
+    "hash": "b869821b6a9055ea7c034b1c776bc226"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-28_18-46-16_mappo_torch/params/agent.yaml": {
+    "mtime": 1780019176.3936,
+    "hash": "c741f27e9268cd079b423dcf450cdce4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-28_18-46-16_mappo_torch/params/env.yaml": {
+    "mtime": 1780019176.3916001,
+    "hash": "3392a1a34059a3919c198bc95300b527"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-28_18-53-27_mappo_torch/params/agent.yaml": {
+    "mtime": 1780019607.2008226,
+    "hash": "f62eb6c8ad4294de23c7ba1619bc081c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-28_18-53-27_mappo_torch/params/env.yaml": {
+    "mtime": 1780019607.1988225,
+    "hash": "3392a1a34059a3919c198bc95300b527"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-28_18-27-35_mappo_torch/params/agent.yaml": {
+    "mtime": 1780018055.6870627,
+    "hash": "8a86cce5ec2703a954a992b518b6e255"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-28_18-27-35_mappo_torch/params/env.yaml": {
+    "mtime": 1780018055.6860628,
+    "hash": "3392a1a34059a3919c198bc95300b527"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-28_18-36-51_mappo_torch/params/agent.yaml": {
+    "mtime": 1780018611.2681139,
+    "hash": "b37560dbb44b05e89d12612c892db010"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-28_18-36-51_mappo_torch/params/env.yaml": {
+    "mtime": 1780018611.2671137,
+    "hash": "3392a1a34059a3919c198bc95300b527"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-28_16-17-14_mappo_torch/params/agent.yaml": {
+    "mtime": 1780010234.3352053,
+    "hash": "62a1221af8801b3c9ebd4d6351aa1c02"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-28_16-17-14_mappo_torch/params/env.yaml": {
+    "mtime": 1780010234.3332055,
+    "hash": "a19f59264cd77904d20bff7704f01871"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-30_16-37-08_mappo_torch/params/agent.yaml": {
+    "mtime": 1780184228.791314,
+    "hash": "1bb1c747f3033dbb47884c5d89666209"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage2/2026-05-30_16-37-08_mappo_torch/params/env.yaml": {
+    "mtime": 1780184228.7893138,
+    "hash": "b5bacf4d95b228fe7debaad90f45c0fd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-24_13-29-13_ippo_torch/params/agent.yaml": {
+    "mtime": 1779654553.604099,
+    "hash": "70b8ad328d834140c513781bd20dd1b9"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-24_13-29-13_ippo_torch/params/env.yaml": {
+    "mtime": 1779654553.601394,
+    "hash": "a78273fd4b824b593e14576923e04ad3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-24_16-00-28_ippo_torch/params/agent.yaml": {
+    "mtime": 1779663629.0641406,
+    "hash": "22a0f8cf4aa77d55a105a71ad60cf145"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-24_16-00-28_ippo_torch/params/env.yaml": {
+    "mtime": 1779663629.0631406,
+    "hash": "ded5bfa4600be174adf68cd695e6105d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-24_21-22-12_ippo_torch/params/agent.yaml": {
+    "mtime": 1779682932.334002,
+    "hash": "035c403d24e2103c79c65576a4e53931"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-24_21-22-12_ippo_torch/params/env.yaml": {
+    "mtime": 1779682932.331002,
+    "hash": "6535dba4ecf1fb816d09d33b756972df"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-23_23-20-42_ippo_torch/params/agent.yaml": {
+    "mtime": 1779603643.0443904,
+    "hash": "ad64ec9a1eabb12a9bd4958c702bfb3a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-23_23-20-42_ippo_torch/params/env.yaml": {
+    "mtime": 1779603643.0423906,
+    "hash": "ec83adf1b925645d635c5141304db125"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-23_23-37-11_ippo_torch/params/agent.yaml": {
+    "mtime": 1779604632.0912416,
+    "hash": "13adadf5e1df9e8cb6a03dd6b4649d72"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-23_23-37-11_ippo_torch/params/env.yaml": {
+    "mtime": 1779604632.0882416,
+    "hash": "1f108b2dedd3903bfad9c850d6cf21d0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-24_20-39-13_ippo_torch/params/agent.yaml": {
+    "mtime": 1779680353.2539551,
+    "hash": "22f62dbe83c67448226d1df56c8406d0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-24_20-39-13_ippo_torch/params/env.yaml": {
+    "mtime": 1779680353.250955,
+    "hash": "f83916a00afcaafba87f215179511786"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-24_15-21-30_ippo_torch/params/agent.yaml": {
+    "mtime": 1779661290.5108025,
+    "hash": "8e2d8815f7dde44f8ab837169a10b340"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-24_15-21-30_ippo_torch/params/env.yaml": {
+    "mtime": 1779661290.5088024,
+    "hash": "a1ca88b4a01cda1d2f8ac6c3a81ba08d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-23_23-20-24_ippo_torch/params/agent.yaml": {
+    "mtime": 1779603624.7334015,
+    "hash": "c13d01c8f64375c6f8017628125888dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-23_23-20-24_ippo_torch/params/env.yaml": {
+    "mtime": 1779603624.7324016,
+    "hash": "ec83adf1b925645d635c5141304db125"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-24_15-56-25_ippo_torch/params/agent.yaml": {
+    "mtime": 1779663385.4290617,
+    "hash": "a5e106cf262b752379da491d092ae849"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-24_15-56-25_ippo_torch/params/env.yaml": {
+    "mtime": 1779663385.4270616,
+    "hash": "ded5bfa4600be174adf68cd695e6105d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-23_23-50-03_ippo_torch/params/agent.yaml": {
+    "mtime": 1779605403.8938086,
+    "hash": "20b0c561cbf58ec9e64457f410082493"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/ippo/2026-05-23_23-50-03_ippo_torch/params/env.yaml": {
+    "mtime": 1779605403.8918085,
+    "hash": "b51a57f64b8ab468464942efac5380a2"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage3/2026-05-30_16-37-30_mappo_torch/params/agent.yaml": {
+    "mtime": 1780184250.431398,
+    "hash": "675f5a210ffaf575d4c82eeec03c3968"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage3/2026-05-30_16-37-30_mappo_torch/params/env.yaml": {
+    "mtime": 1780184250.4293978,
+    "hash": "808e98a0d4d4f32651cd6f4cca7aecee"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage3/2026-05-30_16-42-40_mappo_torch/params/agent.yaml": {
+    "mtime": 1780184560.267265,
+    "hash": "7951e9dba62c90edea96448a26ba8983"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage3/2026-05-30_16-42-40_mappo_torch/params/env.yaml": {
+    "mtime": 1780184560.265265,
+    "hash": "f04cd4a1a1c53f6241a5c1662bd5f614"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage3/2026-05-28_16-17-26_mappo_torch/params/agent.yaml": {
+    "mtime": 1780010247.0582802,
+    "hash": "513733cf3119efe3b245cda0ba51b9a4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage3/2026-05-28_16-17-26_mappo_torch/params/env.yaml": {
+    "mtime": 1780010247.0562804,
+    "hash": "a9c6c59078bba6b19532b4bc41b3b0f6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-30_16-36-47_mappo_torch/params/agent.yaml": {
+    "mtime": 1780184208.0672333,
+    "hash": "cf9dbb6cbd0491af408fa6f04e22d52d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-30_16-36-47_mappo_torch/params/env.yaml": {
+    "mtime": 1780184208.0642333,
+    "hash": "026d84dd712437cba5b3c1e265be5b97"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-28-55_mappo_torch/params/agent.yaml": {
+    "mtime": 1779769735.3385386,
+    "hash": "443f21b34dbdf71fced4e402218452d0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-28-55_mappo_torch/params/env.yaml": {
+    "mtime": 1779769735.3365386,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_22-03-31_mappo_torch/params/agent.yaml": {
+    "mtime": 1779771811.999882,
+    "hash": "a62912f0cf0610d711baa03f680f9a96"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_22-03-31_mappo_torch/params/env.yaml": {
+    "mtime": 1779771811.997882,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_16-08-08_mappo_torch/params/agent.yaml": {
+    "mtime": 1779836888.697916,
+    "hash": "26126bb09ccb7b610a12609c8ba9fe2c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_16-08-08_mappo_torch/params/env.yaml": {
+    "mtime": 1779836888.694916,
+    "hash": "579a3f1df51d09e773f62d35b479e0dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-52-47_mappo_torch/params/agent.yaml": {
+    "mtime": 1779781967.9615326,
+    "hash": "40ea8ae722516928767023c691002c90"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-52-47_mappo_torch/params/env.yaml": {
+    "mtime": 1779781967.9595327,
+    "hash": "81a5a382a81701f12b7035874f715cf5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-24-15_mappo_torch/params/agent.yaml": {
+    "mtime": 1779780255.8021748,
+    "hash": "6b8849287199c924f0ee0f6dbe415c3e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-24-15_mappo_torch/params/env.yaml": {
+    "mtime": 1779780255.7991748,
+    "hash": "fa3e19fd5eafea0e4f45e7df1134d3fa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_18-12-41_mappo_torch/params/agent.yaml": {
+    "mtime": 1779930761.0963,
+    "hash": "563b64ae28ffbc98b11832c254576b8a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_18-12-41_mappo_torch/params/env.yaml": {
+    "mtime": 1779930761.0932996,
+    "hash": "76d87cd62e40c7c5073cf18452896676"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_19-40-36_mappo_torch/params/agent.yaml": {
+    "mtime": 1779936036.5610082,
+    "hash": "c29c37a87df3d1d1d2f10936e4bf1d8c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_19-40-36_mappo_torch/params/env.yaml": {
+    "mtime": 1779936036.5590084,
+    "hash": "67ced4dc7ca3b080a4bf15bf4bf2d9d6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-30-21_mappo_torch/params/agent.yaml": {
+    "mtime": 1779769821.1761878,
+    "hash": "5b9de3e00395f22bc8d84135e26fddac"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-30-21_mappo_torch/params/env.yaml": {
+    "mtime": 1779769821.174188,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-18-11_mappo_torch/params/agent.yaml": {
+    "mtime": 1779779892.055394,
+    "hash": "27fe2bb0ed91eb4752309607858bbbef"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-18-11_mappo_torch/params/env.yaml": {
+    "mtime": 1779779892.051394,
+    "hash": "194324c1c12d332981367d9087ad42f5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_19-41-37_mappo_torch/params/agent.yaml": {
+    "mtime": 1779936097.586455,
+    "hash": "95bd8c34da1ac0eed66a5ed8f1cc9465"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_19-41-37_mappo_torch/params/env.yaml": {
+    "mtime": 1779936097.584455,
+    "hash": "67ced4dc7ca3b080a4bf15bf4bf2d9d6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_16-08-39_mappo_torch/params/agent.yaml": {
+    "mtime": 1779836919.9301438,
+    "hash": "3b9e9c24aada8511e2497d3cf635fa25"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_16-08-39_mappo_torch/params/env.yaml": {
+    "mtime": 1779836919.928144,
+    "hash": "579a3f1df51d09e773f62d35b479e0dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_16-06-14_mappo_torch/params/agent.yaml": {
+    "mtime": 1779836774.197075,
+    "hash": "ee9e857a89983b66dabb6f74327592d8"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_16-06-14_mappo_torch/params/env.yaml": {
+    "mtime": 1779836774.1950748,
+    "hash": "579a3f1df51d09e773f62d35b479e0dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_20-06-07_mappo_torch/params/agent.yaml": {
+    "mtime": 1779851167.4522476,
+    "hash": "6a31298fe43f642899e02c224d01c45c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_20-06-07_mappo_torch/params/env.yaml": {
+    "mtime": 1779851167.4502475,
+    "hash": "579a3f1df51d09e773f62d35b479e0dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_14-33-39_mappo_torch/params/agent.yaml": {
+    "mtime": 1779831219.1433177,
+    "hash": "bf209c1804099ab6bb62b2a3a06ed84b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_14-33-39_mappo_torch/params/env.yaml": {
+    "mtime": 1779831219.1413178,
+    "hash": "579a3f1df51d09e773f62d35b479e0dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-34-34_mappo_torch/params/agent.yaml": {
+    "mtime": 1779780874.2468698,
+    "hash": "d95a0370e0be7eb0f2f1db25712ff7ae"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-34-34_mappo_torch/params/env.yaml": {
+    "mtime": 1779780874.2438698,
+    "hash": "fa3e19fd5eafea0e4f45e7df1134d3fa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_20-02-38_mappo_torch/params/agent.yaml": {
+    "mtime": 1779850958.0670707,
+    "hash": "b12bc28906d2616ac182ada544cbba2e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_20-02-38_mappo_torch/params/env.yaml": {
+    "mtime": 1779850958.0650706,
+    "hash": "579a3f1df51d09e773f62d35b479e0dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-44-55_mappo_torch/params/agent.yaml": {
+    "mtime": 1779770695.8834536,
+    "hash": "0f8139d4c36d35190392c07e7e89d036"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-44-55_mappo_torch/params/env.yaml": {
+    "mtime": 1779770695.8814535,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-28_16-40-39_mappo_torch/params/agent.yaml": {
+    "mtime": 1780011639.5536141,
+    "hash": "0c7b07440f1e5f6919040412da98056e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-28_16-40-39_mappo_torch/params/env.yaml": {
+    "mtime": 1780011639.550614,
+    "hash": "279a1a87a85b81d2108497eb49edf3f1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_00-29-27_mappo_torch/params/agent.yaml": {
+    "mtime": 1779866967.4317148,
+    "hash": "78f90216a5cd70f7f8511464e1bdac46"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_00-29-27_mappo_torch/params/env.yaml": {
+    "mtime": 1779866967.4297147,
+    "hash": "7ba50a950c7e8edb5a7bf75cff45c9ba"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-59-14_mappo_torch/params/agent.yaml": {
+    "mtime": 1779771554.5890245,
+    "hash": "e73492ca3622fd0259e60a456cfd51dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-59-14_mappo_torch/params/env.yaml": {
+    "mtime": 1779771554.5860245,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-55-13_mappo_torch/params/agent.yaml": {
+    "mtime": 1779782113.6316583,
+    "hash": "161d5b13d960bd1e4631fff1b0e4ca62"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-55-13_mappo_torch/params/env.yaml": {
+    "mtime": 1779782113.6296582,
+    "hash": "81a5a382a81701f12b7035874f715cf5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_16-15-15_mappo_torch/params/agent.yaml": {
+    "mtime": 1779837315.973992,
+    "hash": "d837228806b7539f86462bad4ba80016"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_16-15-15_mappo_torch/params/env.yaml": {
+    "mtime": 1779837315.9719923,
+    "hash": "579a3f1df51d09e773f62d35b479e0dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_14-25-56_mappo_torch/params/agent.yaml": {
+    "mtime": 1779830756.704216,
+    "hash": "449dc48c7c110272bdd4a26b6a4e354f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_14-25-56_mappo_torch/params/env.yaml": {
+    "mtime": 1779830756.702216,
+    "hash": "7698689fdea1d9b0a87cebeba9c7641e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_18-27-54_mappo_torch/params/agent.yaml": {
+    "mtime": 1779931674.1184855,
+    "hash": "07b4a5b873e3c9ffbb5447eb3d680892"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_18-27-54_mappo_torch/params/env.yaml": {
+    "mtime": 1779931674.1164854,
+    "hash": "69f607a7502ef5d7ac1403a8500156ab"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-27-45_mappo_torch/params/agent.yaml": {
+    "mtime": 1779780465.2877684,
+    "hash": "99a92d637030b3a52f04be5dd7941670"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-27-45_mappo_torch/params/env.yaml": {
+    "mtime": 1779780465.2847683,
+    "hash": "fa3e19fd5eafea0e4f45e7df1134d3fa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_16-19-18_mappo_torch/params/agent.yaml": {
+    "mtime": 1779923958.0974562,
+    "hash": "858ba3b3c13c1e809a282c5dfff1ca93"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_16-19-18_mappo_torch/params/env.yaml": {
+    "mtime": 1779923958.0944562,
+    "hash": "76d87cd62e40c7c5073cf18452896676"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_19-51-16_mappo_torch/params/agent.yaml": {
+    "mtime": 1779936676.8115058,
+    "hash": "0d1dbf1ea87d6545dd48b0d3f81eea1a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_19-51-16_mappo_torch/params/env.yaml": {
+    "mtime": 1779936676.8095057,
+    "hash": "67ced4dc7ca3b080a4bf15bf4bf2d9d6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-36-25_mappo_torch/params/agent.yaml": {
+    "mtime": 1779770185.4838538,
+    "hash": "3360811bf3ee24e9143eb87090ad28dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-36-25_mappo_torch/params/env.yaml": {
+    "mtime": 1779770185.481854,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_20-05-45_mappo_torch/params/agent.yaml": {
+    "mtime": 1779851145.7191265,
+    "hash": "f98ff617b6c57d38be67bbc9bd2be18e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_20-05-45_mappo_torch/params/env.yaml": {
+    "mtime": 1779851145.7171266,
+    "hash": "579a3f1df51d09e773f62d35b479e0dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_14-31-13_mappo_torch/params/agent.yaml": {
+    "mtime": 1779831073.145334,
+    "hash": "84d6b9e26df2dda28d924d48718f5592"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_14-31-13_mappo_torch/params/env.yaml": {
+    "mtime": 1779831073.143334,
+    "hash": "579a3f1df51d09e773f62d35b479e0dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-28_15-50-20_mappo_torch/params/agent.yaml": {
+    "mtime": 1780008620.2073483,
+    "hash": "c5eea8d31cc784d5054cda7e20861b8f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-28_15-50-20_mappo_torch/params/env.yaml": {
+    "mtime": 1780008620.2053485,
+    "hash": "279a1a87a85b81d2108497eb49edf3f1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_01-24-44_mappo_torch/params/agent.yaml": {
+    "mtime": 1779783884.7598248,
+    "hash": "3cdf5d37a2e46a4494d28a745b1ebc9a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_01-24-44_mappo_torch/params/env.yaml": {
+    "mtime": 1779783884.757825,
+    "hash": "69b286ea621d8eb161be3d62d37c3aa4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-31-49_mappo_torch/params/agent.yaml": {
+    "mtime": 1779780709.832624,
+    "hash": "f61cfa61d7c15db407e5fd7c903f1f42"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-31-49_mappo_torch/params/env.yaml": {
+    "mtime": 1779780709.829624,
+    "hash": "fa3e19fd5eafea0e4f45e7df1134d3fa"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-32-46_mappo_torch/params/agent.yaml": {
+    "mtime": 1779769966.9592695,
+    "hash": "10310e3e0d29bed2a6c0ebd43dc65525"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-32-46_mappo_torch/params/env.yaml": {
+    "mtime": 1779769966.9562695,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_19-33-40_mappo_torch/params/agent.yaml": {
+    "mtime": 1779935620.4299734,
+    "hash": "cfc839c04c8a9ee1cd1788fd1fd00722"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_19-33-40_mappo_torch/params/env.yaml": {
+    "mtime": 1779935620.4279735,
+    "hash": "b5a254340aae846939fe30e3bac409cc"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-30-07_mappo_torch/params/agent.yaml": {
+    "mtime": 1779769807.3160837,
+    "hash": "12844f7d41cb21ad6a15f74e52f6e50d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-30-07_mappo_torch/params/env.yaml": {
+    "mtime": 1779769807.3130836,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_11-13-18_mappo_torch/params/agent.yaml": {
+    "mtime": 1779819198.437161,
+    "hash": "594e43e524faa29ffe658ab7344a2506"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_11-13-18_mappo_torch/params/env.yaml": {
+    "mtime": 1779819198.4351609,
+    "hash": "b78a49ee76cb0d26639dc9bc9c339ab0"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_19-46-21_mappo_torch/params/agent.yaml": {
+    "mtime": 1779763581.8518863,
+    "hash": "d0e4644039b123bdd4ea873499f27242"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_19-46-21_mappo_torch/params/env.yaml": {
+    "mtime": 1779763581.8488863,
+    "hash": "913b42d84ac8dc8622f0bc244d43ed61"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_19-47-47_mappo_torch/params/agent.yaml": {
+    "mtime": 1779763667.3394396,
+    "hash": "71800dd9f7675f11df1e852ec7114eca"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_19-47-47_mappo_torch/params/env.yaml": {
+    "mtime": 1779763667.3374395,
+    "hash": "913b42d84ac8dc8622f0bc244d43ed61"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_20-02-15_mappo_torch/params/agent.yaml": {
+    "mtime": 1779850935.8659792,
+    "hash": "0e0e4651482fbcab8481d57a11dffaa1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_20-02-15_mappo_torch/params/env.yaml": {
+    "mtime": 1779850935.8639443,
+    "hash": "579a3f1df51d09e773f62d35b479e0dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_19-38-26_mappo_torch/params/agent.yaml": {
+    "mtime": 1779935906.2700558,
+    "hash": "ad171e2dd8dadbbbc3378bba737bd891"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_19-38-26_mappo_torch/params/env.yaml": {
+    "mtime": 1779935906.2670557,
+    "hash": "67ced4dc7ca3b080a4bf15bf4bf2d9d6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-33-40_mappo_torch/params/agent.yaml": {
+    "mtime": 1779770021.0656655,
+    "hash": "8da3907d668ffe943c3c558a56a3bff3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-33-40_mappo_torch/params/env.yaml": {
+    "mtime": 1779770021.0626655,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_18-28-36_mappo_torch/params/agent.yaml": {
+    "mtime": 1779931716.175799,
+    "hash": "f4cf4794500bb79f1fbe4c63415ee35d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_18-28-36_mappo_torch/params/env.yaml": {
+    "mtime": 1779931716.173799,
+    "hash": "69f607a7502ef5d7ac1403a8500156ab"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-28-18_mappo_torch/params/agent.yaml": {
+    "mtime": 1779769698.1922543,
+    "hash": "5536a6b3b601014cdbf1f353c8c9d0bb"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-28-18_mappo_torch/params/env.yaml": {
+    "mtime": 1779769698.1902542,
+    "hash": "73a60a190d998c3de76f7b6eb197a4f5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-28-41_mappo_torch/params/agent.yaml": {
+    "mtime": 1779769721.6604342,
+    "hash": "e8cfdbc3302a23febd420f7446d053dc"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-28-41_mappo_torch/params/env.yaml": {
+    "mtime": 1779769721.6584342,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_11-33-24_mappo_torch/params/agent.yaml": {
+    "mtime": 1779906804.5209978,
+    "hash": "3e2c31afd7607f639f09fa0c8abc242a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_11-33-24_mappo_torch/params/env.yaml": {
+    "mtime": 1779906804.5179977,
+    "hash": "7ba50a950c7e8edb5a7bf75cff45c9ba"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-37-46_mappo_torch/params/agent.yaml": {
+    "mtime": 1779770266.2694314,
+    "hash": "3f8b9a25259a183c48be4c8fab0c6f0c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-37-46_mappo_torch/params/env.yaml": {
+    "mtime": 1779770266.2664313,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_19-48-26_mappo_torch/params/agent.yaml": {
+    "mtime": 1779763706.9756966,
+    "hash": "536b2511aac86ec4b7e4d41ed88e2c58"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_19-48-26_mappo_torch/params/env.yaml": {
+    "mtime": 1779763706.9746966,
+    "hash": "913b42d84ac8dc8622f0bc244d43ed61"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_18-13-08_mappo_torch/params/agent.yaml": {
+    "mtime": 1779930788.100531,
+    "hash": "da896fd7e9aa0a29d69c167c7b1b6f1b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_18-13-08_mappo_torch/params/env.yaml": {
+    "mtime": 1779930788.097531,
+    "hash": "76d87cd62e40c7c5073cf18452896676"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-51-51_mappo_torch/params/agent.yaml": {
+    "mtime": 1779781911.7890975,
+    "hash": "7ed6af604c9ed14194931e8e88451d7a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_00-51-51_mappo_torch/params/env.yaml": {
+    "mtime": 1779781911.7870975,
+    "hash": "81a5a382a81701f12b7035874f715cf5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-37-01_mappo_torch/params/agent.yaml": {
+    "mtime": 1779770221.959115,
+    "hash": "b4952d8074844ddefdc7a2a7ff468a1a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-37-01_mappo_torch/params/env.yaml": {
+    "mtime": 1779770221.957115,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_01-23-49_mappo_torch/params/agent.yaml": {
+    "mtime": 1779783829.7813852,
+    "hash": "2263fb1674c514101b31506fe0323249"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_01-23-49_mappo_torch/params/env.yaml": {
+    "mtime": 1779783829.7783852,
+    "hash": "69b286ea621d8eb161be3d62d37c3aa4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-30_16-42-03_mappo_torch/params/agent.yaml": {
+    "mtime": 1780184523.3761697,
+    "hash": "f52b7e59b457199f39902fc8da50d916"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-30_16-42-03_mappo_torch/params/env.yaml": {
+    "mtime": 1780184523.3741698,
+    "hash": "fb389b83facab9d9a1ac3e12f1b5df7e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_22-00-09_mappo_torch/params/agent.yaml": {
+    "mtime": 1779771609.8714256,
+    "hash": "431ae8fdac3c622707dc50c40e344185"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_22-00-09_mappo_torch/params/env.yaml": {
+    "mtime": 1779771609.8684256,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_01-26-54_mappo_torch/params/agent.yaml": {
+    "mtime": 1779784014.6068587,
+    "hash": "eba24feccb3f8831f2a598abd755aeaf"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_01-26-54_mappo_torch/params/env.yaml": {
+    "mtime": 1779784014.6058586,
+    "hash": "69b286ea621d8eb161be3d62d37c3aa4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-36-08_mappo_torch/params/agent.yaml": {
+    "mtime": 1779770168.24373,
+    "hash": "cc6d24da7b342ebe0ba718ba4b8f9248"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-36-08_mappo_torch/params/env.yaml": {
+    "mtime": 1779770168.2417302,
+    "hash": "7cf1495161e3bfad399816accc30ef22"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_14-28-10_mappo_torch/params/agent.yaml": {
+    "mtime": 1779830890.9371114,
+    "hash": "5f5210d819c068eaff36087ab1d34a96"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-26_14-28-10_mappo_torch/params/env.yaml": {
+    "mtime": 1779830890.9351113,
+    "hash": "6583e296f8edcef53566652706c799ca"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-28-03_mappo_torch/params/agent.yaml": {
+    "mtime": 1779769683.204139,
+    "hash": "34ced13da3e6bcba39a1f3b874a1c383"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-25_21-28-03_mappo_torch/params/env.yaml": {
+    "mtime": 1779769683.202139,
+    "hash": "73a60a190d998c3de76f7b6eb197a4f5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_00-11-57_mappo_torch/params/agent.yaml": {
+    "mtime": 1779865917.3152678,
+    "hash": "064ff9e3031841f9a72983c27618658e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/paper_swarm/mappo_stage1/2026-05-27_00-11-57_mappo_torch/params/env.yaml": {
+    "mtime": 1779865917.313268,
+    "hash": "579a3f1df51d09e773f62d35b479e0dd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/mappo/2026-05-23_17-35-59_mappo_torch/params/agent.yaml": {
+    "mtime": 1779582959.2678275,
+    "hash": "5134de054d4cc24cc43ad65b363e1070"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/mappo/2026-05-23_17-35-59_mappo_torch/params/env.yaml": {
+    "mtime": 1779582959.2648275,
+    "hash": "c47bf0d2e7e9c5dbda33bd8919bb3d2b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/mappo/2026-05-23_13-43-55_mappo_torch/params/agent.yaml": {
+    "mtime": 1779569035.429071,
+    "hash": "613f315346bcfd99da5bf1456f93445c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/mappo/2026-05-23_13-43-55_mappo_torch/params/env.yaml": {
+    "mtime": 1779569035.4270709,
+    "hash": "5a5c8ea52ce07b5656e091ef3e8e53d9"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/mappo/2026-05-23_13-44-51_mappo_torch/params/agent.yaml": {
+    "mtime": 1779569091.5350144,
+    "hash": "cc9cb89a99438c3df54629d91fb927ef"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/mappo/2026-05-23_13-44-51_mappo_torch/params/env.yaml": {
+    "mtime": 1779569091.5330143,
+    "hash": "5a5c8ea52ce07b5656e091ef3e8e53d9"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/mappo/2026-05-23_13-51-45_mappo_torch/params/agent.yaml": {
+    "mtime": 1779569505.6724455,
+    "hash": "4627a6bc8f49bd16e1f397c434449674"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/mappo/2026-05-23_13-51-45_mappo_torch/params/env.yaml": {
+    "mtime": 1779569505.6704454,
+    "hash": "85252e01845bc706d484977ddf00a220"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/mappo/2026-05-23_13-45-47_mappo_torch/params/agent.yaml": {
+    "mtime": 1779569147.443951,
+    "hash": "2d72a67f8dad1e4569eefd6de660599c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/mappo/2026-05-23_13-45-47_mappo_torch/params/env.yaml": {
+    "mtime": 1779569147.4409509,
+    "hash": "5a5c8ea52ce07b5656e091ef3e8e53d9"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/mappo/2026-05-23_16-18-40_mappo_torch/params/agent.yaml": {
+    "mtime": 1779578320.6482594,
+    "hash": "82065f3b171946a96c93bec5ebae8bec"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/mappo/2026-05-23_16-18-40_mappo_torch/params/env.yaml": {
+    "mtime": 1779578320.6462593,
+    "hash": "a335c031ccbe0449615aebf8cb32dd45"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/ippo/2026-05-23_13-44-33_ippo_torch/params/agent.yaml": {
+    "mtime": 1779569073.0710337,
+    "hash": "82265eb894fbcb91786736c5103a9694"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/cameron_swarm/ippo/2026-05-23_13-44-33_ippo_torch/params/env.yaml": {
+    "mtime": 1779569073.068034,
+    "hash": "d6ead6bcfbd412554a894ad774c4354a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_01-19-38_ippo_torch/params/agent.yaml": {
+    "mtime": 1777537178.2061331,
+    "hash": "e10739b99a69733f4ed4b9a86ea7cd30"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_01-19-38_ippo_torch/params/env.yaml": {
+    "mtime": 1777537178.203133,
+    "hash": "c26bc216b7c7057980522afd17221f3f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_21-16-51_ippo_torch/params/agent.yaml": {
+    "mtime": 1777609011.4955282,
+    "hash": "6b42322e30f81dc825b080bca81ac5e1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_21-16-51_ippo_torch/params/env.yaml": {
+    "mtime": 1777609011.4935284,
+    "hash": "b307d3f6fdf980b12098955b6f941a7b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-01-44_ippo_torch/params/agent.yaml": {
+    "mtime": 1777330904.9657853,
+    "hash": "c177317fa828c2579ccb0469de044d29"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-01-44_ippo_torch/params/env.yaml": {
+    "mtime": 1777330904.9617853,
+    "hash": "dca7b9b730772c1734f996d387137e34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-33-56_ippo_torch/params/agent.yaml": {
+    "mtime": 1777329236.539148,
+    "hash": "ea3d3b2ddcb05a4b1f42d88c122c8146"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-33-56_ippo_torch/params/env.yaml": {
+    "mtime": 1777329236.536148,
+    "hash": "dca7b9b730772c1734f996d387137e34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_18-18-18_ippo_torch/params/agent.yaml": {
+    "mtime": 1777598298.341862,
+    "hash": "6f79b98907c214afb17058be3d66a82f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_18-18-18_ippo_torch/params/env.yaml": {
+    "mtime": 1777598298.3378618,
+    "hash": "b307d3f6fdf980b12098955b6f941a7b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-50-58_ippo_torch/params/agent.yaml": {
+    "mtime": 1777535459.0120146,
+    "hash": "52353b38c3f6e5bb1ccc2b1046b01006"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-50-58_ippo_torch/params/env.yaml": {
+    "mtime": 1777535459.0090146,
+    "hash": "c26bc216b7c7057980522afd17221f3f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-32-39_ippo_torch/params/agent.yaml": {
+    "mtime": 1777329159.8923554,
+    "hash": "d9e7a47a355244c8de001b1c13262b00"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-32-39_ippo_torch/params/env.yaml": {
+    "mtime": 1777329159.8893554,
+    "hash": "dca7b9b730772c1734f996d387137e34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_20-39-47_ippo_torch/params/agent.yaml": {
+    "mtime": 1777606787.3497398,
+    "hash": "3d3040225e4519b00bda59b6ec5b22bf"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_20-39-47_ippo_torch/params/env.yaml": {
+    "mtime": 1777606787.3457396,
+    "hash": "b307d3f6fdf980b12098955b6f941a7b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-01-57_ippo_torch/params/agent.yaml": {
+    "mtime": 1777330917.4337962,
+    "hash": "321d0c8b3ac298d69e107b4237bd0bfc"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-01-57_ippo_torch/params/env.yaml": {
+    "mtime": 1777330917.431796,
+    "hash": "dca7b9b730772c1734f996d387137e34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_20-30-34_ippo_torch/params/agent.yaml": {
+    "mtime": 1777606234.9310956,
+    "hash": "72e3a83dd8bd27ea3c63145d90cbed10"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_20-30-34_ippo_torch/params/env.yaml": {
+    "mtime": 1777606234.9280956,
+    "hash": "b307d3f6fdf980b12098955b6f941a7b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-28-13_ippo_torch/params/agent.yaml": {
+    "mtime": 1777332493.39093,
+    "hash": "fe31058920a17443630a9d90f4939dac"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-28-13_ippo_torch/params/env.yaml": {
+    "mtime": 1777332493.38758,
+    "hash": "6a1b1cbdd3241ff27dedff33a86626d7"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_20-55-35_ippo_torch/params/agent.yaml": {
+    "mtime": 1777607735.4437654,
+    "hash": "d5905ff5a96d95557ee34b0c68bb8652"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_20-55-35_ippo_torch/params/env.yaml": {
+    "mtime": 1777607735.4407654,
+    "hash": "b307d3f6fdf980b12098955b6f941a7b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-33-14_ippo_torch/params/agent.yaml": {
+    "mtime": 1777534394.6935527,
+    "hash": "0949620aca0895a035cb30f59e2dc585"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-33-14_ippo_torch/params/env.yaml": {
+    "mtime": 1777534394.6905527,
+    "hash": "e480269b8547751d3f849e883df1e21c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-24-33_ippo_torch/params/agent.yaml": {
+    "mtime": 1777332273.9726949,
+    "hash": "56e03d2e8d95c9f2ec26953caca3bdca"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-24-33_ippo_torch/params/env.yaml": {
+    "mtime": 1777332273.970695,
+    "hash": "6a1b1cbdd3241ff27dedff33a86626d7"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_20-31-32_ippo_torch/params/agent.yaml": {
+    "mtime": 1777606292.2111347,
+    "hash": "2f09e5e41ba4144ed86d427aa279a721"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_20-31-32_ippo_torch/params/env.yaml": {
+    "mtime": 1777606292.2071347,
+    "hash": "b307d3f6fdf980b12098955b6f941a7b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-31-24_ippo_torch/params/agent.yaml": {
+    "mtime": 1777534284.2655146,
+    "hash": "c2d3ec9bd872f8cfbce42bdb00bd9a5c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-31-24_ippo_torch/params/env.yaml": {
+    "mtime": 1777534284.2625146,
+    "hash": "e480269b8547751d3f849e883df1e21c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-31-00_ippo_torch/params/agent.yaml": {
+    "mtime": 1777329060.3486333,
+    "hash": "58b58d0dbadcfcbc7ace5aeaa171aa40"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-31-00_ippo_torch/params/env.yaml": {
+    "mtime": 1777329060.3456333,
+    "hash": "dca7b9b730772c1734f996d387137e34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-34-19_ippo_torch/params/agent.yaml": {
+    "mtime": 1777329259.418087,
+    "hash": "9109bfa1cb24484888be8d508238fe2f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-34-19_ippo_torch/params/env.yaml": {
+    "mtime": 1777329259.415087,
+    "hash": "dca7b9b730772c1734f996d387137e34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-07-53_ippo_torch/params/agent.yaml": {
+    "mtime": 1777331274.0279605,
+    "hash": "a1e891b390ee60de87cb8c37eb922ab2"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-07-53_ippo_torch/params/env.yaml": {
+    "mtime": 1777331274.0249605,
+    "hash": "dca7b9b730772c1734f996d387137e34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-30-53_ippo_torch/params/agent.yaml": {
+    "mtime": 1777332653.5844953,
+    "hash": "b7abca59ad6faaf656cb0a2d627e1a68"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-30-53_ippo_torch/params/env.yaml": {
+    "mtime": 1777332653.5814953,
+    "hash": "b4429ed93bfc4312c0d6e87a4fad271e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_01-26-58_ippo_torch/params/agent.yaml": {
+    "mtime": 1777537618.0813448,
+    "hash": "adc1c066a3ece4e07b187f5fc7093b91"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_01-26-58_ippo_torch/params/env.yaml": {
+    "mtime": 1777537618.0783448,
+    "hash": "b307d3f6fdf980b12098955b6f941a7b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-28-17_ippo_torch/params/agent.yaml": {
+    "mtime": 1777534097.5834582,
+    "hash": "9efb1ed8e3f74d963488a72ba34b1a4b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-28-17_ippo_torch/params/env.yaml": {
+    "mtime": 1777534097.5804582,
+    "hash": "5215c077e5f54d7401522c8bff7cd8c4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_21-18-42_ippo_torch/params/agent.yaml": {
+    "mtime": 1777609122.245742,
+    "hash": "3b9719f139727f672e281a33e321ae58"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_21-18-42_ippo_torch/params/env.yaml": {
+    "mtime": 1777609122.242742,
+    "hash": "b307d3f6fdf980b12098955b6f941a7b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_21-07-30_ippo_torch/params/agent.yaml": {
+    "mtime": 1777608450.9294155,
+    "hash": "4e8d6c031946289f4bbd2db12e915dc9"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_21-07-30_ippo_torch/params/env.yaml": {
+    "mtime": 1777608450.9264154,
+    "hash": "b307d3f6fdf980b12098955b6f941a7b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-38-04_ippo_torch/params/agent.yaml": {
+    "mtime": 1777329484.2965074,
+    "hash": "58d1dfa84f5f17fe302399b7568b9aec"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-38-04_ippo_torch/params/env.yaml": {
+    "mtime": 1777329484.2935073,
+    "hash": "dca7b9b730772c1734f996d387137e34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-36-07_ippo_torch/params/agent.yaml": {
+    "mtime": 1777534568.0106173,
+    "hash": "16de09ca69622b504c2da8b8661e3fcc"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-36-07_ippo_torch/params/env.yaml": {
+    "mtime": 1777534568.0076172,
+    "hash": "c26bc216b7c7057980522afd17221f3f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-23-30_ippo_torch/params/agent.yaml": {
+    "mtime": 1777533810.6123989,
+    "hash": "fcced497a08a63397bbd02ef82a2071d"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-23-30_ippo_torch/params/env.yaml": {
+    "mtime": 1777533810.608399,
+    "hash": "a493d955a180a4fc751f4a906fe912b9"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_18-16-47_ippo_torch/params/agent.yaml": {
+    "mtime": 1777598207.4437373,
+    "hash": "5c3d5cb66f53cb9f5a07b2af6f1f9b58"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_18-16-47_ippo_torch/params/env.yaml": {
+    "mtime": 1777598207.4407372,
+    "hash": "b307d3f6fdf980b12098955b6f941a7b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-26-10_ippo_torch/params/agent.yaml": {
+    "mtime": 1777533970.3674269,
+    "hash": "805cb1f9b2358ce65707876e486be390"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-26-10_ippo_torch/params/env.yaml": {
+    "mtime": 1777533970.363427,
+    "hash": "c26bc216b7c7057980522afd17221f3f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-47-14_ippo_torch/params/agent.yaml": {
+    "mtime": 1777535234.7934458,
+    "hash": "4c4b070e1319cc4d8200bcd2fcd09201"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-47-14_ippo_torch/params/env.yaml": {
+    "mtime": 1777535234.7904458,
+    "hash": "77dcefa4df2780d21885a66502514e30"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-04-28_ippo_torch/params/agent.yaml": {
+    "mtime": 1777331068.9698968,
+    "hash": "044312aa7bd6f12fb133c54163dc3dba"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-04-28_ippo_torch/params/env.yaml": {
+    "mtime": 1777331068.9668968,
+    "hash": "dca7b9b730772c1734f996d387137e34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_01-40-12_ippo_torch/params/agent.yaml": {
+    "mtime": 1777538412.5100145,
+    "hash": "ac128d8362f2716b1dd42f518242912c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_01-40-12_ippo_torch/params/env.yaml": {
+    "mtime": 1777538412.5070145,
+    "hash": "b307d3f6fdf980b12098955b6f941a7b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_20-33-05_ippo_torch/params/agent.yaml": {
+    "mtime": 1777606385.464199,
+    "hash": "b115f2bffc57f48ba60ad4fe93c4d43b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_20-33-05_ippo_torch/params/env.yaml": {
+    "mtime": 1777606385.461199,
+    "hash": "b307d3f6fdf980b12098955b6f941a7b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-09-06_ippo_torch/params/agent.yaml": {
+    "mtime": 1777331346.055968,
+    "hash": "5b3cf0dbcf446e96065f70e8a56d767f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-09-06_ippo_torch/params/env.yaml": {
+    "mtime": 1777331346.053968,
+    "hash": "dca7b9b730772c1734f996d387137e34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-37-38_ippo_torch/params/agent.yaml": {
+    "mtime": 1777329458.4655724,
+    "hash": "7f05e4b4bfc90226121403523abb6ee1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-37-38_ippo_torch/params/env.yaml": {
+    "mtime": 1777329458.4635723,
+    "hash": "dca7b9b730772c1734f996d387137e34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-25-14_ippo_torch/params/agent.yaml": {
+    "mtime": 1777328714.5577047,
+    "hash": "70800f33e230e2036030dfd120b5dd6f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-25-14_ippo_torch/params/env.yaml": {
+    "mtime": 1777328714.5547047,
+    "hash": "c808b9017521fbcb05ee1174a6568d30"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-24_19-07-29_ippo_torch/params/agent.yaml": {
+    "mtime": 1777082849.3569906,
+    "hash": "d7e89fb461e5b15577dc43ec5197cb38"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-24_19-07-29_ippo_torch/params/env.yaml": {
+    "mtime": 1777082849.3549907,
+    "hash": "cfb038dbba7664d033dc3d1fb046fd2f"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-31-45_ippo_torch/params/agent.yaml": {
+    "mtime": 1777534305.9195218,
+    "hash": "3cc0282ab91244ad598b6ce1aabe181e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-30_00-31-45_ippo_torch/params/env.yaml": {
+    "mtime": 1777534305.916522,
+    "hash": "e480269b8547751d3f849e883df1e21c"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-36-26_ippo_torch/params/agent.yaml": {
+    "mtime": 1777329386.8597546,
+    "hash": "6a43648ea77710f0e70c24632467216a"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_15-36-26_ippo_torch/params/env.yaml": {
+    "mtime": 1777329386.8577545,
+    "hash": "dca7b9b730772c1734f996d387137e34"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-30-21_ippo_torch/params/agent.yaml": {
+    "mtime": 1777332621.2485125,
+    "hash": "611f6f55632cca3690fc345c382d71db"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-27_16-30-21_ippo_torch/params/env.yaml": {
+    "mtime": 1777332621.2455125,
+    "hash": "b4429ed93bfc4312c0d6e87a4fad271e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/codex_shared_ippo_plan.md": {
+    "mtime": 1777597003.1182837,
+    "hash": "a7a853ad712c1949dc5ca24321725ecf"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_agent_package/agent_manifest.yaml": {
+    "mtime": 1777527284.0,
+    "hash": "9b3e342aad0031256de01cc337530073"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_agent_package/README.md": {
+    "mtime": 1777527284.0,
+    "hash": "245113bcadd9e7924fd64d75a42bb994"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_agent_package/INSTRUMENTATION_SPEC.md": {
+    "mtime": 1777527284.0,
+    "hash": "3479c43a0da4a0e115f0c67ed85ee1f2"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_agent_package/PATCH_RECIPE.md": {
+    "mtime": 1777527284.0,
+    "hash": "7127af13ab27e790d98da7ab395992da"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_agent_package/VALIDATION_PROTOCOL.md": {
+    "mtime": 1777527284.0,
+    "hash": "4aec33a3c7b445fb096a3fa6cf0479fd"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_agent_package/FILE_MAP.md": {
+    "mtime": 1777527284.0,
+    "hash": "4deb9596f3d727f451f04dc23071cff1"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_isaaclab_agent_handoff/05_MODEL_AND_TRAINING_SPEC.md": {
+    "mtime": 1777017391.0,
+    "hash": "62825bc26abd1b9fb89d3d5c7be02229"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_isaaclab_agent_handoff/README.md": {
+    "mtime": 1777017391.0,
+    "hash": "e06876ef18101c89790cffa964455fed"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_isaaclab_agent_handoff/08_SOURCES.md": {
+    "mtime": 1777017391.0,
+    "hash": "e7dd50c24d657d2fca7fe548705696f4"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_isaaclab_agent_handoff/00_INITIAL_INSTRUCTION.md": {
+    "mtime": 1777017391.0,
+    "hash": "babce5744d291d8bce416c67fb45be51"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_isaaclab_agent_handoff/01_DECISIONS_AND_SCOPE.md": {
+    "mtime": 1777017391.0,
+    "hash": "31dbd6f1ece1ac2cbd37ddf331e3bc26"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_isaaclab_agent_handoff/03_PHASED_IMPLEMENTATION_PLAN.md": {
+    "mtime": 1777017391.0,
+    "hash": "888ad9df13e9458aa986ae3252162eb9"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_isaaclab_agent_handoff/04_ENVIRONMENT_SPEC.md": {
+    "mtime": 1777017425.0,
+    "hash": "505798adb0cdc8e69901b4f2112142d9"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_isaaclab_agent_handoff/06_VALIDATION_AND_ACCEPTANCE.md": {
+    "mtime": 1777017391.0,
+    "hash": "d2595c0c34082ed6aa5dc81dbda43ad3"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_isaaclab_agent_handoff/07_OPEN_QUESTIONS_AND_RISKS.md": {
+    "mtime": 1777017391.0,
+    "hash": "4c4f08f86d6ba5f42989eefe313e0c6b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_isaaclab_agent_handoff/02_REPO_SPLIT_AND_TARGET_TREE.md": {
+    "mtime": 1777017391.0,
+    "hash": "8e9db7e88efedc0a0140ae914af915f6"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/paper_swarm_train_stage2/2026-05-28_18-56-25_mappo_torch/params/agent.yaml": {
+    "mtime": 1780019785.0,
+    "hash": "0251cc6875bfc558dbe5e790667e17ec"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/paper_swarm_train_stage2/2026-05-28_18-56-25_mappo_torch/params/env.yaml": {
+    "mtime": 1780019785.0,
+    "hash": "2e5352e06ec59becbe52d2f93fdb1c41"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/paper_swarm_train_stage1/2026-05-27_19-52-32_mappo_torch/params/agent.yaml": {
+    "mtime": 1779936753.0,
+    "hash": "ba4a1b512c9d59c310c33afb35ffb30b"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/paper_swarm_train_stage1/2026-05-27_19-52-32_mappo_torch/params/env.yaml": {
+    "mtime": 1779936753.0,
+    "hash": "236867f26c99910e95b00e1989d52f32"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/artifacts/collision-swarm/quad_swarm_agent_package/swarm_paper.pdf": {
+    "mtime": 1777532337.3028357,
+    "hash": "0386f525a596f1e3a2648f1321f428ca"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/papers/dynamic-static-formation-swarm.pdf": {
+    "mtime": 1779583362.4564188,
+    "hash": "5a1d481f9bb1af3517dce6c275a403f5"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/papers/collision-swarm.pdf": {
+    "mtime": 1779583415.3113763,
+    "hash": "d5cc6b841725a4cc4db202af1bab8b1e"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/site/assets/images/favicon.png": {
+    "mtime": 1777780689.1424377,
+    "hash": "370ef648333a78cf59e253f1322c6fdc"
+  },
+  "/home/cam/Development/cpsquare/swarm-lab/logs/skrl/quad_swarm_paper/2026-04-24_19-07-29_ippo_torch/videos/play/rl-video-step-0.mp4": {
+    "mtime": 1777329017.5127563,
+    "hash": "900996965d8cce0a129e79446cb6f8fc"
+  }
+}

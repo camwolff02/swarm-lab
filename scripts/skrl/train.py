@@ -252,10 +252,10 @@ def main():
             print(f"[INFO] Loading model checkpoint from: {resume_path}")
             runner.agent.load(resume_path)
             if args_cli.reset_optimizer_on_resume:
-                if not hasattr(runner.agent, "reset_optimizer_state"):
+                if not hasattr(runner.agent, "reset_for_transition"):
                     raise AttributeError("The selected skrl agent does not support --reset_optimizer_on_resume")
-                runner.agent.reset_optimizer_state()
-                print("[INFO] Reset optimizer and scheduler state after loading checkpoint.")
+                runner.agent.reset_for_transition()  # type: ignore[attr-defined]
+                print("[INFO] Reset model state for curriculum transition after loading checkpoint.")
 
         # run training
         try:

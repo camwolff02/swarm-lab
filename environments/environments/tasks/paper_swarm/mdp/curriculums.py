@@ -34,7 +34,40 @@ def passive_drone_count_curriculum(
     target_count = round(min_passive + progress * (max_passive - min_passive))
     target_count = max(min_passive, min(max_passive, target_count))
     root._paper_swarm_num_passive_active = target_count
+    _set_passive_drone_mask(root, env_ids, target_count)
     root.extras["passive_drone_count"] = target_count
+
+
+def _set_passive_drone_mask(root, env_ids: torch.Tensor, target_count: int) -> None:
+    """Set the per-environment passive-drone visibility/control mask."""
+    passive_drone_ids = list(getattr(root, "_passive_drone_ids", []))
+    if not passive_drone_ids:
+        return
+    if env_ids is None:
+        env_ids = torch.arange(root.num_envs, device=root.device, dtype=torch.long)
+    else:
+        env_ids = torch.as_tensor(env_ids, device=root.device, dtype=torch.long)
+
+    all_drone_ids = [f"drone_{index}" for index in range(8)]
+    mask_key = getattr(root, "_passive_mask_key", "passive_drones")
+    old_mask = getattr(root, mask_key, None)
+    if old_mask is None or old_mask.shape != (root.num_envs, len(all_drone_ids)):
+        passive_mask = torch.zeros(root.num_envs, len(all_drone_ids), device=root.device, dtype=torch.bool)
+    else:
+        passive_mask = old_mask.clone()
+
+    passive_indices = torch.tensor([all_drone_ids.index(agent_id) for agent_id in passive_drone_ids], device=root.device)
+    passive_mask[env_ids.unsqueeze(-1), passive_indices.unsqueeze(0)] = False
+
+    active_count = max(0, min(len(passive_drone_ids), int(target_count)))
+    if active_count > 0:
+        active_indices = torch.tensor(
+            [all_drone_ids.index(agent_id) for agent_id in passive_drone_ids[:active_count]],
+            device=root.device,
+        )
+        passive_mask[env_ids.unsqueeze(-1), active_indices.unsqueeze(0)] = True
+
+    setattr(root, mask_key, passive_mask)
 
 
 def active_agent_count_curriculum(
