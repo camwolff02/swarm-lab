@@ -95,9 +95,7 @@ def _all_velocities(env) -> torch.Tensor:
     return _get_cached(
         env,
         "all_vel",
-        lambda: torch.stack(
-            [root.scene[agent_id].data.root_lin_vel_w.torch for agent_id in agent_ids], dim=1
-        ),
+        lambda: torch.stack([root.scene[agent_id].data.root_lin_vel_w.torch for agent_id in agent_ids], dim=1),
     )
 
 
@@ -108,9 +106,7 @@ def _all_quats(env) -> torch.Tensor:
     return _get_cached(
         env,
         "all_quat",
-        lambda: torch.stack(
-            [root.scene[agent_id].data.root_quat_w.torch for agent_id in agent_ids], dim=1
-        ),
+        lambda: torch.stack([root.scene[agent_id].data.root_quat_w.torch for agent_id in agent_ids], dim=1),
     )
 
 
@@ -121,9 +117,7 @@ def _all_omegas(env) -> torch.Tensor:
     return _get_cached(
         env,
         "all_omega",
-        lambda: torch.stack(
-            [root.scene[agent_id].data.root_ang_vel_w.torch for agent_id in agent_ids], dim=1
-        ),
+        lambda: torch.stack([root.scene[agent_id].data.root_ang_vel_w.torch for agent_id in agent_ids], dim=1),
     )
 
 
@@ -197,8 +191,8 @@ def formation_other_drone_obs(env, asset_cfg) -> torch.Tensor:
     velocities = _all_velocities(env)
     ego_index = agent_ids.index(_ego_agent_id(env))
 
-    relative_pos = positions[:, ego_index:ego_index + 1, :] - positions
-    relative_vel = velocities[:, ego_index:ego_index + 1, :] - velocities
+    relative_pos = positions[:, ego_index : ego_index + 1, :] - positions
+    relative_vel = velocities[:, ego_index : ego_index + 1, :] - velocities
 
     mask = torch.ones(len(agent_ids), device=root.device, dtype=torch.bool)
     mask[ego_index] = False
@@ -232,8 +226,9 @@ def formation_ball_obs(env, asset_cfg) -> torch.Tensor:
     if ball_active is None:
         ball_active = torch.zeros(root.num_envs, num_balls, device=root.device, dtype=torch.bool)
 
+    ego_vel = _asset(env, asset_cfg).data.root_lin_vel_w.torch
     rel_pos = balls_pos - ego_pos.unsqueeze(1)
-    rel_vel = balls_vel - ego_pos.unsqueeze(1)  # ball velocity relative to ego
+    rel_vel = balls_vel - ego_vel.unsqueeze(1)
     ball_dist = torch.linalg.norm(rel_pos, dim=-1, keepdim=True)
 
     obs = torch.cat(

@@ -10,9 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import torch
-from skrl.models.torch import Model
 import skrl.utils.runner.torch.runner as skrl_runner_module
+from skrl.models.torch import Model
 from skrl.utils.runner.torch import Runner
 from skrl.utils.spaces.torch import flatten_tensorized_space, tensorize_space
 from torch.optim.lr_scheduler import ExponentialLR
@@ -22,6 +21,7 @@ from environments.tasks.formation_swarm.models import (
     FormationDeterministicValue,
     FormationGaussianPolicy,
 )
+
 from .shared_mappo import FormationMAPPO
 
 _MODEL_FACTORY_NAME = "formation_swarm_attention"
@@ -53,6 +53,9 @@ def _generate_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model
         env.action_spaces[first_agent],
         device,
         encoder_cfg=encoder_cfg,
+        clip_log_std=bool(model_cfg.get("clip_log_std", False)),
+        min_log_std=float(model_cfg.get("min_log_std", -20.0)),
+        max_log_std=float(model_cfg.get("max_log_std", 2.0)),
     )
     shared_value = FormationDeterministicValue(
         state_spaces.get(first_agent) or env.observation_spaces[first_agent],
@@ -80,20 +83,13 @@ def install_formation_swarm_runner_patch() -> None:
     _ORIGINAL_GENERATE_MODELS = Runner._generate_models
     _ORIGINAL_GENERATE_AGENT = Runner._generate_agent
 
-    def _patched_generate_models(
-        self: Runner, env: Any, cfg: dict[str, Any]
-    ) -> dict[str, dict[str, Model]]:
+    def _patched_generate_models(self: Runner, env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model]]:
         if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME:
             return _generate_models(env, cfg)
         return _ORIGINAL_GENERATE_MODELS(self, env, cfg)
 
-    def _patched_generate_agent(
-        self: Runner, env: Any, cfg: dict[str, Any], models: dict[str, dict[str, Model]]
-    ):
-        if (
-            cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME
-            and cfg.get("agent", {}).get("class") == "MAPPO"
-        ):
+    def _patched_generate_agent(self: Runner, env: Any, cfg: dict[str, Any], models: dict[str, dict[str, Model]]):
+        if cfg.get("models", {}).get("factory") == _MODEL_FACTORY_NAME and cfg.get("agent", {}).get("class") == "MAPPO":
             self._agent_class = FormationMAPPO
         return _ORIGINAL_GENERATE_AGENT(self, env, cfg, models)
 
@@ -120,16 +116,12 @@ def _install_multi_agent_state_patch() -> None:
             return {uid: None for uid in self.possible_agents}
         if isinstance(state, dict):
             return {
-                uid: flatten_tensorized_space(
-                    tensorize_space(self.state_spaces[uid], state[uid])
-                )
+                uid: flatten_tensorized_space(tensorize_space(self.state_spaces[uid], state[uid]))
                 if state.get(uid) is not None
                 else None
                 for uid in self.possible_agents
             }
-        state = flatten_tensorized_space(
-            tensorize_space(next(iter(self.state_spaces.values())), state)
-        )
+        state = flatten_tensorized_space(tensorize_space(next(iter(self.state_spaces.values())), state))
         return {uid: state for uid in self.possible_agents}
 
     wrapper_cls.state = _state

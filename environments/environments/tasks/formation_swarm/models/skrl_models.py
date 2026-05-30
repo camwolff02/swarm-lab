@@ -19,15 +19,13 @@ def _space_size(space: gym.Space) -> int:
 
 
 def _states(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
-    """Policy state — unwrap dicts preferring 'observations', fall back to 'states'."""
-    if inputs is None:
-        return torch.zeros((1,), dtype=torch.float32)
-    if not isinstance(inputs, dict):
-        return inputs.to(dtype=torch.float32) if isinstance(inputs, torch.Tensor) else inputs
-    result = inputs.get("observations", inputs.get("states"))
-    if result is None:
-        return torch.zeros((1,), dtype=torch.float32)
-    return result.to(dtype=torch.float32) if isinstance(result, torch.Tensor) and result.dtype != torch.float32 else result
+    """Policy observation — prefers 'observations' over 'states'."""
+    return inputs.get("observations", inputs.get("states"))
+
+
+def _critic_states(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
+    """Critic state — prefers 'states' over 'observations'."""
+    return inputs.get("states", inputs.get("observations"))
 
 
 class FormationGaussianPolicy(GaussianMixin, Model):
@@ -41,10 +39,19 @@ class FormationGaussianPolicy(GaussianMixin, Model):
         *,
         encoder_cfg: FormationAttentionEncoderCfg = FormationAttentionEncoderCfg(),
         clip_actions: bool = False,
+        clip_log_std: bool = False,
+        min_log_std: float = -20.0,
+        max_log_std: float = 2.0,
     ) -> None:
         """Initialize the FormationGaussianPolicy instance."""
         Model.__init__(self, observation_space=observation_space, action_space=action_space, device=device)
-        GaussianMixin.__init__(self, clip_actions=clip_actions)
+        GaussianMixin.__init__(
+            self,
+            clip_actions=clip_actions,
+            clip_log_std=clip_log_std,
+            min_log_std=min_log_std,
+            max_log_std=max_log_std,
+        )
         self.encoder = FormationAttentionEncoder(encoder_cfg)
         self.mean_head = nn.Linear(encoder_cfg.output_dim, _space_size(action_space))
         nn.init.xavier_uniform_(self.mean_head.weight, gain=0.01)
@@ -53,9 +60,7 @@ class FormationGaussianPolicy(GaussianMixin, Model):
             torch.full((_space_size(action_space),), float(encoder_cfg.initial_log_std))
         )
 
-    def compute(
-        self, inputs: dict[str, torch.Tensor], role: str = ""
-    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    def compute(self, inputs: dict[str, torch.Tensor], role: str = "") -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Compute mean actions and log standard deviation."""
         del role
         mean = self.mean_head(self.encoder(_states(inputs)))
@@ -86,4 +91,4 @@ class FormationDeterministicValue(DeterministicMixin, Model):
     def compute(self, inputs: dict[str, torch.Tensor], role: str = "") -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Compute the value for the current inputs."""
         del role
-        return self.net(_states(inputs)), {}
+        return self.net(_critic_states(inputs)), {}
