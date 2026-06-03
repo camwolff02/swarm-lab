@@ -4,6 +4,7 @@ set -euo pipefail
 ISAACLAB_DIR="../IsaacLab"
 ISAACLAB_REPO_URL="https://github.com/isaac-sim/IsaacLab.git"
 ISAACLAB_BRANCH="release/3.0.0-beta2"
+ISAACLAB_PIN="aea439d28a" # 2026-05-28: last known-working commit before SKRL 2.1.0 bump
 
 if [ ! -d "$ISAACLAB_DIR" ]; then
   git clone --branch "$ISAACLAB_BRANCH" "$ISAACLAB_REPO_URL" "$ISAACLAB_DIR"
@@ -15,8 +16,7 @@ if [ ! -d "$ISAACLAB_DIR/.git" ]; then
 fi
 
 git -C "$ISAACLAB_DIR" fetch origin "$ISAACLAB_BRANCH"
-git -C "$ISAACLAB_DIR" checkout "$ISAACLAB_BRANCH"
-git -C "$ISAACLAB_DIR" pull --ff-only origin "$ISAACLAB_BRANCH"
+git -C "$ISAACLAB_DIR" checkout --detach "$ISAACLAB_PIN"
 
 # Build or refresh the local project env
 if [ ! -d ".venv" ]; then
@@ -40,3 +40,6 @@ uv pip install "isaacsim[all,extscache]==6.0.0" \
 # Install IsaacLab
 cd "$ISAACLAB_DIR"
 ./isaaclab.sh -i 'teleop,rl[rsl-rl],rl[skrl],visualizer[kit]'
+
+# Install Viser
+uv pip install viser==1.0.16

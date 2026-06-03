@@ -320,6 +320,130 @@ class MappoObservationsCfg(ObservationsCfg):
     critic: ObservationsCfg.CentralizedCriticCfg = ObservationsCfg.CentralizedCriticCfg()
 
 
+@configclass
+class LegacyIdentityObservationsCfg(ObservationsCfg):
+    """Actor observations used by older Stage 1 paper-swarm checkpoints.
+
+    The current policy observation intentionally removed the absolute drone
+    identity one-hot from the actor input.  The preserved Stage 1 thesis
+    checkpoint was trained before that cleanup and expects the identity block
+    between the active flag and last action, giving a 34-dim self token and a
+    61-dim actor observation when ``VISIBLE_NEIGHBORS == 2``.
+    """
+
+    @configclass
+    class PolicyCfg(ObsGroup):
+        # -- self block (34 dims) --
+        root_lin_vel_b = ObsTerm(
+            func=mdp.root_lin_vel_b,
+            params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+        )
+        root_ang_vel_b = ObsTerm(
+            func=mdp.root_ang_vel_b,
+            params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+        )
+        projected_gravity_b = ObsTerm(
+            func=mdp.projected_gravity_b,
+            params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+        )
+        root_pos = ObsTerm(
+            func=mdp.root_pos,
+            params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+        )
+        root_rotation_matrix = ObsTerm(
+            func=mdp.root_rotation_matrix,
+            params={"asset_cfg": SceneEntityCfg("{entity_name}")},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+        )
+        active_flag = ObsTerm(
+            func=mdp.agent_active_flag,
+            params={"agent_ids": DRONE_AGENT_IDS, "agent_id": "{agent_id}", "mask_key": ACTIVE_AGENT_MASK_KEY},
+        )
+        drone_identity = ObsTerm(
+            func=mdp.drone_identity,
+            params={"agent_ids": DRONE_AGENT_IDS, "agent_id": "{agent_id}"},
+        )
+        last_action = ObsTerm(func=mdp.last_action, params={"action_name": "ctbr"})
+
+        # -- neighbor block (max_neighbors * 6 dims) --
+        neighbor_state = ObsTerm(
+            func=mdp.neighbor_state_b,
+            params={
+                "asset_cfg": SceneEntityCfg("{entity_name}"),
+                "agent_ids": DRONE_AGENT_IDS,
+                "max_neighbors": VISIBLE_NEIGHBORS,
+                "radius": 6.0,
+                "mask_key": ACTIVE_AGENT_MASK_KEY,
+            },
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+        )
+
+        # -- SDF block (9 dims) --
+        static_sdf = ObsTerm(
+            func=mdp.static_sdf,
+            params={
+                "asset_cfg": SceneEntityCfg("{entity_name}"),
+                "column_positions_key": COLUMN_POSITIONS_KEY,
+                "grid_size": 3,
+                "grid_resolution": 0.1,
+                "column_radius": COLUMN_RADIUS,
+            },
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+        )
+
+        # -- goal block (6 dims) --
+        target_pos_b = ObsTerm(
+            func=mdp.relative_target_position_b,
+            params={"asset_cfg": SceneEntityCfg("{entity_name}"), "command_name": "target_pose"},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+        )
+        target_yaw_error = ObsTerm(
+            func=mdp.target_yaw_error,
+            params={"asset_cfg": SceneEntityCfg("{entity_name}"), "command_name": "target_pose"},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+        )
+        distance_to_goal = ObsTerm(
+            func=mdp.distance_to_goal,
+            params={"asset_cfg": SceneEntityCfg("{entity_name}"), "command_name": "target_pose"},
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+        )
+        goal_reached = ObsTerm(
+            func=mdp.goal_reached_flag,
+            params={
+                "asset_cfg": SceneEntityCfg("{entity_name}"),
+                "command_name": "target_pose",
+                "distance_threshold": TARGET_REACHED_DISTANCE,
+                "yaw_threshold": TARGET_REACHED_YAW,
+            },
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
+
+    @configclass
+    class DecentralizedCriticCfg(PolicyCfg):
+        """Local per-agent critic observation without actor observation corruption."""
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    policy: PolicyCfg = PolicyCfg()
+    critic: DecentralizedCriticCfg = DecentralizedCriticCfg()
+
+
+@configclass
+class MappoLegacyIdentityObservationsCfg(LegacyIdentityObservationsCfg):
+    """Legacy identity actor observations with centralized MAPPO critic."""
+
+    critic: ObservationsCfg.CentralizedCriticCfg = ObservationsCfg.CentralizedCriticCfg()
+
+
 # -----------------------------------------------------------------------------
 # Rewards, terminations, events, curriculum
 # -----------------------------------------------------------------------------
@@ -1208,6 +1332,28 @@ class PaperSwarmMappoStage1EvalCfg(PaperSwarmEvalEnvCfg):
             agent_cfg=AgentRlCfg(
                 asset_name="{agent_id}",
                 observations=MappoObservationsCfg(),
+                actions=Stage1ActionsCfg(),
+                rewards=Stage1RewardsCfg(),
+                terminations=Stage1TerminationsCfg(),
+                commands=Stage1EvalCommandsCfg(),
+                curriculum=None,
+            ),
+        )
+    ]
+
+
+@configclass
+class PaperSwarmMappoStage1LegacyEvalCfg(PaperSwarmMappoStage1EvalCfg):
+    """Stage 1 eval variant for legacy identity-observation checkpoints."""
+
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
+            count=1,
+            id_template="drone_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="{agent_id}",
+                observations=MappoLegacyIdentityObservationsCfg(),
                 actions=Stage1ActionsCfg(),
                 rewards=Stage1RewardsCfg(),
                 terminations=Stage1TerminationsCfg(),

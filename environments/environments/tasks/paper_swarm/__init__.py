@@ -22,6 +22,8 @@ from .agents.runner import _install_runner_patch
 
 _install_runner_patch()
 
+LEGACY_STAGE1_CFG = "environments.tasks.paper_swarm:config/skrl_mappo_stage1_legacy_identity_cfg.yaml"
+
 gym.register(
     id="Isaac-Paper-Swarm-Waypoint-IPPO-v0",
     entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
@@ -30,17 +32,6 @@ gym.register(
         "env_cfg_entry_point": "environments.tasks.paper_swarm.paper_swarm_env_cfg:PaperSwarmIppoEnvCfg",
         "skrl_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_ippo_cfg.yaml",
         "skrl_ippo_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_ippo_cfg.yaml",
-    },
-)
-
-gym.register(
-    id="Isaac-Paper-Swarm-Waypoint-MAPPO-v0",
-    entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": "environments.tasks.paper_swarm.paper_swarm_env_cfg:PaperSwarmMappoEnvCfg",
-        "skrl_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_mappo_cfg.yaml",
-        "skrl_mappo_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_mappo_cfg.yaml",
     },
 )
 
@@ -63,6 +54,17 @@ gym.register(
         "env_cfg_entry_point": "environments.tasks.paper_swarm.paper_swarm_env_cfg:PaperSwarmMappoStage1EvalCfg",
         "skrl_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_mappo_stage1_cfg.yaml",
         "skrl_mappo_cfg_entry_point": "environments.tasks.paper_swarm:config/skrl_mappo_stage1_cfg.yaml",
+    },
+)
+
+gym.register(
+    id="Isaac-Paper-Swarm-Waypoint-MAPPO-Stage1-LegacyEval-v0",
+    entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": "environments.tasks.paper_swarm.paper_swarm_env_cfg:PaperSwarmMappoStage1LegacyEvalCfg",
+        "skrl_cfg_entry_point": LEGACY_STAGE1_CFG,
+        "skrl_mappo_cfg_entry_point": LEGACY_STAGE1_CFG,
     },
 )
 

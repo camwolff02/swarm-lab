@@ -229,7 +229,7 @@ def main():
             env = gym.wrappers.RecordVideo(env, **video_kwargs)
 
         # wrap around environment for skrl
-        skrl_wrapper = "isaaclab-multi-agent" if hasattr(env.unwrapped, "possible_agents") else "isaaclab"
+        skrl_wrapper = "isaaclab-multi-agent" if isinstance(env_cfg, DirectMARLEnvCfg) else "isaaclab"
         env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework, wrapper=skrl_wrapper)
 
         # configure and instantiate the skrl runner

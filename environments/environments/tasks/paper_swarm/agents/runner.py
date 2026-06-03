@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 
 import skrl.utils.runner.torch.runner as skrl_runner_module
+from skrl.envs.wrappers.torch import MultiAgentEnvWrapper
 from skrl.models.torch import Model
 from skrl.utils.runner.torch import Runner
 from skrl.utils.spaces.torch import flatten_tensorized_space, tensorize_space
@@ -35,6 +36,10 @@ def _encoder_cfg_from_model_config(model_cfg: dict[str, Any]) -> PaperAttentionE
     return PaperAttentionEncoderCfg(
         num_drones=int(model_cfg.get("num_drones", 8)),
         max_neighbors=int(model_cfg.get("max_neighbors", 7)),
+        self_obs_dim=int(model_cfg.get("self_obs_dim", 26)),
+        other_obs_dim=int(model_cfg.get("other_obs_dim", 6)),
+        static_sdf_dim=int(model_cfg.get("static_sdf_dim", 9)),
+        goal_obs_dim=int(model_cfg.get("goal_obs_dim", 6)),
         attention_dim=int(model_cfg.get("attention_dim", 32)),
         attention_heads=int(model_cfg.get("attention_heads", 1)),
         initial_log_std=float(model_cfg.get("initial_log_std", 0.0)),
@@ -47,11 +52,26 @@ def _generate_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model
     model_cfg = cfg.get("models", {})
     encoder_cfg = _encoder_cfg_from_model_config(model_cfg)
     hidden_units = tuple(int(v) for v in model_cfg.get("hidden_units", [256, 256, 256]))
-    first_agent = env.possible_agents[0]
-    state_spaces = getattr(env, "state_spaces", {})
+    multi_agent = isinstance(env, MultiAgentEnvWrapper)
+    if multi_agent:
+        # Access spaces via env.unwrapped (the raw Env) instead of wrapper
+        # properties, which delegate to self._unwrapped and can fail when
+        # gymnasium's OrderEnforcing wrapper sits between the SKRL wrapper
+        # and the DirectMARLEnv.
+        raw = env.unwrapped
+        possible_agents = raw.possible_agents
+        observation_spaces = raw.observation_spaces
+        state_spaces = raw.state_spaces
+        action_spaces = raw.action_spaces
+    else:
+        possible_agents = ["agent"]
+        observation_spaces = {"agent": env.observation_space}
+        state_spaces = {"agent": env.state_space}
+        action_spaces = {"agent": env.action_space}
+    first_agent = possible_agents[0]
     shared_policy = PaperGaussianPolicy(
-        env.observation_spaces[first_agent],
-        env.action_spaces[first_agent],
+        observation_spaces[first_agent],
+        action_spaces[first_agent],
         device,
         encoder_cfg=encoder_cfg,
         clip_log_std=bool(model_cfg.get("clip_log_std", False)),
@@ -59,14 +79,14 @@ def _generate_models(env: Any, cfg: dict[str, Any]) -> dict[str, dict[str, Model
         max_log_std=float(model_cfg.get("max_log_std", 2.0)),
     )
     shared_value = PaperDeterministicValue(
-        state_spaces.get(first_agent) or env.observation_spaces[first_agent],
-        env.action_spaces[first_agent],
+        state_spaces.get(first_agent) or observation_spaces[first_agent],
+        action_spaces[first_agent],
         device,
         hidden_units=hidden_units,
     )
 
     models: dict[str, dict[str, Model]] = {}
-    for agent_id in env.possible_agents:
+    for agent_id in possible_agents:
         models[agent_id] = {
             "policy": shared_policy,
             "value": shared_value,
