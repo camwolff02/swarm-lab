@@ -34,7 +34,6 @@ import environments.tasks  # noqa: F401
 
 def main():
     """Random actions agent with Isaac Lab environment."""
-
     torch.manual_seed(42)
 
     # parse configuration via Hydra (supports preset selection, e.g. env.sim.physics=newton)

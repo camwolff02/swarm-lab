@@ -3,8 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""
-Script to train RL agent with skrl.
+"""Script to train RL agent with skrl.
 
 Visit the skrl documentation (https://skrl.readthedocs.io) to see the examples structured in
 a more user-friendly way.
@@ -19,7 +18,6 @@ import sys
 import time
 from datetime import datetime
 
-import environments.tasks  # noqa: F401
 import gymnasium as gym
 import skrl
 from packaging import version
@@ -63,6 +61,12 @@ parser.add_argument(
     "--distributed", action="store_true", default=False, help="Run training with multiple GPUs or nodes."
 )
 parser.add_argument("--checkpoint", type=str, default=None, help="Path to model checkpoint to resume training.")
+parser.add_argument(
+    "--reset_optimizer_on_resume",
+    action="store_true",
+    default=False,
+    help="After loading --checkpoint, reinitialize optimizer/scheduler state from the current agent config.",
+)
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
 parser.add_argument("--export_io_descriptors", action="store_true", default=False, help="Export IO descriptors.")
 parser.add_argument(
@@ -90,6 +94,10 @@ if args_cli.video:
 
 sys.argv = [sys.argv[0]] + hydra_args
 
+from environments import tasks as local_tasks
+
+local_tasks.register_tasks_for(args_cli.task)
+
 # -- check skrl version ------------------------------------------------------
 if version.parse(skrl.__version__) < version.parse(SKRL_VERSION):
     skrl.logger.error(
@@ -114,7 +122,6 @@ def _append_render_carb_settings_to_kit_args(env_cfg, launcher_args) -> None:
     running. Some RTX settings, such as Fabric render-delegate options, must be
     present at Kit startup to avoid renderer warnings and stale dynamic geometry.
     """
-
     settings = getattr(getattr(getattr(env_cfg, "sim", None), "render", None), "carb_settings", None)
     if not settings:
         return
@@ -234,7 +241,8 @@ def main():
         start_time = time.time()
 
         # wrap around environment for skrl
-        env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)
+        skrl_wrapper = "isaaclab-multi-agent" if isinstance(env_cfg, DirectMARLEnvCfg) else "isaaclab"
+        env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework, wrapper=skrl_wrapper)
 
         # configure and instantiate the skrl runner
         runner = Runner(env, agent_cfg)
@@ -243,6 +251,11 @@ def main():
         if resume_path:
             print(f"[INFO] Loading model checkpoint from: {resume_path}")
             runner.agent.load(resume_path)
+            if args_cli.reset_optimizer_on_resume:
+                if not hasattr(runner.agent, "reset_for_transition"):
+                    raise AttributeError("The selected skrl agent does not support --reset_optimizer_on_resume")
+                runner.agent.reset_for_transition()  # type: ignore[attr-defined]
+                print("[INFO] Reset model state for curriculum transition after loading checkpoint.")
 
         # run training
         try:

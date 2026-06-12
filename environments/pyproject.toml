@@ -1,7 +1,7 @@
 [project]
 name = "environments"
 version = "0.1.0"
-description = "Add your description here"
+description = "Executable swarm task package for the swarm-lab thesis workspace."
 readme = "README.md"
 authors = [
   { name = "cam", email = "36940948+camwolff02@users.noreply.github.com" },

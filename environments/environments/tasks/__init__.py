@@ -13,7 +13,12 @@ import warnings
 
 
 def _import_task_packages() -> None:
-    """Register task packages without letting one broken import hide the rest."""
+    """Register task packages without letting one broken import hide the rest.
+
+    This is intentionally opt-in. Several task packages depend on Omniverse
+    modules, and importing them before IsaacLab starts ``SimulationApp`` can
+    preload ``pxr`` and destabilize Kit startup.
+    """
     for module_info in pkgutil.iter_modules(__path__, prefix=f"{__name__}."):
         if not module_info.ispkg:
             continue
@@ -27,4 +32,15 @@ def _import_task_packages() -> None:
             )
 
 
-_import_task_packages()
+def register_tasks_for(task_name: str | None) -> None:
+    """Register the package that owns ``task_name`` without importing all tasks."""
+    if task_name and task_name.startswith("Isaac-Paper-Swarm-Waypoint-"):
+        importlib.import_module(f"{__name__}.paper_swarm")
+        return
+    if task_name and task_name.startswith("Isaac-Formation-Swarm-"):
+        importlib.import_module(f"{__name__}.formation_swarm")
+        return
+    _import_task_packages()
+
+
+__all__ = ["register_tasks_for", "_import_task_packages"]

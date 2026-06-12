@@ -3,8 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""
-Script to play a checkpoint of an RL agent from skrl.
+"""Script to play a checkpoint of an RL agent from skrl.
 
 Visit the skrl documentation (https://skrl.readthedocs.io) to see the examples structured in
 a more user-friendly way.
@@ -17,7 +16,6 @@ import random
 import sys
 import time
 
-import environments.tasks  # noqa: F401
 import gymnasium as gym
 import skrl
 import torch
@@ -77,6 +75,8 @@ parser.add_argument(
     help="The RL algorithm used for training the skrl agent.",
 )
 parser.add_argument("--real-time", action="store_true", default=False, help="Run in real-time, if possible.")
+parser.add_argument("--num_steps", type=int, default=None, help="Number of environment steps to play before exiting.")
+parser.add_argument("--eval_metrics", action="store_true", default=False, help="Print basic rollout metrics on exit.")
 add_launcher_args(parser)
 args_cli, hydra_args = parser.parse_known_args()
 
@@ -84,6 +84,10 @@ if args_cli.video:
     args_cli.enable_cameras = True
 
 sys.argv = [sys.argv[0]] + hydra_args
+
+from environments import tasks as local_tasks
+
+local_tasks.register_tasks_for(args_cli.task)
 
 # -- check skrl version ------------------------------------------------------
 if version.parse(skrl.__version__) < version.parse(SKRL_VERSION):
@@ -109,7 +113,6 @@ def _append_render_carb_settings_to_kit_args(env_cfg, launcher_args) -> None:
     running. Some RTX settings, such as Fabric render-delegate options, must be
     present at Kit startup to avoid renderer warnings and stale dynamic geometry.
     """
-
     settings = getattr(getattr(getattr(env_cfg, "sim", None), "render", None), "carb_settings", None)
     if not settings:
         return
@@ -130,10 +133,40 @@ def _append_render_carb_settings_to_kit_args(env_cfg, launcher_args) -> None:
         launcher_args.kit_args = " ".join([kit_args, *additions]).strip()
 
 
+def _install_warp_context_compat() -> None:
+    """Provide the legacy ``warp.context.Kernel`` name expected by Replicator."""
+    try:
+        import types
+
+        import warp as wp
+    except ImportError:
+        return
+    if not hasattr(wp, "context") and hasattr(wp, "Kernel"):
+        wp.context = types.SimpleNamespace(Kernel=wp.Kernel)
+    if hasattr(wp, "types") and not hasattr(wp.types, "array") and hasattr(wp, "array"):
+        wp.types.array = wp.array
+
+
+def _mean_scalar(value) -> float:
+    """Return the mean scalar value for a tensor or nested tensor dictionary."""
+    if isinstance(value, dict):
+        values = [_mean_scalar(item) for item in value.values()]
+        return sum(values) / len(values) if values else 0.0
+    return float(value.float().mean().item())
+
+
+def _true_count(value) -> int:
+    """Return the number of true values for a tensor or nested tensor dictionary."""
+    if isinstance(value, dict):
+        return sum(_true_count(item) for item in value.values())
+    return int(value.bool().sum().item())
+
+
 def main():
     """Play with skrl agent."""
     env_cfg, experiment_cfg = resolve_task_config(args_cli.task, agent_cfg_entry_point)
     _append_render_carb_settings_to_kit_args(env_cfg, args_cli)
+    _install_warp_context_compat()
     with launch_simulation(env_cfg, args_cli):
         if args_cli.ml_framework.startswith("torch"):
             from skrl.utils.runner.torch import Runner
@@ -211,7 +244,8 @@ def main():
             env = gym.wrappers.RecordVideo(env, **video_kwargs)
 
         # wrap around environment for skrl
-        env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)
+        skrl_wrapper = "isaaclab-multi-agent" if isinstance(env_cfg, DirectMARLEnvCfg) else "isaaclab"
+        env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework, wrapper=skrl_wrapper)
 
         # configure and instantiate the skrl runner
         experiment_cfg["trainer"]["close_environment_at_exit"] = False
@@ -221,31 +255,51 @@ def main():
 
         print(f"[INFO] Loading model checkpoint from: {resume_path}")
         runner.agent.load(resume_path)
-        runner.agent.set_running_mode("eval")
+        if hasattr(runner.agent, "enable_training_mode"):
+            runner.agent.enable_training_mode(False, apply_to_models=True)
+        elif hasattr(runner.agent, "set_running_mode"):
+            runner.agent.set_running_mode("eval")
 
         # reset environment
         obs, _ = env.reset()
+        states = env.state()
         timestep = 0
+        reward_sum = 0.0
+        terminated_count = 0
+        truncated_count = 0
         # simulate environment
         try:
             while True:
                 start_time = time.time()
 
                 with torch.inference_mode():
-                    outputs = runner.agent.act(obs, timestep=0, timesteps=0)
+                    outputs = runner.agent.act(obs, states, timestep=0, timesteps=0)
                     if hasattr(env, "possible_agents"):
                         actions = {a: outputs[-1][a].get("mean_actions", outputs[0][a]) for a in env.possible_agents}
                     else:
                         actions = outputs[-1].get("mean_actions", outputs[0])
-                    obs, _, _, _, _ = env.step(actions)
-                if args_cli.video:
+                    obs, rewards, terminated, truncated, _ = env.step(actions)
+                    states = env.state()
+                    if args_cli.eval_metrics:
+                        reward_sum += _mean_scalar(rewards)
+                        terminated_count += _true_count(terminated)
+                        truncated_count += _true_count(truncated)
                     timestep += 1
+                if args_cli.video:
                     if timestep == args_cli.video_length:
                         break
+                if args_cli.num_steps is not None and timestep >= args_cli.num_steps:
+                    break
 
                 sleep_time = dt - (time.time() - start_time)
                 if args_cli.real_time and sleep_time > 0:
                     time.sleep(sleep_time)
+
+            if args_cli.eval_metrics and timestep > 0:
+                print(f"[INFO] Eval steps: {timestep}")
+                print(f"[INFO] Eval mean reward per step: {reward_sum / timestep:.6f}")
+                print(f"[INFO] Eval terminated count: {terminated_count}")
+                print(f"[INFO] Eval truncated count: {truncated_count}")
 
             # close the simulator
             env.close()

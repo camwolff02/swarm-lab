@@ -27,6 +27,7 @@ from cpsquare_lab.ros2.environment_bridge import instantiate_agent, resolve_agen
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the requested object from runtime metadata."""
     parser = argparse.ArgumentParser(description="Run a task-specific ROS2 agent.")
     parser.add_argument("--task", type=str, required=True, help="Name of the Isaac Lab task.")
     parser.add_argument(
@@ -47,6 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Run the command-line entry point."""
     args = build_parser().parse_args()
     entry_point = resolve_agent_entry_point(args.task, args.agent)
     agent = instantiate_agent(

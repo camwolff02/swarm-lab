@@ -1,3 +1,14 @@
+# Custom
+experiments/
+graphify-out/
+site/
+.agents/
+.co-roboticist/
+.opencode/
+.codex
+artifacts/
+*.pt
+
 # C++
 **/cmake-build*/
 **/build*/

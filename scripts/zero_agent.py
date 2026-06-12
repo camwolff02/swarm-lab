@@ -36,7 +36,6 @@ MAX_STEPS = 100
 
 def main():
     """Zero actions agent with Isaac Lab environment."""
-
     torch.manual_seed(42)
 
     # parse configuration via Hydra (supports preset selection, e.g. env.sim.physics=newton)

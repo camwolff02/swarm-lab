@@ -1,0 +1,40 @@
+site_name: swarm-lab
+site_description: Developer documentation for the swarm-lab Isaac Sim thesis workspace.
+repo_name: swarm-lab
+docs_dir: docs
+site_dir: site
+theme:
+  name: material
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - docs/gen_ref_pages.py
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - .
+            - environments
+            - ../cpsquare-lab/src
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+nav:
+  - Home: index.md
+  - Training: training.md
+  - API Reference: reference/
+  - Development: development.md
+  - Notes:
+      - Formation Swarm Plan: xie_formation_swarm_plan.md
+      - Env Cache Validation: env_cache_validation.md
+      - Viser Compatibility: viser_isaacsim6_compatibility.md

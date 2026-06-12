@@ -2,14 +2,14 @@
 
 The shared ROS2 bridge now lives in `cpsquare_lab`:
 
-- [common.py](/home/cam/Development/cpsquare-lab/src/cpsquare_lab/ros2/common.py)
-- [agent_bridge.py](/home/cam/Development/cpsquare-lab/src/cpsquare_lab/ros2/agent_bridge.py)
-- [environment_bridge.py](/home/cam/Development/cpsquare-lab/src/cpsquare_lab/ros2/environment_bridge.py)
+- `cpsquare_lab/ros2/common.py`
+- `cpsquare_lab/ros2/agent_bridge.py`
+- `cpsquare_lab/ros2/environment_bridge.py`
 
-The local repo only keeps two thin launchers in [scripts/ros2](/home/cam/Development/physical-ai-lab/scripts/ros2):
+The local repo only keeps two thin launchers in `scripts/ros2`:
 
-- [run_env.py](/home/cam/Development/physical-ai-lab/scripts/ros2/run_env.py)
-- [run_agent.py](/home/cam/Development/physical-ai-lab/scripts/ros2/run_agent.py)
+- `scripts/ros2/run_env.py`
+- `scripts/ros2/run_agent.py`
 
 `run_env.py` still handles Isaac Lab app startup. The ROS2 transport, schema generation, topic resolution, flattening, logging, and agent loading now live in `cpsquare_lab`.
 
@@ -43,7 +43,7 @@ Show CLI help:
 uv run scripts/ros2/run_env.py --help
 ```
 
-Run the lab-2 environment with a viewer:
+Run the environment with a viewer:
 
 ```bash
 uv run scripts/ros2/run_env.py \
@@ -106,7 +106,7 @@ uv run scripts/ros2/run_agent.py \
   --agent hover
 ```
 
-The lab-2 task registers its hover controller agent in [__init__.py](/home/cam/Development/physical-ai-lab/environments/environments/tasks/lab_2_classical_control/__init__.py), and the implementation lives at [hover_agent.py](/home/cam/Development/physical-ai-lab/environments/environments/tasks/lab_2_classical_control/agents/hover_agent.py).
+Task-specific agents live under `environments/environments/tasks/<task>/agents/` and are registered by the owning task package.
 
 ## Schema Format
 
@@ -148,5 +148,4 @@ Coverage currently includes:
 - `AgentBridge` message handling and action publishing
 - `EnvironmentBridge` publish/receive behavior
 - `run_agent.py` launcher wiring
-- lab-2 hover agent behavior
-- regression coverage for lab-2 task imports
+- task launcher wiring
