@@ -676,6 +676,25 @@ class Stage1EventsCfg(PaperSwarmEventsCfg):
 
 
 @configclass
+class Stage1InDistributionEvalEventsCfg(Stage1EventsCfg):
+    """Stage 1 eval reset constrained to the task's distance termination envelope."""
+
+    reset_drone_root_state = EventTerm(
+        func=mdp.reset_drone_root_state_uniform,
+        mode="reset",
+        params={
+            "agent_ids": DRONE_AGENT_IDS,
+            "xy_bounds": (-1.0, 1.0),
+            "z_bounds": START_Z,
+            "min_separation": SAFE_WAYPOINT_SEPARATION,
+            "lin_vel_range": (-0.05, 0.05),
+            "ang_vel_range": (-0.05, 0.05),
+            "mask_key": ACTIVE_AGENT_MASK_KEY,
+        },
+    )
+
+
+@configclass
 class CurriculumCfg:
     active_agent_count = CurrTerm(
         func=mdp.active_agent_count_curriculum,
@@ -1147,6 +1166,13 @@ class Stage1TerminationsCfg:
 
 
 @configclass
+class Stage1VideoTerminationsCfg:
+    """Recording-only terminations for uninterrupted demo clips."""
+
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+
+
+@configclass
 class PaperSwarmMappoStage1EnvCfg(PaperSwarmBaseMarlEnvCfg):
     """MAPPO stage 1: single-drone waypoint control with passive hovering drones.
 
@@ -1357,6 +1383,48 @@ class PaperSwarmMappoStage1LegacyEvalCfg(PaperSwarmMappoStage1EvalCfg):
                 actions=Stage1ActionsCfg(),
                 rewards=Stage1RewardsCfg(),
                 terminations=Stage1TerminationsCfg(),
+                commands=Stage1EvalCommandsCfg(),
+                curriculum=None,
+            ),
+        )
+    ]
+
+
+@configclass
+class PaperSwarmMappoStage1LegacyInDistributionEvalCfg(PaperSwarmMappoStage1LegacyEvalCfg):
+    """Legacy Stage 1 eval with reset positions inside the distance envelope."""
+
+    events = Stage1InDistributionEvalEventsCfg()
+    eval_xy_bound: float = 1.5
+
+
+@configclass
+class PaperSwarmMappoStage1LegacyVideoCfg(PaperSwarmMappoStage1LegacyInDistributionEvalCfg):
+    """Recording preset for legacy Stage 1 waypoint-navigation checkpoints."""
+
+    scene = PaperSwarmSceneCfg(num_envs=1, env_spacing=ENV_SPACING)
+    viewer = ViewerCfg(eye=(-2.4, -2.7, 2.4), lookat=(0.0, 0.0, 1.3))
+    episode_length_s = 20.0
+    recorders = None
+    video_follow_camera = True
+    video_follow_eye_offset = (-1.8, -2.1, 1.35)
+    video_follow_lookahead = (0.0, 0.0, -0.03)
+    video_follow_passive_count = 3
+    video_follow_goal_weight = 0.25
+    video_follow_context_weight = 0.1
+    video_focal_length = 48.0
+
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
+            count=1,
+            id_template="drone_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="{agent_id}",
+                observations=MappoLegacyIdentityObservationsCfg(),
+                actions=Stage1ActionsCfg(),
+                rewards=Stage1RewardsCfg(),
+                terminations=Stage1VideoTerminationsCfg(),
                 commands=Stage1EvalCommandsCfg(),
                 curriculum=None,
             ),

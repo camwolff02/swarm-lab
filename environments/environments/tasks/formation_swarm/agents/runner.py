@@ -109,7 +109,7 @@ def install_formation_swarm_runner_patch() -> None:
         return _ORIGINAL_GENERATE_AGENT(self, env, cfg, models)
 
     def _patched_component(self: Runner, name: str):
-        if name.lower() == "mappo":
+        if name.lower() in {"mappo", "formationsharedmappo"}:
             return FormationMAPPO
         return _original_component(self, name)
 

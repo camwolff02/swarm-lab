@@ -233,6 +233,17 @@ class TerminationsCfg:
     )
 
 
+@configclass
+class VideoTerminationsCfg:
+    """Recording preset terminations.
+
+    Demo videos should show one continuous rollout. Keep timeout available for
+    bounded episodes, but do not reset on safety terms during recording.
+    """
+
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+
+
 # -----------------------------------------------------------------------------
 # Events
 # -----------------------------------------------------------------------------
@@ -389,6 +400,14 @@ class FormationSwarmMarlEnvCfg(ManagerBasedMarlEnvCfg):
     use_cube_reward_mask = False
     spawn_obstacle_visuals = True
     use_ctbr_tanh = True
+    video_follow_camera = False
+    video_follow_eye_offset = (0.0, -3.4, 1.7)
+    video_follow_lookahead = (0.0, 0.0, -0.1)
+    video_focal_length = None
+    video_drone_markers = False
+    video_marker_radius = 0.08
+    video_marker_offset = (0.0, 0.0, 0.08)
+    video_marker_colors = ((0.1, 1.0, 0.15), (1.0, 0.85, 0.05), (0.15, 0.55, 1.0))
 
 
 # -----------------------------------------------------------------------------
@@ -406,6 +425,88 @@ class FormationSwarmStage1EnvCfg(FormationSwarmMarlEnvCfg):
 
     curriculum_stage = 1
     spawn_obstacle_visuals = False
+
+
+@configclass
+class FormationSwarmStage1LegacyEnvCfg(FormationSwarmStage1EnvCfg):
+    """Stage 1 compatibility config for checkpoints saved with ``drone_*`` agent ids."""
+
+    possible_agents = [f"drone_{i}" for i in range(NUM_DRONES)]
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
+            count=NUM_DRONES,
+            id_template="drone_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="robot_{i}",
+                observations=ObservationsCfg(),
+                actions=ActionsCfg(),
+                rewards=RewardsCfg(),
+                terminations=TerminationsCfg(),
+                commands=None,
+                curriculum=CurriculumCfg(),
+            ),
+        )
+    ]
+
+
+@configclass
+class FormationSwarmStage1LegacyVideoEnvCfg(FormationSwarmStage1LegacyEnvCfg):
+    """Stage 1 recording preset for legacy ``drone_*`` checkpoints."""
+
+    viewer = ViewerCfg(eye=(-3.0, -3.0, 3.2), lookat=(0.0, 1.2, 1.5))
+    episode_length_s = 20.0
+    video_follow_camera = True
+    video_follow_eye_offset = (-3.0, -3.0, 1.8)
+    video_follow_lookahead = (0.0, 0.0, -0.05)
+    video_focal_length = 35.0
+    video_drone_markers = False
+    video_marker_radius = 0.24
+    reset_on = "any"
+    agent_groups = [
+        AgentGroupCfg(
+            name="drone",
+            count=NUM_DRONES,
+            id_template="drone_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="robot_{i}",
+                observations=ObservationsCfg(),
+                actions=ActionsCfg(),
+                rewards=RewardsCfg(),
+                terminations=VideoTerminationsCfg(),
+                commands=None,
+                curriculum=CurriculumCfg(),
+            ),
+        )
+    ]
+
+
+@configclass
+class FormationSwarmStage1VideoEnvCfg(FormationSwarmStage1EnvCfg):
+    """Stage 1 recording preset with a closer camera and uninterrupted rollout."""
+
+    viewer = ViewerCfg(eye=(3.0, -4.5, 3.7), lookat=(0.0, 1.5, 1.5))
+    episode_length_s = 20.0
+    video_follow_camera = True
+    video_follow_eye_offset = (0.0, -3.4, 1.7)
+    video_follow_lookahead = (0.0, 0.0, -0.1)
+    reset_on = "any"
+    agent_groups = [
+        AgentGroupCfg(
+            name="robot",
+            count=NUM_DRONES,
+            id_template="robot_{i}",
+            agent_cfg=AgentRlCfg(
+                asset_name="{agent_id}",
+                observations=ObservationsCfg(),
+                actions=ActionsCfg(),
+                rewards=RewardsCfg(),
+                terminations=VideoTerminationsCfg(),
+                commands=None,
+                curriculum=CurriculumCfg(),
+            ),
+        )
+    ]
 
 
 @configclass

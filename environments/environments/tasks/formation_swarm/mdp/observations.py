@@ -40,6 +40,17 @@ def _all_agent_ids(env) -> list[str]:
     return getattr(_root_env(env).cfg, "possible_agents", [])
 
 
+def _all_asset_names(env) -> tuple[str, ...]:
+    root = _root_env(env)
+    asset_names = getattr(root, "_formation_asset_names", None)
+    if asset_names is not None:
+        return tuple(asset_names)
+    ma_spec = getattr(root, "ma_spec", None)
+    if ma_spec is not None:
+        return tuple(ma_spec.agents[agent_id].asset_name for agent_id in root.possible_agents)
+    return tuple(_all_agent_ids(env))
+
+
 def _num_drones(env) -> int:
     return getattr(_root_env(env).cfg, "num_drones", len(_all_agent_ids(env)))
 
@@ -77,12 +88,12 @@ def _get_cached(env, key: str, factory, *args) -> torch.Tensor:
 def _all_positions(env) -> torch.Tensor:
     """Stack all agent positions relative to env origin [m], shape (num_envs, num_drones, 3)."""
     root = _root_env(env)
-    agent_ids = root.cfg.possible_agents
+    asset_names = _all_asset_names(env)
     return _get_cached(
         env,
         "all_pos",
         lambda: torch.stack(
-            [root.scene[agent_id].data.root_pos_w.torch - root.scene.env_origins for agent_id in agent_ids],
+            [root.scene[asset_name].data.root_pos_w.torch - root.scene.env_origins for asset_name in asset_names],
             dim=1,
         ),
     )
@@ -91,33 +102,33 @@ def _all_positions(env) -> torch.Tensor:
 def _all_velocities(env) -> torch.Tensor:
     """Stack all agent linear velocities [m/s], shape (num_envs, num_drones, 3)."""
     root = _root_env(env)
-    agent_ids = root.cfg.possible_agents
+    asset_names = _all_asset_names(env)
     return _get_cached(
         env,
         "all_vel",
-        lambda: torch.stack([root.scene[agent_id].data.root_lin_vel_w.torch for agent_id in agent_ids], dim=1),
+        lambda: torch.stack([root.scene[asset_name].data.root_lin_vel_w.torch for asset_name in asset_names], dim=1),
     )
 
 
 def _all_quats(env) -> torch.Tensor:
     """Stack all agent quaternions [x, y, z, w], shape (num_envs, num_drones, 4)."""
     root = _root_env(env)
-    agent_ids = root.cfg.possible_agents
+    asset_names = _all_asset_names(env)
     return _get_cached(
         env,
         "all_quat",
-        lambda: torch.stack([root.scene[agent_id].data.root_quat_w.torch for agent_id in agent_ids], dim=1),
+        lambda: torch.stack([root.scene[asset_name].data.root_quat_w.torch for asset_name in asset_names], dim=1),
     )
 
 
 def _all_omegas(env) -> torch.Tensor:
     """Stack all agent angular velocities [rad/s], shape (num_envs, num_drones, 3)."""
     root = _root_env(env)
-    agent_ids = root.cfg.possible_agents
+    asset_names = _all_asset_names(env)
     return _get_cached(
         env,
         "all_omega",
-        lambda: torch.stack([root.scene[agent_id].data.root_ang_vel_w.torch for agent_id in agent_ids], dim=1),
+        lambda: torch.stack([root.scene[asset_name].data.root_ang_vel_w.torch for asset_name in asset_names], dim=1),
     )
 
 

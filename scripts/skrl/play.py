@@ -133,6 +133,20 @@ def _append_render_carb_settings_to_kit_args(env_cfg, launcher_args) -> None:
         launcher_args.kit_args = " ".join([kit_args, *additions]).strip()
 
 
+def _install_warp_context_compat() -> None:
+    """Provide the legacy ``warp.context.Kernel`` name expected by Replicator."""
+    try:
+        import types
+
+        import warp as wp
+    except ImportError:
+        return
+    if not hasattr(wp, "context") and hasattr(wp, "Kernel"):
+        wp.context = types.SimpleNamespace(Kernel=wp.Kernel)
+    if hasattr(wp, "types") and not hasattr(wp.types, "array") and hasattr(wp, "array"):
+        wp.types.array = wp.array
+
+
 def _mean_scalar(value) -> float:
     """Return the mean scalar value for a tensor or nested tensor dictionary."""
     if isinstance(value, dict):
@@ -152,6 +166,7 @@ def main():
     """Play with skrl agent."""
     env_cfg, experiment_cfg = resolve_task_config(args_cli.task, agent_cfg_entry_point)
     _append_render_carb_settings_to_kit_args(env_cfg, args_cli)
+    _install_warp_context_compat()
     with launch_simulation(env_cfg, args_cli):
         if args_cli.ml_framework.startswith("torch"):
             from skrl.utils.runner.torch import Runner

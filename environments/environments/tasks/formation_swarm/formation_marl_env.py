@@ -63,6 +63,9 @@ class FormationSwarmMarlEnv(ManagerBasedMarlEnv):
         """Initialize the formation swarm MARL environment."""
         self._formation_curriculum_applied = False
         super().__init__(cfg=cfg, render_mode=render_mode, **kwargs)
+        self._formation_asset_names = tuple(
+            self.ma_spec.agents[agent_id].asset_name for agent_id in self.possible_agents
+        )
 
         formation = torch.tensor(self.cfg.formation, device=self.device, dtype=torch.float32)
         formation = formation * self.cfg.formation_size
@@ -158,6 +161,8 @@ class FormationSwarmMarlEnv(ManagerBasedMarlEnv):
         self._spawn_view_camera()
         if getattr(self.cfg, "spawn_obstacle_visuals", True):
             self._spawn_obstacle_visuals()
+        if getattr(self.cfg, "video_drone_markers", False):
+            self._spawn_video_drone_markers()
 
     def _pre_physics_step(self, actions: dict[str, torch.Tensor]) -> None:
         """Update ball dynamics and store action features for reward computation."""
@@ -191,6 +196,68 @@ class FormationSwarmMarlEnv(ManagerBasedMarlEnv):
         self._formation_previous_actions[env_ids] = 0.0
         self._sync_obstacle_visuals(env_ids)
 
+    def render(self):
+        """Render the environment, optionally following the first swarm for video demos."""
+        if getattr(self.cfg, "video_drone_markers", False):
+            self._sync_video_drone_markers()
+        if self.render_mode == "rgb_array" and getattr(self.cfg, "video_follow_camera", False):
+            self._update_video_follow_camera()
+        return super().render()
+
+    def _update_video_follow_camera(self) -> None:
+        """Move the Kit perspective recording camera with the first environment's swarm center."""
+        if self.num_envs <= 0 or getattr(self, "video_recorder", None) is None:
+            return
+        try:
+            positions = torch.stack(
+                [self.scene[asset_name].data.root_pos_w.torch[0] for asset_name in self._formation_asset_names],
+                dim=0,
+            )
+        except Exception:
+            return
+
+        center = positions.mean(dim=0)
+        eye_offset = torch.tensor(
+            getattr(self.cfg, "video_follow_eye_offset", (3.0, -4.5, 2.2)),
+            device=center.device,
+            dtype=center.dtype,
+        )
+        lookahead = torch.tensor(
+            getattr(self.cfg, "video_follow_lookahead", (0.0, 1.5, 0.0)),
+            device=center.device,
+            dtype=center.dtype,
+        )
+        eye = tuple(float(v) for v in (center + eye_offset).detach().cpu())
+        lookat = tuple(float(v) for v in (center + lookahead).detach().cpu())
+
+        self.video_recorder.cfg.eye = eye
+        self.video_recorder.cfg.lookat = lookat
+
+        capture = getattr(self.video_recorder, "_capture", None)
+        if getattr(capture, "cfg", None) is not None:
+            capture.cfg.eye = eye
+            capture.cfg.lookat = lookat
+        camera_prim_path = getattr(getattr(capture, "cfg", None), "camera_prim_path", "/OmniverseKit_Persp")
+        try:
+            from isaacsim.core.rendering_manager import ViewportManager
+
+            ViewportManager.set_camera_view(camera_prim_path, eye=list(eye), target=list(lookat))
+        except Exception:
+            pass
+
+        focal_length = getattr(self.cfg, "video_focal_length", None)
+        if focal_length is not None:
+            try:
+                import omni.usd
+                from pxr import UsdGeom
+
+                stage = omni.usd.get_context().get_stage()
+                camera = UsdGeom.Camera(stage.GetPrimAtPath(camera_prim_path))
+                if camera:
+                    camera.GetFocalLengthAttr().Set(float(focal_length))
+            except Exception:
+                return
+
     # ---------------------------------------------------------------------
     # Ball dynamics
     # ---------------------------------------------------------------------
@@ -210,8 +277,8 @@ class FormationSwarmMarlEnv(ManagerBasedMarlEnv):
         if should_launch.any():
             positions = torch.stack(
                 [
-                    self.scene[agent_id].data.root_pos_w.torch - self.scene.env_origins
-                    for agent_id in self.possible_agents
+                    self.scene[asset_name].data.root_pos_w.torch - self.scene.env_origins
+                    for asset_name in self._formation_asset_names
                 ],
                 dim=1,
             )
@@ -324,6 +391,41 @@ class FormationSwarmMarlEnv(ManagerBasedMarlEnv):
             prim = ball_cfg.func(prim_path, ball_cfg, translation=(0.0, 0.0, -10.0))
             self._formation_ball_prims.append(prim)
 
+    def _spawn_video_drone_markers(self) -> None:
+        """Create video-only colored markers that make each drone legible in thesis captures."""
+        self._formation_video_marker_prims = []
+        colors = getattr(
+            self.cfg,
+            "video_marker_colors",
+            ((0.1, 1.0, 0.15), (1.0, 0.85, 0.05), (0.15, 0.55, 1.0)),
+        )
+        radius = float(getattr(self.cfg, "video_marker_radius", 0.08))
+        for i in range(int(getattr(self.cfg, "num_drones", len(self.possible_agents)))):
+            color = colors[i % len(colors)]
+            marker_cfg = sim_utils.SphereCfg(
+                radius=radius,
+                visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=tuple(float(v) for v in color)),
+            )
+            prim_path = f"/World/envs/env_0/video_markers/drone_{i:02d}"
+            prim = marker_cfg.func(prim_path, marker_cfg, translation=(0.0, 0.0, -10.0))
+            self._formation_video_marker_prims.append(prim)
+
+    def _sync_video_drone_markers(self) -> None:
+        """Move video-only markers to the env-0 drone positions."""
+        markers = getattr(self, "_formation_video_marker_prims", None)
+        if not markers:
+            return
+        offset = torch.tensor(
+            getattr(self.cfg, "video_marker_offset", (0.0, 0.0, 0.08)),
+            device=self.device,
+            dtype=torch.float32,
+        )
+        for i, prim in enumerate(markers):
+            if i >= len(self._formation_asset_names):
+                continue
+            position = self.scene[self._formation_asset_names[i]].data.root_pos_w.torch[0] + offset
+            sim_utils.standardize_xform_ops(prim, translation=tuple(float(v) for v in position.detach().cpu()))
+
     def _sync_obstacle_visuals(self, env_ids: torch.Tensor) -> None:
         """Move and show/hide column and ball prims to match internal state."""
         columns = getattr(self, "_formation_column_prims", None)
@@ -374,8 +476,8 @@ class FormationSwarmMarlEnv(ManagerBasedMarlEnv):
             angular_velocities: Target angular velocities [rad/s],
                 shape ``(len(env_ids), num_agents, 3)``.
         """
-        for drone_index, agent_id in enumerate(self.possible_agents):
-            drone = self.scene[agent_id]
+        for drone_index, asset_name in enumerate(self._formation_asset_names):
+            drone = self.scene[asset_name]
             root_pose = drone.data.default_root_pose.torch[env_ids].clone()
             root_vel = drone.data.default_root_vel.torch[env_ids].clone()
             joint_pos = drone.data.default_joint_pos.torch[env_ids].clone()
@@ -407,8 +509,8 @@ class FormationSwarmMarlEnv(ManagerBasedMarlEnv):
             )
             self._hover_collective = hover_collective_thrust_from_multirotor_cfg(_CFG)
 
-        for agent_id in self.possible_agents:
-            asset = self.scene[agent_id]
+        for asset_name in self._formation_asset_names:
+            asset = self.scene[asset_name]
             thruster_actuator = asset.actuators.get("thrusters")
             if thruster_actuator is None:
                 continue

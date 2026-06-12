@@ -301,7 +301,9 @@ def compile_multi_agent_spec(cfg: ManagerBasedMaEnvCfg) -> MultiAgentRuntimeSpec
 def _materialize_agent_cfg(agent_cfg: AgentCfg, *, agent_id: str, group_name: str | None, index: int) -> AgentCfg:
     context = {
         "agent_id": agent_id,
-        "entity_name": agent_id,
+        "entity_name": agent_cfg.asset_name.format_map(
+            _SafeFormatDict({"agent_id": agent_id, "group_name": group_name or "", "name": group_name or agent_id, "i": index})
+        ),
         "group_name": group_name or "",
         "name": group_name or agent_id,
         "i": index,

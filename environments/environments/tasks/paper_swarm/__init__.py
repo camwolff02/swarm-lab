@@ -69,6 +69,34 @@ gym.register(
 )
 
 gym.register(
+    id="Isaac-Paper-Swarm-Waypoint-MAPPO-Stage1-LegacyInDistributionEval-v0",
+    entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            "environments.tasks.paper_swarm.paper_swarm_env_cfg:"
+            "PaperSwarmMappoStage1LegacyInDistributionEvalCfg"
+        ),
+        "skrl_cfg_entry_point": LEGACY_STAGE1_CFG,
+        "skrl_mappo_cfg_entry_point": LEGACY_STAGE1_CFG,
+    },
+)
+
+gym.register(
+    id="Isaac-Paper-Swarm-Waypoint-MAPPO-Stage1-LegacyVideo-v0",
+    entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            "environments.tasks.paper_swarm.paper_swarm_env_cfg:"
+            "PaperSwarmMappoStage1LegacyVideoCfg"
+        ),
+        "skrl_cfg_entry_point": LEGACY_STAGE1_CFG,
+        "skrl_mappo_cfg_entry_point": LEGACY_STAGE1_CFG,
+    },
+)
+
+gym.register(
     id="Isaac-Paper-Swarm-Waypoint-MAPPO-Stage2-v0",
     entry_point="environments.tasks.paper_swarm.paper_swarm_env:PaperSwarmMarlEnv",
     disable_env_checker=True,

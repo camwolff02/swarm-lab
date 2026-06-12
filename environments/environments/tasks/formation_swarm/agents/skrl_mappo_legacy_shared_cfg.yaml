@@ -1,0 +1,56 @@
+seed: 42
+
+models:
+  factory: formation_swarm_attention
+  num_drones: 3
+  num_balls: 2
+  attention_dim: 32
+  attention_heads: 1
+  hidden_units: [256, 256, 256]
+  initial_log_std: 0.0
+
+memory:
+  class: RandomMemory
+  memory_size: -1
+
+agent:
+  class: MAPPO
+  rollouts: 64
+  learning_epochs: 4
+  mini_batches: 16
+  discount_factor: 0.995
+  gae_lambda: 0.95
+  learning_rate: 0.0005
+  learning_rate_scheduler: ExponentialLR
+  learning_rate_scheduler_kwargs:
+    gamma: 0.9985
+  observation_preprocessor: null
+  observation_preprocessor_kwargs: {}
+  state_preprocessor: null
+  state_preprocessor_kwargs: {}
+  value_preprocessor: null
+  value_preprocessor_kwargs: {}
+  random_timesteps: 0
+  learning_starts: 0
+  grad_norm_clip: 10.0
+  ratio_clip: 0.1
+  value_clip: 0.1
+  entropy_loss_scale: 0.001
+  value_loss_scale: 1.0
+  kl_threshold: 0.0
+  time_limit_bootstrap: true
+  mixed_precision: false
+  experiment:
+    directory: formation_swarm
+    experiment_name: ""
+    write_interval: auto
+    checkpoint_interval: auto
+    store_separately: false
+    wandb: false
+
+trainer:
+  class: SequentialTrainer
+  timesteps: 1000000
+  headless: true
+  environment_info: episode
+  close_environment_at_exit: true

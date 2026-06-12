@@ -35,6 +35,17 @@ def _all_agent_ids(env) -> list[str]:
     return _root_env(env).cfg.possible_agents
 
 
+def _all_asset_names(env) -> tuple[str, ...]:
+    root = _root_env(env)
+    asset_names = getattr(root, "_formation_asset_names", None)
+    if asset_names is not None:
+        return tuple(asset_names)
+    ma_spec = getattr(root, "ma_spec", None)
+    if ma_spec is not None:
+        return tuple(ma_spec.agents[agent_id].asset_name for agent_id in root.possible_agents)
+    return tuple(_all_agent_ids(env))
+
+
 # -----------------------------------------------------------------------------
 # Caching helper
 # -----------------------------------------------------------------------------
@@ -55,19 +66,19 @@ def _reward_components(env):
     cfg = root.cfg
     num_drones = cfg.num_drones
     num_balls = cfg.num_balls
-    agent_ids = _all_agent_ids(env)
+    asset_names = _all_asset_names(env)
 
     positions = torch.stack(
-        [root.scene[agent_id].data.root_pos_w.torch - root.scene.env_origins for agent_id in agent_ids], dim=1
+        [root.scene[asset_name].data.root_pos_w.torch - root.scene.env_origins for asset_name in asset_names], dim=1
     )
     velocities = torch.stack(
-        [root.scene[agent_id].data.root_lin_vel_w.torch for agent_id in agent_ids], dim=1
+        [root.scene[asset_name].data.root_lin_vel_w.torch for asset_name in asset_names], dim=1
     )
     quats = torch.stack(
-        [root.scene[agent_id].data.root_quat_w.torch for agent_id in agent_ids], dim=1
+        [root.scene[asset_name].data.root_quat_w.torch for asset_name in asset_names], dim=1
     )
     omegas = torch.stack(
-        [root.scene[agent_id].data.root_ang_vel_w.torch for agent_id in agent_ids], dim=1
+        [root.scene[asset_name].data.root_ang_vel_w.torch for asset_name in asset_names], dim=1
     )
 
     heading = quat_apply(

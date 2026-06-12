@@ -54,8 +54,9 @@ def parse_args() -> tuple[argparse.Namespace, list[str]]:
 
 
 def _stack_positions(root) -> torch.Tensor:
+    asset_names = tuple(getattr(root, "_formation_asset_names", root.possible_agents))
     return torch.stack(
-        [root.scene[agent_id].data.root_pos_w.torch - root.scene.env_origins for agent_id in root.possible_agents],
+        [root.scene[asset_name].data.root_pos_w.torch - root.scene.env_origins for asset_name in asset_names],
         dim=1,
     )
 

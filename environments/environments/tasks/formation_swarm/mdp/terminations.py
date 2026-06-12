@@ -20,6 +20,21 @@ def _asset(env, asset_cfg):
     return _root_env(env).scene[asset_cfg.name]
 
 
+def _all_agent_ids(env) -> list[str]:
+    return _root_env(env).cfg.possible_agents
+
+
+def _all_asset_names(env) -> tuple[str, ...]:
+    root = _root_env(env)
+    asset_names = getattr(root, "_formation_asset_names", None)
+    if asset_names is not None:
+        return tuple(asset_names)
+    ma_spec = getattr(root, "ma_spec", None)
+    if ma_spec is not None:
+        return tuple(ma_spec.agents[agent_id].asset_name for agent_id in root.possible_agents)
+    return tuple(_all_agent_ids(env))
+
+
 def drone_crash(env, asset_cfg, agent_id: str) -> torch.Tensor:
     """True when the drone is below crash_min_height or above crash_max_height.
 
@@ -38,9 +53,10 @@ def drone_too_close(env, asset_cfg, agent_id: str) -> torch.Tensor:
     Returns shape ``(num_envs,)``.
     """
     root = _root_env(env)
-    agent_ids = root.cfg.possible_agents
+    agent_ids = _all_agent_ids(env)
+    asset_names = _all_asset_names(env)
     positions = torch.stack(
-        [root.scene[aid].data.root_pos_w.torch - root.scene.env_origins for aid in agent_ids], dim=1
+        [root.scene[asset_name].data.root_pos_w.torch - root.scene.env_origins for asset_name in asset_names], dim=1
     )
     pairwise = torch.cdist(positions, positions)
     eye = torch.eye(len(agent_ids), device=root.device, dtype=torch.bool)

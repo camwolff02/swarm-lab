@@ -193,6 +193,91 @@ class PaperSwarmMarlEnv(ManagerBasedMarlEnv):
             self.recorder_manager.close()
         super().close()
 
+    def render(self):
+        """Render the environment, optionally following env 0 for video demos."""
+        if self.render_mode == "rgb_array" and getattr(self.cfg, "video_follow_camera", False):
+            self._update_video_follow_camera()
+        return super().render()
+
+    def _update_video_follow_camera(self) -> None:
+        """Move the Kit recording camera with the active/passive Stage 1 setup."""
+        if self.num_envs <= 0 or getattr(self, "video_recorder", None) is None:
+            return
+        try:
+            active_pos = self.scene[self.possible_agents[0]].data.root_pos_w.torch[0]
+            context_positions = []
+            passive_mask = getattr(self, self._passive_mask_key, None)
+            all_drone_ids = [f"drone_{i}" for i in range(8)]
+            passive_positions = []
+            for agent_id in self._passive_drone_ids:
+                if passive_mask is not None and not bool(passive_mask[0, all_drone_ids.index(agent_id)].item()):
+                    continue
+                passive_positions.append(self.scene[agent_id].data.root_pos_w.torch[0])
+            if passive_positions:
+                active_pos = positions[0]
+                passive_tensor = torch.stack(passive_positions, dim=0)
+                nearest_count = int(getattr(self.cfg, "video_follow_passive_count", 3))
+                nearest_count = max(0, min(nearest_count, passive_tensor.shape[0]))
+                if nearest_count > 0:
+                    distances = torch.linalg.norm(passive_tensor - active_pos, dim=-1)
+                    nearest = torch.topk(distances, k=nearest_count, largest=False).indices
+                    context_positions.extend(passive_tensor[nearest])
+            goals = self._agent_goals()
+            goal_pos = None
+            if goals.numel() > 0:
+                goal_pos = goals[0, 0, :3] + self.scene.env_origins[0]
+        except Exception:
+            return
+
+        center = active_pos.clone()
+        if goal_pos is not None:
+            center = center + float(getattr(self.cfg, "video_follow_goal_weight", 0.25)) * (goal_pos - active_pos)
+        if context_positions:
+            context_center = torch.stack(context_positions, dim=0).mean(dim=0)
+            center = center + float(getattr(self.cfg, "video_follow_context_weight", 0.1)) * (
+                context_center - active_pos
+            )
+        eye_offset = torch.tensor(
+            getattr(self.cfg, "video_follow_eye_offset", (-2.4, -2.7, 1.7)),
+            device=center.device,
+            dtype=center.dtype,
+        )
+        lookahead = torch.tensor(
+            getattr(self.cfg, "video_follow_lookahead", (0.0, 0.0, -0.05)),
+            device=center.device,
+            dtype=center.dtype,
+        )
+        eye = tuple(float(v) for v in (center + eye_offset).detach().cpu())
+        lookat = tuple(float(v) for v in (center + lookahead).detach().cpu())
+
+        self.video_recorder.cfg.eye = eye
+        self.video_recorder.cfg.lookat = lookat
+
+        capture = getattr(self.video_recorder, "_capture", None)
+        if getattr(capture, "cfg", None) is not None:
+            capture.cfg.eye = eye
+            capture.cfg.lookat = lookat
+        camera_prim_path = getattr(getattr(capture, "cfg", None), "camera_prim_path", "/OmniverseKit_Persp")
+        try:
+            from isaacsim.core.rendering_manager import ViewportManager
+
+            ViewportManager.set_camera_view(camera_prim_path, eye=list(eye), target=list(lookat))
+        except Exception:
+            pass
+
+        focal_length = getattr(self.cfg, "video_focal_length", None)
+        if focal_length is not None:
+            try:
+                import omni.usd
+                from pxr import UsdGeom
+
+                stage = omni.usd.get_context().get_stage()
+                camera = UsdGeom.Camera(stage.GetPrimAtPath(camera_prim_path))
+                if camera:
+                    camera.GetFocalLengthAttr().Set(float(focal_length))
+            except Exception:
+                return
+
     def _get_dones(self) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
         self._update_collision_events()
         dones = super()._get_dones()
