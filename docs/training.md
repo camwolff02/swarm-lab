@@ -6,10 +6,10 @@ Training scripts are thin Isaac Lab launchers that keep task-specific behavior i
 
 Use `scripts/skrl/train.py` for training and `scripts/skrl/play.py` for evaluation. These scripts load Isaac Lab app-launcher arguments, resolve the registered task, and then defer to task-local SKRL config entries.
 
-The current swarm tasks use custom runner hooks:
+Current custom runner hooks are task-local:
 
 - Formation swarm installs a model factory for `FormationAttentionEncoder` and `FormationSharedMAPPO`.
-- Quad swarm installs a model factory for `QuadSwarmEncoder` and shared homogeneous IPPO components.
+- Paper swarm installs a model factory for `PaperAttentionEncoder` and its shared-policy wrappers.
 
 ## RSL-RL
 

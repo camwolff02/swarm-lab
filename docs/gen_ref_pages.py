@@ -1,11 +1,10 @@
-"""Generate mkdocstrings reference pages for Physical AI Lab packages."""
+"""Generate mkdocstrings reference pages for swarm-lab packages."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 import mkdocs_gen_files
-
 
 PACKAGE_ROOTS = {
     "environments": Path("environments/environments"),

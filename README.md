@@ -1,4 +1,20 @@
-# Physical AI Lab
+# swarm-lab
+
+`swarm-lab` is the thesis workspace for multi-agent reinforcement learning on Isaac Sim and Isaac Lab.
+
+The repository is split into two layers:
+
+- `../cpsquare-lab` provides reusable robot embodiments and shared multirotor utilities.
+- `swarm-lab` provides executable task packages, training scripts, evaluation tooling, and thesis documentation.
+
+## Common Commands
+
+```bash
+uv run pytest test/
+uv run ruff check .
+uv run pyright
+uv run --group docs mkdocs build --strict
+```
 
 ## Documentation
 
@@ -14,4 +30,4 @@ Build the static documentation site into `site/`:
 uv run --group docs mkdocs build --strict
 ```
 
-The built site can be opened from `site/index.html` or served as static files.
+The generated site is a build artifact and should not be committed.

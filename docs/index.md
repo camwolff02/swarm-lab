@@ -1,11 +1,11 @@
-# Physical AI Lab
+# swarm-lab
 
-Physical AI Lab is the Isaac Sim and Isaac Lab workspace for CPSquare swarm experiments. It ties the reusable `cpsquare-lab` robotics library to task packages, training scripts, ROS 2 bridge processes, and experiment artifacts used for multirotor swarm research.
+`swarm-lab` is the Isaac Sim and Isaac Lab workspace for CPSquare swarm experiments and thesis work. It ties the reusable `cpsquare-lab` robotics library to task packages, training scripts, ROS 2 bridge processes, and documentation for the public repository.
 
 The repository is intentionally split into two layers:
 
 - `cpsquare-lab` provides robot embodiments, controllers, reusable task helpers, ROS 2 bridge schemas, and policy interfaces.
-- `physical-ai-lab` provides executable task packages under `environments/`, training and play scripts under `scripts/`, and workspace-level dependency management.
+- `swarm-lab` provides executable task packages under `environments/`, training and play scripts under `scripts/`, and workspace-level dependency management.
 
 ## Developer Workflow
 
@@ -29,6 +29,6 @@ The documentation is designed for mkdocs and mkdocstrings. Narrative pages expla
 Run local checks before publishing documentation:
 
 ```bash
-uv run ruff check environments/environments scripts --select D
+uv run ruff check environments/environments scripts
 uv run --group docs mkdocs build --strict
 ```

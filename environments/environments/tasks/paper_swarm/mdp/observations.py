@@ -333,8 +333,8 @@ def relative_neighbor_velocities_b(
     return _nearest_neighbor_features(rel_vel_b[:, keep, :], distances[:, keep], valid[:, keep], max_neighbors)
 
 
-# TODO(cpsquare) - this is a copy of what is in the cameron_swarm observations.py
-# we should refactor out a shared version and put in mdp/common/
+# TODO(cpsquare): refactor this into a shared observation helper once the
+# formation and paper swarm tasks converge on a common implementation.
 def static_sdf(
     env,
     asset_cfg,

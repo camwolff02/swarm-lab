@@ -10,14 +10,24 @@ from cpsquare_lab.embodiments.multirotor.common.actions import (
     CtbrActionCfg,
     HandleOutOfRangeAction,
 )
-from cpsquare_lab.tasks.common.physics import physx_swarm_cfg
+from isaaclab_physx.physics import PhysxCfg
 
 import isaaclab.sim as sim_utils
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sim import SimulationCfg
-from isaaclab.utils import configclass
+from isaaclab.utils.configclass import configclass
 
 from .paper_spec import PaperSpecEnvCfg
+
+SWARM_GPU_TOTAL_AGGREGATE_PAIRS_CAPACITY = 4 * 1024 * 1024
+
+
+def physx_swarm_cfg() -> PhysxCfg:
+    """Return the PhysX preset used for large multirotor swarms."""
+    return PhysxCfg(
+        enable_external_forces_every_iteration=True,
+        gpu_total_aggregate_pairs_capacity=SWARM_GPU_TOTAL_AGGREGATE_PAIRS_CAPACITY,
+    )
 
 
 class ActionTermDict(dict[str, CtbrActionCfg]):

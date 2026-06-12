@@ -4,9 +4,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 [project]
-name = "test-env"
+name = "swarm-lab"
 version = "0.2.0"
-description = "UV-managed environment for Physical AI Lab development on Isaac Sim and Isaac Lab."
+description = "Swarm-lab thesis workspace for Isaac Sim, Isaac Lab, and multi-agent reinforcement learning."
 requires-python = ">=3.12, <3.13"
 dependencies = [
   # "setuptools==81.0.0",
